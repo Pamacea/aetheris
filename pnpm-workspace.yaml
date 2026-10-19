@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Une seule version de TS partout → un seul peer context pour Prisma Client
+overrides:
+  typescript: 5.9.3
+
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+  - unrs-resolver
+  - esbuild

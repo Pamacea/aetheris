@@ -1,0 +1,525 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Aetheris — Design System « Pandémonium »
+   Palette : noir charbon · rouge ardent · orange sombre
+   Style : contours cassés (angles taillés), boutons carrés/triangles,
+           texture parchemin en overlay
+   ============================================================ */
+
+:root {
+  --background: #0b0907; /* noir charbon */
+  --foreground: #e7dcc6; /* parchemin */
+  --muted: #9a8b74; /* AA sur fond sombre : 5,4–6,0:1 */
+  --card: #14100c;
+  --card-hover: #1b150f;
+  --border: #4b3a2a; /* brûlé */
+  /* #c03a1b échoue en texte (3,5:1) : éclairci pour AA (4,9–5,3:1) */
+  --accent: #dd5c33; /* rouge ardent */
+  --accent-2: #8a3d10; /* orange sombre */
+  --accent-foreground: #f2e7d3;
+  /* erreurs en texte : AA sur card/background (4,7:1) */
+  --destructive: #e04840;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  /* UI : Plus Jakarta Sans (next/font) ; lore : Newsreader via --font-serif. */
+  --font-sans: var(--font-jakarta);
+  --font-serif: var(--font-newsreader);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-cinzel);
+}
+
+/* ---------- Base ---------- */
+
+html {
+  background: var(--background);
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(192, 58, 27, 0.08), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(138, 61, 16, 0.07), transparent 55%),
+    var(--background);
+}
+
+/* Texture parchemin : grain global, non-interactif */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* Titres : serif d'inscription (papier / manuel de jeu) */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+}
+
+/* ---------- Boutons (carrés, angles taillés, jamais de radius) ---------- */
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  /* contours cassés : coupes asymétriques (haut-droite / bas-gauche) */
+  clip-path: polygon(
+    0 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0 calc(100% - 10px)
+  );
+  transition:
+    filter 0.15s ease,
+    background 0.15s ease;
+}
+
+.btn:hover {
+  filter: brightness(1.18);
+  background: var(--card-hover);
+}
+
+.btn:active {
+  filter: brightness(0.92);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  /* assombri pour garder le texte clair AA sur le rouge (le --accent pur
+     sert désormais au texte) */
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent) 75%, #000) 0%,
+    var(--accent-2) 100%
+  );
+  border-color: #6e2610;
+  color: var(--accent-foreground);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent) 85%, #000) 0%,
+    var(--accent-2) 100%
+  );
+}
+
+/* Variante triangle / ruban (pointe à droite) */
+.btn-tri {
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+  padding-right: 1.9rem;
+}
+
+/* Variante brisée : fissure diagonale visible */
+.btn-broken::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    118deg,
+    transparent 44%,
+    rgba(0, 0, 0, 0.6) 45%,
+    rgba(0, 0, 0, 0.6) 50%,
+    transparent 51%
+  );
+  opacity: 0.5;
+}
+
+/* ---------- Champs (carrés, angle taillé) ---------- */
+
+.input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: var(--background);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.9rem;
+  outline: none;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  transition: border-color 0.15s ease;
+}
+
+.input::placeholder {
+  /* opacity 1 : le 0,7 fallait à 3,4:1 (aide = texte normal AA) */
+  color: var(--muted);
+  opacity: 1;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+/* Select : le chevron natif est collé à la bordure (clip-path) — marge droite. */
+select.input {
+  padding-inline: 1rem;
+}
+
+/* Taille compacte des contrôles de fiche (⚙ Taille du champ).
+   Non-layeré comme .input : un utilitaire Tailwind (py-0.5) serait écrasé. */
+.input-sm {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Scroll de la table : fonctionne (molette/touchpad) sans trait visuel. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chevrons natifs masqués : les steppers de fiche portent la DA. */
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input[type="number"] {
+  appearance: textfield;
+}
+
+/* ---------- Panneaux (angles taillés) ---------- */
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 16px) 0,
+    100% 16px,
+    100% 100%,
+    16px 100%,
+    0 calc(100% - 16px)
+  );
+}
+
+/* Panneau centré étroit (login, inscription) — les utilitaires max-w-* sont interdits par PARRY */
+.panel-form {
+  width: min(100%, 28rem);
+  margin-inline: auto;
+}
+
+/* Conteneurs landing — idem : pas de max-w-* (PARRY) */
+.bar {
+  width: min(100% - 3rem, 72rem);
+  margin-inline: auto;
+}
+
+.section {
+  width: min(100% - 3rem, 72rem);
+  margin-inline: auto;
+  padding-block: clamp(3.5rem, 8vw, 6.5rem);
+}
+
+/* ---------- Accent triangle décoratif ---------- */
+
+.mark-tri {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.55em;
+  vertical-align: baseline;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* ---------- Wiki (TipTap) ---------- */
+
+.wiki-prose {
+  outline: none;
+  font-family: var(--aetheris-font-lore), Georgia, serif;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.wiki-prose h1 {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  margin: 1.2em 0 0.5em;
+}
+
+.wiki-prose h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin: 1em 0 0.4em;
+}
+
+.wiki-prose h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0.9em 0 0.35em;
+}
+
+.wiki-prose p {
+  margin: 0.5em 0;
+}
+
+.wiki-prose ul,
+.wiki-prose ol {
+  padding-left: 1.4em;
+  margin: 0.5em 0;
+}
+
+.wiki-prose blockquote {
+  border-left: 2px solid var(--accent-2);
+  padding-left: 0.9em;
+  color: var(--muted);
+  font-style: italic;
+  margin: 0.6em 0;
+}
+
+.wiki-prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.2em 0;
+}
+
+/* ---------- Éditeur de chapitre (TipTap) ---------- */
+
+.novel-prose {
+  outline: none;
+  font-family: var(--aetheris-font-lore), Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: var(--foreground);
+}
+
+.novel-prose p {
+  margin: 0 0 0.9em;
+}
+
+.novel-prose h1,
+.novel-prose h2,
+.novel-prose h3 {
+  font-family: var(--font-display);
+  color: var(--foreground);
+  line-height: 1.25;
+}
+
+.novel-prose h1 {
+  font-size: 1.75rem;
+  margin: 1.4em 0 0.5em;
+}
+
+.novel-prose h2 {
+  font-size: 1.4rem;
+  margin: 1.2em 0 0.45em;
+}
+
+.novel-prose h3 {
+  font-size: 1.15rem;
+  margin: 1em 0 0.4em;
+}
+
+.novel-prose ul,
+.novel-prose ol {
+  padding-left: 1.5em;
+  margin: 0.6em 0;
+}
+
+.novel-prose li {
+  margin: 0.25em 0;
+}
+
+.novel-prose li::marker {
+  color: var(--accent);
+}
+
+.novel-prose blockquote {
+  border-left: 2px solid var(--accent);
+  padding-left: 1em;
+  color: var(--muted);
+  font-style: italic;
+  margin: 0.9em 0;
+}
+
+.novel-prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.6em 0;
+}
+
+.novel-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.wiki-link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent);
+  cursor: pointer;
+}
+
+.wiki-link:hover {
+  color: var(--accent-foreground);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+gm-secret {
+  display: block;
+  border-left: 2px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  padding: 0.35em 0.8em;
+  margin: 0.6em 0;
+}
+
+/* Indicateur « MJ » en exposant gris, à gauche du texte secret.
+   Visible MJ uniquement : les joueurs ne reçoivent jamais ce bloc
+   (filtré serveur côté lecture). */
+gm-secret::before {
+  content: "MJ";
+  float: left;
+  color: var(--muted);
+  font-size: 0.55em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  vertical-align: super;
+  margin-right: 0.45em;
+  user-select: none;
+}
+
+/* ---------- Menu de suggestion (slash / [[) ---------- */
+
+.suggestion-menu {
+  background: var(--card);
+  border: 1px solid var(--border);
+  min-width: 13rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.suggestion-item.is-active {
+  background: var(--card-hover);
+  border-left: 2px solid var(--accent);
+}
+
+.suggestion-hint {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ============================================================
+   API PUBLIQUE DES VARIABLES DE THÈME (Phase 9)
+   Alias stables `--aetheris-*` : le CSS custom par campagne, les
+   presets et l'export JSON ciblent ces noms. Ils lisent les variables
+   historiques ci-dessus (--accent, --card…), qui restent la source
+   réelle : renommer l'une met à jour l'autre automatiquement.
+   Surcharge côté campagne (dans un bloc `:root { … }`) :
+     --aetheris-background      fond général
+     --aetheris-surface         panneaux / cartes
+     --aetheris-surface-hover   survol des cartes
+     --aetheris-border          bordures
+     --aetheris-foreground      texte principal
+     --aetheris-muted           texte secondaire
+     --aetheris-accent          accent primaire
+     --aetheris-accent-2        accent secondaire
+     --aetheris-accent-foreground texte sur accent
+     --aetheris-destructive     suppression / erreurs
+     --aetheris-font-ui         sans de l'UI (Plus Jakarta Sans)
+     --aetheris-font-lore       serif du lore (Newsreader)
+     --aetheris-font-display    serif des titres (Cinzel)
+     --aetheris-font-mono       monospace (Geist Mono)
+   ============================================================ */
+:root {
+  --aetheris-background: var(--background);
+  --aetheris-surface: var(--card);
+  --aetheris-surface-hover: var(--card-hover);
+  --aetheris-border: var(--border);
+  --aetheris-foreground: var(--foreground);
+  --aetheris-muted: var(--muted);
+  --aetheris-accent: var(--accent);
+  --aetheris-accent-2: var(--accent-2);
+  --aetheris-accent-foreground: var(--accent-foreground);
+  --aetheris-destructive: var(--destructive);
+  --aetheris-font-ui: var(--font-jakarta);
+  --aetheris-font-lore: var(--font-newsreader);
+  --aetheris-font-display: var(--font-cinzel);
+  --aetheris-font-mono: var(--font-geist-mono);
+}
+
+/* ============================================================
+   Focus visible (Phase 11 — a11y)
+   Règle non-layered : écrase les `outline: none` (classes .input,
+   utilitaires Tailwind) ci-dessus dans la cascade.
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* clip-path rogne l'outline externe : anneau intérieur à la place. */
+.btn:focus-visible,
+.input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Cibles de focus programmatique (skip-link) et éditeur TipTap :
+   le caret suffit, pas de cadre autour de toute la page. */
+main:focus-visible,
+.wiki-prose:focus-visible,
+.novel-prose:focus-visible {
+  outline: none;
+}

@@ -1,0 +1,26 @@
+{
+  "name": "aetheris",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:e2e": "playwright test",
+    "check": "turbo typecheck lint test",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "db:generate": "pnpm --filter @aetheris/database generate",
+    "db:migrate": "pnpm --filter @aetheris/database migrate:dev",
+    "db:push": "pnpm --filter @aetheris/database db:push",
+    "db:studio": "pnpm --filter @aetheris/database studio"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "oxfmt": "^0.73.0",
+    "turbo": "^2.5.4"
+  },
+  "packageManager": "pnpm@10.12.4"
+}

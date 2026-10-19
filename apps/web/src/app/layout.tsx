@@ -1,0 +1,50 @@
+import type { Metadata } from "next";
+import { Cinzel, Geist_Mono, Newsreader, Plus_Jakarta_Sans } from "next/font/google";
+import "./globals.css";
+import { ThemeInjector } from "@/components/theme-injector";
+import { SkipLink } from "@/components/skip-link";
+
+// Sans UI — interface et éléments interactifs.
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
+  subsets: ["latin"],
+});
+
+// Serif pour le lore — wiki, romans, citations (italique inclus).
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+});
+
+// Serif d'inscription des titres (design system Pandémonium).
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Aetheris",
+  description: "Plateforme VTT & Lore Studio — campagnes, wiki, table virtuelle et romans.",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="fr"
+      className={`${jakarta.variable} ${newsreader.variable} ${cinzel.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        <SkipLink />
+        {children}
+        <ThemeInjector />
+      </body>
+    </html>
+  );
+}

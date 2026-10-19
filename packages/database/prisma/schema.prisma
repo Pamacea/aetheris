@@ -1,0 +1,265 @@
+// Aetheris — Schéma Prisma (local-first PostgreSQL)
+// Voir ROADMAP.md § Modèle de Données
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Auth (Better Auth) ─────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions     Session[]
+  accounts     Account[]
+  campaigns    CampaignMember[]
+  novels       Novel[]
+  gameSystems  GameSystem[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ───────────────────────── Campagnes ─────────────────────────
+
+model Campaign {
+  id                String           @id @default(uuid())
+  title             String
+  coverImage        String?          // image de couverture (URL ou data-URI)
+  logo              String?          // logo de campagne (URL ou data-URI)
+  theme             String           @default("pandemonium") // thème natif ou "custom"
+  customThemeScript String?          // JS de thème importé par l'utilisateur
+  gameSystem        String           @default("custom") // id de preset ou "custom"
+  customScript      String?          // JS custom injecté (bac à sable)
+  customStyles      String?          // CSS custom injecté
+  enabledPlugins    String[]         @default(["lore-wiki"])
+  inviteCode        String           @unique @default(uuid())
+  entities       Entity[]
+  templates      JsonTemplate[]
+  members        CampaignMember[]
+  chatMessages   ChatMessage[]
+  scene          VttScene?
+  encounter      CampaignEncounter?
+  journalEntries JournalEntry[]
+  playlists      AmbiancePlaylist[]
+  ambiance       CampaignAmbiance?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model CampaignMember {
+  id         String   @id @default(uuid())
+  role       String   @default("PLAYER") // GM | PLAYER
+  permissions Json? // grants granulaires — { view: { [pluginId]: false } } = refus explicite
+  userId     String
+  campaignId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignId])
+  @@index([campaignId])
+}
+
+model JsonTemplate {
+  id         String   @id @default(uuid())
+  name       String
+  category   String? // ex. « Encyclopédie » — regroupe les templates côté wiki
+  schema     Json // structure des champs (validée par Zod)
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+model Entity {
+  id          String   @id @default(uuid())
+  title       String
+  type        String // id/nom du template, ou "note" pour une note wiki libre
+  data        Json // données saisies selon le template
+  contentHtml String? // corps de la note (lore)
+  folder      String? // dossier dans le panneau wiki (null = racine)
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  versions    EntityVersion[]
+
+  @@index([campaignId])
+}
+
+model EntityVersion {
+  id          String   @id @default(uuid())
+  contentHtml String
+  createdAt   DateTime @default(now())
+  entityId    String
+  entity      Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+}
+
+// ───────────────────────── Temps réel (Phase 6) ─────────────────────
+
+model ChatMessage {
+  id          String   @id @default(uuid())
+  campaignId  String
+  authorId    String? // null si l'auteur a quitté la campagne
+  authorName  String
+  content     String
+  sentAt      DateTime @default(now())
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, sentAt])
+}
+
+model VttScene {
+  id         String   @id @default(uuid())
+  campaignId String   @unique
+  state      Json // tokens, walls, grid, mapUrl, fog (SceneState de @aetheris/shared)
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+// ───────────────────────── Module Combat (Phase 8) ──────────────────
+
+model CampaignEncounter {
+  id         String   @id @default(uuid())
+  campaignId String   @unique
+  state      Json // combatants, activeIndex, round, active (CombatState de @aetheris/shared)
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+// ───────────────────────── Module Journal (Phase 8) ─────────────────
+
+model JournalEntry {
+  id          String   @id @default(uuid())
+  title       String
+  content     String   @default("")
+  imageUrl    String?
+  shared      Boolean  @default(false) // false = brouillon MJ seul
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([campaignId, createdAt])
+}
+
+// ───────────────────────── Module Ambiance (Phase 8) ────────────────
+
+model AmbiancePlaylist {
+  id         String   @id @default(uuid())
+  name       String
+  tracks     Json     @default("[]") // AudioTrack[] de @aetheris/shared
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId])
+}
+
+model CampaignAmbiance {
+  id         String   @id @default(uuid())
+  campaignId String   @unique
+  state      Json     @default("{}") // AmbianceState de @aetheris/shared (lecture en cours)
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+// ───────────────────────── Systèmes de jeu ─────────────────────────
+
+model GameSystem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  schema      Json     @default("{}") // structure : feuilles, objets, cartes (éditable en campagne)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorId])
+}
+
+// ───────────────────────── Romans (module d'écriture) ─────────────────────────
+
+model Novel {
+  id         String    @id @default(uuid())
+  title      String
+  synopsis   String?
+  status     String    @default("draft") // draft | writing | published
+  coverImage String?
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  chapters   Chapter[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([authorId])
+}
+
+model Chapter {
+  id          String    @id @default(uuid())
+  title       String
+  position    Int
+  content     Json? // document TipTap (JSON structuré)
+  wordCount   Int       @default(0)
+  status      String    @default("draft") // draft | review | published
+  publishedAt DateTime?
+  novelId     String
+  novel       Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([novelId])
+}
