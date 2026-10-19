@@ -7,6 +7,7 @@ export * from "./schemas/ambiance.js";
 export * from "./schemas/auth.js";
 export * from "./schemas/campaign.js";
 export * from "./schemas/campaign-export.js";
+export * from "./schemas/choices.js";
 export * from "./schemas/combat.js";
 export * from "./schemas/journal.js";
 export * from "./schemas/plugins.js";

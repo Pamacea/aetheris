@@ -15,6 +15,7 @@ import {
   campaignJoinSchema,
   chatMessageSchema,
   chatSendSchema,
+  choicesUpdateSchema,
   diceRollRequestSchema,
   parseRollExpression,
   executeRoll,
@@ -289,6 +290,29 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     this.server.to(`campaign:${campaignId}`).emit("chat:message", message);
     this.events.emit("chat.message", { campaignId, message });
     void this.plugins?.dispatchHook("chat:message", campaignId, { message });
+    return { ok: true };
+  }
+
+  /**
+   * Suivi des choix joueurs : le client Next a déjà persisté (server
+   * action) puis notifie — le gateway re-vérifie l'adhésion et relaie
+   * l'invalidation dans la room, sans touching à la donnée.
+   */
+  @SubscribeMessage("choices:update")
+  async choicesUpdate(
+    @MessageBody() raw: unknown,
+    @ConnectedSocket() socket: Socket,
+  ): Promise<{ ok: true } | undefined> {
+    const { campaignId } = parseWs(choicesUpdateSchema, raw);
+    const data = await this.requireAuth(socket);
+    if (!data.userId) throw new WsException("Non authentifié");
+    if (!data.campaigns?.includes(campaignId)) {
+      throw new WsException("Room non rejointe");
+    }
+    if (!this.allowEvent(socket, "choices:update", 5)) return undefined;
+    await this.requireMember(socket, campaignId);
+
+    socket.to(`campaign:${campaignId}`).emit("choices:update", { campaignId });
     return { ok: true };
   }
 
