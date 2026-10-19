@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { getCampaignTheme } from "@/app/(app)/campaign/[id]/settings/actions";
+import { getCampaignTheme } from "@/features/theme/actions";
 
 /**
  * Injecte le CSS custom de la campagne courante (Phase 9) via une balise

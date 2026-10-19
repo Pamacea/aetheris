@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   description: "Plateforme VTT & Lore Studio — campagnes, wiki, table virtuelle et romans.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="fr"

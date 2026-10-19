@@ -95,6 +95,7 @@ model Campaign {
   journalEntries JournalEntry[]
   playlists      AmbiancePlaylist[]
   ambiance       CampaignAmbiance?
+  playerChoices  PlayerChoice[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 }
@@ -130,11 +131,55 @@ model Entity {
   data        Json // données saisies selon le template
   contentHtml String? // corps de la note (lore)
   folder      String? // dossier dans le panneau wiki (null = racine)
+  shareSlug   String? @unique // wiki partageable : slug public (null = non partagé)
   campaignId  String
   campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   versions    EntityVersion[]
+  linksFrom   EntityLink[] @relation("LinkFrom")
+  linksTo     EntityLink[] @relation("LinkTo")
 
   @@index([campaignId])
+}
+
+// Arêtes du graphe de relations (personnages, lieux, factions…)
+model EntityLink {
+  id         String   @id @default(uuid())
+  label      String? // ex. « allié de », « réside à »
+  fromEntityId String
+  toEntityId   String
+  fromEntity   Entity   @relation("LinkFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntity     Entity   @relation("LinkTo", fields: [toEntityId], references: [id], onDelete: Cascade)
+
+  @@index([fromEntityId])
+  @@index([toEntityId])
+}
+
+// ───────────────────────── Choix joueurs (Amsel-style) ───────────────
+
+model PlayerChoice {
+  id          String   @id @default(uuid())
+  prompt      String // question lancée aux joueurs
+  options     Json     // string[] — libellés des options
+  status      String   @default("open") // open | resolved
+  resolvedOption Int? // index de l'option retenue quand resolved
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  votes       ChoiceVote[]
+  createdAt   DateTime @default(now())
+
+  @@index([campaignId, createdAt])
+}
+
+model ChoiceVote {
+  id          String       @id @default(uuid())
+  optionIndex Int
+  comment     String?
+  choiceId    String
+  userId      String
+  choice      PlayerChoice @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@unique([choiceId, userId]) // un vote par joueur
+  @@index([choiceId])
 }
 
 model EntityVersion {
