@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createCampaign, register, uniqueEmail } from "./helpers";
+import { createCampaign, moduleLink, register, uniqueEmail } from "./helpers";
 
 /** Smoke du module Ambiance : création de playlist + édition de pistes. */
 test("ambiance : créer une playlist, lui ajouter une piste", async ({ page }) => {
   await register(page, uniqueEmail("amb"), "MJ Ambiance");
   await createCampaign(page, `Campagne Ambiance ${Date.now()}`);
 
-  await page.getByRole("link", { name: "Ambiance" }).click();
+  await moduleLink(page, "Ambiance").click();
   await expect(page).toHaveURL(/\/ambiance/);
   await expect(page.getByRole("heading", { level: 1, name: /Ambiance sonore/ })).toBeVisible();
 
@@ -31,7 +31,7 @@ test("ambiance : importer un fichier sonore local", async ({ page }) => {
   await register(page, uniqueEmail("amb-imp"), "MJ Import");
   await createCampaign(page, `Campagne Import ${Date.now()}`);
 
-  await page.getByRole("link", { name: "Ambiance" }).click();
+  await moduleLink(page, "Ambiance").click();
   await expect(page).toHaveURL(/\/ambiance/);
 
   await page.getByPlaceholder("Forêt maudite, Taverne, Combat…").fill(`Scène ${Date.now()}`);

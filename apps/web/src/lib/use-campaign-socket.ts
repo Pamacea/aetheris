@@ -9,7 +9,7 @@ interface UseCampaignSocketResult {
 }
 
 // Compteur de consommateurs : la socket singleton ne se déconnecte
-// qu'au démontage du dernier (modales, chat + sync simultanés).
+// qu'au démontage du dernier (chat + sync simultanés).
 let refs = 0;
 
 /**

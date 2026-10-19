@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createCampaign, inviteCode, register, uniqueEmail } from "./helpers";
+import { createCampaign, inviteCode, moduleLink, register, uniqueEmail } from "./helpers";
 
 /** Dette v1.0 : jetons (propriétaire, PV/CA) + saisie d'URL de carte distante. */
 test.beforeEach(async ({ page }) => {
@@ -8,8 +8,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("jeton : PV/CA et propriétaire édités par le MJ, persistés", async ({ page }) => {
-  // URL directe = page pleine (default.tsx) : en modale, la caméra du canvas
-  // change et les spots ci-dessous ratent le jeton.
+  // URL directe : même caméra de départ pour les spots ci-dessous.
   await page.goto(`${new URL(page.url()).pathname}/vtt`);
   await expect(page).toHaveURL(/\/vtt/);
   const canvas = page.locator("canvas").first();
@@ -102,7 +101,7 @@ test("joueur : PV éditables sur son jeton, jamais les autres champs", async ({ 
 });
 
 test("carte : URL distante http(s) acceptée, autre scheme refusé", async ({ page }) => {
-  await page.getByRole("link", { name: /table/i }).click();
+  await moduleLink(page, /table/i).click();
   await expect(page).toHaveURL(/\/vtt/);
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
 

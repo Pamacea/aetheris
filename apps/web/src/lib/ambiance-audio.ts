@@ -1,7 +1,7 @@
 /**
  * Élément audio unique du module Ambiance : créé paresseusement au niveau
  * module, hors de l'arbre React, pour survivre au démontage des composants
- * (fermeture de la modale VTT) sans couper la lecture.
+ * (changement de module) sans couper la lecture.
  */
 let audio: HTMLAudioElement | null = null;
 

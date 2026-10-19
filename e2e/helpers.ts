@@ -40,3 +40,11 @@ export async function createCampaign(page: Page, title: string) {
 export function inviteCode(page: Page) {
   return page.locator("code").first();
 }
+
+/** Lien de module dans la top bar fusionnée (les cartes du hub portent le
+ *  même nom accessible → scoping obligatoire contre le conflit strict). */
+export function moduleLink(page: Page, name: string | RegExp) {
+  return page
+    .getByRole("navigation", { name: "Modules de la campagne" })
+    .getByRole("link", { name });
+}
