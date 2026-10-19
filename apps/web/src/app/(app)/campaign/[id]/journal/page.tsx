@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requireCampaignPage } from "@/features/campaigns/require-member";
+import { requireCampaignPlugin } from "@/lib/campaign-server";
 import { journalScope } from "@/features/journal/scope";
 import { JournalApp } from "@/features/journal/journal-app";
 import type { Handout } from "@aetheris/shared";
@@ -12,7 +15,11 @@ import type { Handout } from "@aetheris/shared";
  */
 export default async function JournalPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { member } = await requireCampaignPage(id, "journal");
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/login");
+  // Plugin désactivé (Réglages) ou grant refusé → 404, comme les autres modules.
+  const member = await requireCampaignPlugin(id, "journal");
+  if (!member) notFound();
   const isGM = member.role === "GM";
 
   const rows = await prisma.journalEntry.findMany({

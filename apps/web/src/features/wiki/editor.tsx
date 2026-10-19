@@ -4,6 +4,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
 import { useEffect, useRef } from "react";
+import { BlocksPalette } from "./blocks-palette";
+import { BLOCK_MIME, insertBlockAt, readPayload } from "./blocks-dnd";
 import {
   DiceBlockNode,
   GmSecretNode,
@@ -26,6 +28,7 @@ interface WikiEditorProps {
 /**
  * Éditeur TipTap d'une note. Remonté à chaque changement de note
  * (clé `noteId`) : pas d'effet de synchronisation de contenu.
+ * Palette de blocs (MJ) + drop : le bloc est inséré à la position visée.
  */
 export function WikiEditor({
   noteId,
@@ -86,6 +89,31 @@ export function WikiEditor({
   });
 
   if (!editor) return null;
+  // Copie locale : le rétrécissement de type ne descend pas dans les closures.
+  const ed = editor;
 
-  return <EditorContent editor={editor} />;
+  // Drop d'un chip de palette : insertion à la position visée (fin de doc
+  // si les coordonnées ne tombent sur aucune position).
+  function handleDrop(e: React.DragEvent) {
+    const payload = readPayload(e);
+    if (!payload) return;
+    e.preventDefault();
+    const at = ed.view.posAtCoords({ left: e.clientX, top: e.clientY });
+    insertBlockAt(ed, payload, at?.pos ?? null);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    // Seuls nos chips autorisent le drop : les glisser-dépos externes (fichiers,
+    // texte) restent gérés par ProseMirror.
+    if (!e.dataTransfer.types.includes(BLOCK_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }
+
+  return (
+    <div className="flex flex-col" onDragOver={handleDragOver} onDrop={handleDrop}>
+      {isGM && <BlocksPalette onInsert={(p) => insertBlockAt(ed, p, null)} />}
+      <EditorContent editor={ed} />
+    </div>
+  );
 }

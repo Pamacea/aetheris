@@ -4,14 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { requireCampaignPage } from "@/features/campaigns/require-member";
 import { SettingsInfoForm } from "@/features/campaign-settings/settings-info-form";
 import { ThemeEditor } from "@/features/campaign-settings/theme-editor";
+import { PluginToggles } from "@/features/campaign-settings/plugin-toggles";
 import { RegenerateCodeButton } from "@/features/campaign-settings/regenerate-code-button";
 import { CopyCodeButton } from "../copy-code-button";
 
 /**
  * Réglages de la campagne : infos (titre, couverture, logo, système de jeu),
- * éditeur de thème custom (CSS sanitisé + JS bac à sable, MJ uniquement)
- * et code d'invitation régénérable (MJ). Toute écriture est revérifiée
- * `role === "GM"` dans features/campaign-settings/actions.ts.
+ * modules (bascule des plugins du catalogue, MJ), éditeur de thème custom
+ * (CSS sanitisé + JS bac à sable, MJ uniquement) et code d'invitation
+ * régénérable (MJ). Toute écriture est revérifiée `role === "GM"` dans
+ * features/campaign-settings/actions.ts.
  */
 export default async function CampaignSettingsPage({
   params,
@@ -32,6 +34,7 @@ export default async function CampaignSettingsPage({
       customStyles: true,
       customScript: true,
       inviteCode: true,
+      enabledPlugins: true,
     },
   });
   if (!campaign) notFound();
@@ -43,7 +46,9 @@ export default async function CampaignSettingsPage({
           ← Campagne
         </Link>
         <span className="mx-2">/</span>
-        <span className="text-foreground">{campaign.title}</span>
+        <Link href={`/campaign/${id}`} className="text-foreground hover:text-accent">
+          {campaign.title}
+        </Link>
         <span className="mx-2">/</span>
         <span className="text-foreground">Réglages</span>
       </nav>
@@ -59,7 +64,7 @@ export default async function CampaignSettingsPage({
           </span>
           <span>
             {isGM
-              ? "Informations, thème personnalisé et invitation."
+              ? "Informations, modules, thème personnalisé et invitation."
               : "Informations de la campagne — lecture seule."}
           </span>
         </p>
@@ -75,6 +80,17 @@ export default async function CampaignSettingsPage({
           gameSystem: campaign.gameSystem,
         }}
       />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xs tracking-widest text-muted uppercase">Modules</h2>
+        <PluginToggles campaignId={id} enabledPlugins={campaign.enabledPlugins} isGM={isGM} />
+        <div className="flex flex-col gap-1 text-xs text-muted">
+          <p>
+            <span className="text-accent">Lore Wiki</span> — module core, toujours actif.
+          </p>
+          <p>Désactiver un module : sa page renvoie 404 pour tout le monde, joueurs compris.</p>
+        </div>
+      </section>
 
       <section className="flex flex-col gap-4">
         <h2 className="text-xs tracking-widest text-muted uppercase">Personnalisation</h2>

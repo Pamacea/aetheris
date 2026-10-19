@@ -60,6 +60,7 @@ export function PermissionsMembers({
                   campaignId={campaignId}
                   memberId={m.id}
                   role={m.role}
+                  name={m.user.name}
                 />
               </div>
 

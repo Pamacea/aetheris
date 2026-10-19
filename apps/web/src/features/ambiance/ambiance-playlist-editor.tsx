@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { AudioTrack } from "@aetheris/shared";
 import { AmbianceTrackList } from "./ambiance-track-list";
+import { MAX_AUDIO_FILE_BYTES, formatSize } from "./import-logic";
 import { MAX_TRACKS } from "./track-logic";
 
 /** Éditeur de playlist (MJ) — champs pilotés par le hook CRUD du dossier. */
@@ -21,6 +22,7 @@ export function AmbiancePlaylistEditor({
   saveEdits,
   removePlaylist,
   addTrack,
+  importTrack,
   setEditId,
 }: {
   editId: string;
@@ -37,6 +39,7 @@ export function AmbiancePlaylistEditor({
   saveEdits: () => void;
   removePlaylist: () => void;
   addTrack: () => void;
+  importTrack: (file: File | null | undefined) => void;
   setEditId: Dispatch<SetStateAction<string | null>>;
 }) {
   return (
@@ -113,6 +116,30 @@ export function AmbiancePlaylistEditor({
           {draftTracks.length}/{MAX_TRACKS}
         </span>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="btn cursor-pointer px-2 py-1 text-xs">
+          Importer un fichier
+          <input
+            type="file"
+            name="piste-fichier"
+            accept="audio/*"
+            className="hidden"
+            aria-label="Importer un fichier sonore"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Reset : permet de re-sélectionner le même fichier après un refus.
+              e.target.value = "";
+              importTrack(file);
+            }}
+          />
+        </label>
+        <span className="text-[0.65rem] text-muted">
+          Fichier local (MP3, OGG, WAV…) — {formatSize(MAX_AUDIO_FILE_BYTES)} max — stocké avec la
+          playlist et partagé aux joueurs.
+        </span>
+      </div>
+
       <p className="text-[0.65rem] text-muted">
         Les modifications ne partent aux autres clients qu&apos;après « Enregistrer ».
       </p>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { GameModal } from "@/components/game-modal";
 import { createNovel, updateNovel } from "@/features/novels/actions";
 import { CreateNovelDialogFields } from "./create-novel-dialog-fields";
+import { IconCross } from "./icons";
 
 const MAX_COVER_BYTES = 1_200_000;
 
@@ -87,7 +88,7 @@ export function CreateNovelButton() {
                 aria-label="Fermer"
                 className="btn px-2 py-0.5 text-sm"
               >
-                ✕
+                <IconCross className="h-3 w-3" />
               </button>
             </header>
 

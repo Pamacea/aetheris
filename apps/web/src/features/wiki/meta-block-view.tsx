@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { BlockScopeToggle } from "./blocks-scope-toggle";
 
 /**
  * Vue React d'un bloc de métadonnées : rend uniquement du texte React
@@ -9,7 +10,13 @@ import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
  * Config ⚙ (taille) et suppression × seulement en édition (éditeur MJ) :
  * côté joueur `editor.isEditable` est faux → aucun bouton d'écriture.
  */
-export function MetaBlockView({ node, updateAttributes, deleteNode, editor }: NodeViewProps) {
+export function MetaBlockView({
+  node,
+  updateAttributes,
+  deleteNode,
+  editor,
+  getPos,
+}: NodeViewProps) {
   const { kind, label, value, size } = node.attrs as {
     kind: string;
     label: string;
@@ -30,6 +37,7 @@ export function MetaBlockView({ node, updateAttributes, deleteNode, editor }: No
         name="bloc-meta-libelle"
         aria-label="Libellé du bloc"
         value={label}
+        disabled={!editable}
         onChange={(e) => updateAttributes({ label: e.target.value })}
       />
       <input
@@ -38,6 +46,7 @@ export function MetaBlockView({ node, updateAttributes, deleteNode, editor }: No
         aria-label="Valeur du bloc"
         type={kind === "date" ? "date" : "text"}
         value={value}
+        disabled={!editable}
         onChange={(e) => updateAttributes({ value: e.target.value })}
       />
       {editable && (
@@ -64,19 +73,22 @@ export function MetaBlockView({ node, updateAttributes, deleteNode, editor }: No
         </>
       )}
       {editable && cfg && (
-        <label className="flex items-center gap-1.5 text-xs text-muted">
-          Taille
-          <select
-            className="input py-0.5 text-xs"
-            aria-label="Taille du bloc"
-            value={size || "md"}
-            onChange={(e) => updateAttributes({ size: e.target.value })}
-          >
-            <option value="sm">Petit</option>
-            <option value="md">Moyen</option>
-            <option value="lg">Grand</option>
-          </select>
-        </label>
+        <span className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-muted">
+            Taille
+            <select
+              className="input py-0.5 text-xs"
+              aria-label="Taille du bloc"
+              value={size || "md"}
+              onChange={(e) => updateAttributes({ size: e.target.value })}
+            >
+              <option value="sm">Petit</option>
+              <option value="md">Moyen</option>
+              <option value="lg">Grand</option>
+            </select>
+          </label>
+          <BlockScopeToggle editor={editor} getPos={getPos} />
+        </span>
       )}
     </NodeViewWrapper>
   );

@@ -7,11 +7,37 @@ import { z } from "zod";
  * joueurs via le plugin `ambiance`.
  */
 
+/** data-URI d'import de fichier local : MIME `audio/*` + corps base64 strict.
+ *  Refuse donc `data:text/html` et consorts (le corps ne peut pas être du HTML). */
+const DATA_AUDIO_URI = /^data:audio\/[a-z0-9.+-]+;base64,[a-z0-9+/]+={0,2}$/i;
+
+/** Longueur max d'une piste encodée : 700 Ko de fichier → ~956 Ko en base64
+ *  (plafond d'import client), avec marge. Compromis : la data-URI vit dans la
+ *  row `tracks` (poids = taille encodée) — si ça pèse un jour, passer à un
+ *  stockage fichier dédié (disque/S3 + URL). */
+const MAX_DATA_URI_LENGTH = 1_048_576;
+
 export const audioTrackSchema = z.object({
   id: z.string().min(1).max(64),
   title: z.string().min(1).max(160),
-  /** URL du fichier audio (mp3/ogg/wav…). */
-  url: z.string().min(1).max(2048),
+  /** URL distante (http/https) ou data-URI audio (fichier importé par le MJ). */
+  url: z.union(
+    [
+      z
+        .url()
+        .max(2048)
+        // z.url() accepte tout schéma (data:, javascript:…) : on restreint au
+        // canal distant — le canal import est la branche data-URI ci-dessous.
+        .refine((u) => u.startsWith("http://") || u.startsWith("https://"), {
+          error: "URL distante invalide (http(s) attendu).",
+        }),
+      z
+        .string()
+        .regex(DATA_AUDIO_URI, "data-URI audio invalide (data:audio/…;base64, attendu).")
+        .max(MAX_DATA_URI_LENGTH, "Audio importé trop volumineux."),
+    ],
+    { error: "URL audio invalide : https://… ou data:audio/…;base64, attendu." },
+  ),
 });
 export type AudioTrack = z.infer<typeof audioTrackSchema>;
 

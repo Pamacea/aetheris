@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { PLUGIN_CATALOG } from "@aetheris/shared";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCreateCampaign } from "./validate";
@@ -20,6 +21,9 @@ export async function createCampaign(formData: FormData): Promise<CampaignFormSt
   const campaign = await prisma.campaign.create({
     data: {
       ...parsed.data,
+      // Tous les modules du catalogue activés d'office (désactivables ensuite
+      // via Réglages) — sans ça, les pages plugin et `plugin:event` 404/refusent.
+      enabledPlugins: ["lore-wiki", ...PLUGIN_CATALOG.map((p) => p.id)],
       members: { create: { userId: session.user.id, role: "GM" } },
     },
     select: { id: true },

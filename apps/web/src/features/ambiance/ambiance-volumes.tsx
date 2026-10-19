@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { AmbianceState } from "@aetheris/shared";
 
 /** Préférence de volume personnel, propre à chaque client. */
@@ -29,6 +30,63 @@ function writeLocalVolume(v: number): void {
 
 export { DEFAULT_LOCAL_VOLUME };
 
+/** Curseur stylé : piste accent + vide, pouce carré à angle taillé (jamais de
+ *  radius). `--fill` pilote le remplissage de la piste WebKit (Firefox a
+ *  ::-moz-range-progress natif). */
+const SLIDER_CLS = [
+  "h-5 w-36 shrink-0 cursor-pointer appearance-none bg-transparent",
+  "[&::-webkit-slider-runnable-track]:h-1.5",
+  "[&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--accent)_var(--fill),var(--border)_var(--fill))]",
+  "[&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-2.5",
+  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-[var(--accent)]",
+  "[&::-webkit-slider-thumb]:[clip-path:polygon(0_0,calc(100%_-_4px)_0,100%_4px,100%_100%,0_100%)]",
+  "[&::-moz-range-track]:h-1.5 [&::-moz-range-track]:bg-[var(--border)]",
+  "[&::-moz-range-progress]:h-1.5 [&::-moz-range-progress]:bg-[var(--accent)]",
+  "[&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:border-0",
+  "[&::-moz-range-thumb]:rounded-none [&::-moz-range-thumb]:bg-[var(--accent)]",
+  "[&::-moz-range-thumb]:[clip-path:polygon(0_0,calc(100%_-_4px)_0,100%_4px,100%_100%,0_100%)]",
+].join(" ");
+
+/** Ligne compacte : libellé · curseur · pourcentage (valeur en chiffres tabulaires). */
+function VolumeRow({
+  label,
+  name,
+  value,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const pct = Math.round(value * 100);
+  return (
+    <label className="flex items-center gap-3">
+      <span className="w-28 shrink-0 text-[0.65rem] font-semibold tracking-widest whitespace-nowrap text-muted uppercase">
+        {label}
+      </span>
+      <input
+        type="range"
+        name={name}
+        min={0}
+        max={1}
+        step={0.05}
+        value={value}
+        // shortcut: un commit serveur + relais par tick de slider (step 0.05),
+        //           sans debounce ; le gateway relaie à 5/s, un tick au-delà est
+        //           perdu (les pairs rattrapent au prochain commit).
+        onChange={(e) => onChange(Number(e.target.value))}
+        className={SLIDER_CLS}
+        style={{ "--fill": `${pct}%` } as CSSProperties}
+        aria-label={label}
+      />
+      <span className="w-9 shrink-0 text-right font-mono text-xs tabular-nums text-accent">
+        {pct}%
+      </span>
+    </label>
+  );
+}
+
 /** Curseurs de volume (global + boucle pilotés par le MJ, volume local). */
 export function AmbianceVolumes({
   state,
@@ -43,26 +101,23 @@ export function AmbianceVolumes({
 }) {
   return (
     <>
-      {isGM && (
-        <label className="flex items-center gap-2 text-xs text-muted">
-          Volume global
-          <input
-            type="range"
+      <div className="panel flex flex-col gap-2 p-2.5 pr-3">
+        {isGM && (
+          <VolumeRow
+            label="Volume global"
             name="volume-global"
-            min={0}
-            max={1}
-            step={0.05}
             value={state.volume}
-            // shortcut: un commit serveur + relais par tick de slider (step
-            //           0.05), sans debounce ; le gateway relaie à 5/s, un
-            //           tick au-delà est perdu (les pairs rattrapent au
-            //           prochain commit) — alléger si la persistance pèse.
-            onChange={(e) => void commit({ ...state, volume: Number(e.target.value) })}
-            className="w-28 accent-[var(--accent)]"
-            aria-label="Volume global"
+            // shortcut: relais par tick — voir VolumeRow.
+            onChange={(v) => void commit({ ...state, volume: v })}
           />
-        </label>
-      )}
+        )}
+        <VolumeRow
+          label="Mon volume"
+          name="volume-local"
+          value={localVolume}
+          onChange={writeLocalVolume}
+        />
+      </div>
 
       {isGM && (
         <button
@@ -76,21 +131,6 @@ export function AmbianceVolumes({
           ⟳ Boucle
         </button>
       )}
-
-      <label className="flex items-center gap-2 text-xs text-muted">
-        Mon volume
-        <input
-          type="range"
-          name="volume-local"
-          min={0}
-          max={1}
-          step={0.05}
-          value={localVolume}
-          onChange={(e) => writeLocalVolume(Number(e.target.value))}
-          className="w-28 accent-[var(--accent)]"
-          aria-label="Mon volume"
-        />
-      </label>
     </>
   );
 }

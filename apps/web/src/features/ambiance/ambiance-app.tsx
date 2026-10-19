@@ -70,6 +70,7 @@ export function AmbianceApp({
     saveEdits,
     removePlaylist,
     addTrack,
+    importTrack,
   } = useAmbiancePlaylists({
     campaignId,
     playlistId: state.playlistId,
@@ -134,6 +135,7 @@ export function AmbianceApp({
           saveEdits={saveEdits}
           removePlaylist={removePlaylist}
           addTrack={addTrack}
+          importTrack={importTrack}
           setEditId={setEditId}
         />
       )}

@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { StatusBadge } from "../status-badge";
+import { CycleStatus } from "@/components/cycle-status";
+import { IconCross, IconGrip } from "../icons";
 import type { ChapterRow } from "./chapter-list";
 
-const STATUS_OPTIONS = [
+/** Cycle du statut d'un chapitre : un clic = état suivant (pas de select). */
+const CHAPTER_STATES = [
   { value: "draft", label: "Brouillon" },
-  { value: "review", label: "Relecture" },
+  { value: "review", label: "En écriture" },
   { value: "published", label: "Publié" },
 ] as const;
 
@@ -26,8 +28,9 @@ interface ChapterListItemsProps {
 }
 
 /**
- * Corps de la liste de chapitres : état vide, lignes avec rename inline,
- * drag de réordonnancement (HTML5 natif), statut et suppression.
+ * Corps de la liste de chapitres : état vide, lignes avec titre éditable en
+ * direct (input, commit au blur/Enter), drag de réordonnancement (HTML5
+ * natif — désactivé sur la ligne en édition), statut cyclique et suppression.
  */
 export function ChapterListItems({
   novelId,
@@ -63,65 +66,45 @@ export function ChapterListItems({
               className="group flex flex-wrap items-center gap-3 border-b border-border px-2 py-2.5 transition hover:bg-card-hover"
             >
               <span
-                aria-hidden
-                className="cursor-grab text-xs text-muted group-hover:text-accent"
+                className="cursor-grab text-muted group-hover:text-accent"
                 title="Glisser pour réordonner"
               >
-                ⠿
+                <IconGrip />
               </span>
               <span className="w-6 text-right text-xs text-muted">{i + 1}</span>
 
-              {editingId === c.id ? (
-                <input
-                  autoFocus
-                  name="titre-chapitre"
-                  value={draftTitle}
-                  onChange={(e) => setDraftTitle(e.target.value)}
-                  onBlur={() => onCommitRename(c.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onCommitRename(c.id);
-                    if (e.key === "Escape") setEditingId(null);
-                  }}
-                  className="input min-w-0 flex-1"
-                  aria-label="Titre du chapitre"
-                  maxLength={200}
-                />
-              ) : (
-                <Link
-                  href={`/novels/${novelId}/chapters/${c.id}`}
-                  className="min-w-0 flex-1 truncate text-sm hover:text-accent"
-                  onDoubleClick={(e) => {
-                    e.preventDefault();
+              <input
+                name="titre-chapitre"
+                value={editingId === c.id ? draftTitle : c.title}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                onFocus={() => {
+                  // Désactive le drag le temps de l'édition (sauf refocus).
+                  if (editingId !== c.id) {
                     setEditingId(c.id);
                     setDraftTitle(c.title);
-                  }}
-                  title="Cliquer pour écrire · double-cliquer pour renommer"
-                >
-                  {c.title}
-                </Link>
-              )}
+                  }
+                }}
+                onBlur={() => onCommitRename(c.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  // Échap : annule la saisie (le brouillon repart du titre serveur).
+                  if (e.key === "Escape") setDraftTitle(c.title);
+                }}
+                className="input min-w-0 flex-1 text-sm"
+                aria-label={`Titre du chapitre ${i + 1}`}
+                maxLength={200}
+              />
 
               <span className="hidden text-[0.65rem] text-muted sm:inline">
                 {c.wordCount.toLocaleString("fr-FR")} mots
               </span>
 
-              <select
-                name={`chapitre-${c.id}-statut`}
-                value={c.status}
-                onChange={(e) => onStatusChange(c.id, e.target.value)}
-                aria-label={`Statut de ${c.title}`}
-                // .input (non-layeré) écrase w-auto/py-* : variante .input-sm
-                // + largeur en inline, seul moyen de garder un select compact.
-                className="input input-sm"
-                style={{ width: "auto" }}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <StatusBadge status={c.status} kind="chapter" />
+              <CycleStatus
+                states={CHAPTER_STATES}
+                current={c.status}
+                onCycle={(next) => onStatusChange(c.id, next)}
+                legend={`Statut de ${c.title}`}
+              />
 
               <span className="flex items-center gap-1">
                 <Link
@@ -137,7 +120,7 @@ export function ChapterListItems({
                   aria-label={`Supprimer ${c.title}`}
                   className="btn px-2 py-0.5 text-xs"
                 >
-                  ✕
+                  <IconCross />
                 </button>
               </span>
             </li>

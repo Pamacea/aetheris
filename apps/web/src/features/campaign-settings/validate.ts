@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { createCampaignSchema } from "@aetheris/shared";
+import { createCampaignSchema, pluginIdSchema } from "@aetheris/shared";
 
 /** Champs modifiables dans « Réglages » (reprise du schéma de création partagé). */
 const settingsSchema = createCampaignSchema.pick({
@@ -41,4 +41,23 @@ export function parseCampaignSettings(formData: FormData): CampaignSettingsResul
     };
   }
   return { success: true, data: parsed.data };
+}
+
+/**
+ * Ajoute / retire un module du catalogue dans `Campaign.enabledPlugins`.
+ * Idempotent (ré-appliquer ne change rien) et sans doublon ; refuse tout id
+ * hors catalogue — `null` = refus, le core `lore-wiki` n'est donc jamais
+ * désactivable.
+ */
+export function applyPluginToggle(
+  current: readonly string[],
+  pluginId: string,
+  enabled: boolean,
+): string[] | null {
+  const parsed = pluginIdSchema.safeParse(pluginId);
+  if (!parsed.success) return null;
+  if (enabled) {
+    return current.includes(parsed.data) ? [...current] : [...current, parsed.data];
+  }
+  return current.filter((id) => id !== parsed.data);
 }

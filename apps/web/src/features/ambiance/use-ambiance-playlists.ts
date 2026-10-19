@@ -3,7 +3,8 @@
 import { useState, useTransition, type Dispatch, type SetStateAction } from "react";
 import type { AmbianceState, AudioTrack, Playlist } from "@aetheris/shared";
 import { createPlaylist, deletePlaylist, updatePlaylist } from "./actions";
-import { appendTrack } from "./track-logic";
+import { MAX_SAVE_CHARS, readFileAsDataUri, validateAudioFile } from "./import-logic";
+import { MAX_TRACKS, appendTrack } from "./track-logic";
 
 /** CRUD des playlists (MJ) : création, édition, suppression, pistes. */
 export function useAmbiancePlaylists({
@@ -53,6 +54,13 @@ export function useAmbiancePlaylists({
 
   function saveEdits(): void {
     if (!editId) return;
+    // shortcut: les data-URI des fichiers importés voyagent dans la requête —
+    // au-delà de ~1 Mo le server action Next refuse (413) : refus propre avant.
+    if (JSON.stringify(draftTracks).length > MAX_SAVE_CHARS) {
+      return setError(
+        "Trop de fichiers importés dans cette playlist : l'enregistrement est limité à ~1 Mo. Retirez-en ou remplacez-les par des URLs distantes.",
+      );
+    }
     setError(null);
     startTransition(async () => {
       const res = await updatePlaylist(campaignId, editId, {
@@ -99,6 +107,30 @@ export function useAmbiancePlaylists({
     setNtUrl("");
   }
 
+  /** Import local : validation du fichier → data-URI → piste au brouillon.
+   *  L'URL distante reste le canal de repli (champ « URL » ci-dessus). */
+  function importTrack(file: File | null | undefined): void {
+    if (!file) return;
+    const problem = validateAudioFile(file);
+    if (problem) return setError(problem);
+    if (draftTracks.length >= MAX_TRACKS) {
+      return setError(`Playlist complète : ${MAX_TRACKS} pistes max.`);
+    }
+    setError(null);
+    void readFileAsDataUri(file)
+      .then((url) => {
+        const title =
+          file.name
+            .replace(/\.[^.]+$/, "")
+            .slice(0, 160)
+            .trim() || "Piste importée";
+        setDraftTracks((ds) => appendTrack(ds, { id: crypto.randomUUID(), title, url }) ?? ds);
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Lecture du fichier impossible.");
+      });
+  }
+
   return {
     pending,
     newName,
@@ -118,5 +150,6 @@ export function useAmbiancePlaylists({
     saveEdits,
     removePlaylist,
     addTrack,
+    importTrack,
   };
 }

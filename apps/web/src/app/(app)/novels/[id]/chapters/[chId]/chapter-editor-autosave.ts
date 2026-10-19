@@ -2,6 +2,11 @@
 
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Highlight from "@tiptap/extension-highlight";
+import { TextStyleKit } from "@tiptap/extension-text-style";
+import TextAlign from "@tiptap/extension-text-align";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import Typography from "@tiptap/extension-typography";
 import { Placeholder } from "@tiptap/extensions";
 import type { JSONContent } from "@tiptap/core";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +20,12 @@ import {
   type SaveState,
 } from "@/lib/novel-autosave";
 import { saveChapterContent } from "@/features/novels/actions";
+import { toPlainDoc } from "@/features/novels/logic";
+import { HIGHLIGHT } from "./chapter-editor-toolbar";
+
+/* Bordures inline : `.novel-prose` ne cible pas les tableaux et globals.css
+   est hors périmètre du module — le style voyage avec le document. */
+const CELL_STYLE = "border:1px solid var(--border);padding:0.35rem 0.6rem;vertical-align:top";
 
 interface AutosaveInput {
   novelId: string;
@@ -41,13 +52,24 @@ export function useChapterAutosave({ novelId, chapterId, content, readOnly }: Au
       if (savingRef.current) return;
       savingRef.current = true;
       setSaveState("saving");
-      const res = await saveChapterContent(novelId, chapterId, { content: doc, wordCount });
-      savingRef.current = false;
-      if (res.ok) {
-        setSaveState("saved");
-        clearDraft(localStorage, key);
-      } else {
+      try {
+        // attrs ProseMirror sans prototype → JSON plain, sinon React encode le
+        // document en référence temporaire `$T` et l'action échoue en 500.
+        const res = await saveChapterContent(novelId, chapterId, {
+          content: toPlainDoc(doc),
+          wordCount,
+        });
+        if (res.ok) {
+          setSaveState("saved");
+          clearDraft(localStorage, key);
+        } else {
+          setSaveState("error");
+        }
+      } catch {
+        // Réseau/500 : le brouillon localStorage reste la copie de secours.
         setSaveState("error");
+      } finally {
+        savingRef.current = false;
       }
     },
     [novelId, chapterId, key],
@@ -57,6 +79,20 @@ export function useChapterAutosave({ novelId, chapterId, content, readOnly }: Au
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      // Police, taille, couleur (texte) — surlignage via Highlight ci-dessous.
+      TextStyleKit.configure({ backgroundColor: false, lineHeight: false }),
+      Highlight.configure({
+        multicolor: true,
+        // Fond inline par défaut : sans CSS `mark`, un surlignage sans
+        // couleur serait invisible.
+        HTMLAttributes: { style: `background-color:${HIGHLIGHT}` },
+      }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Table.configure({ HTMLAttributes: { style: "border-collapse:collapse;width:100%" } }),
+      TableRow,
+      TableCell.configure({ HTMLAttributes: { style: CELL_STYLE } }),
+      TableHeader.configure({ HTMLAttributes: { style: `${CELL_STYLE};text-align:left` } }),
+      Typography,
       Placeholder.configure({ placeholder: "Commencez à écrire…" }),
     ],
     content: content ?? "",

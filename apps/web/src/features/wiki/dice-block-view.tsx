@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { BlockScopeToggle } from "./blocks-scope-toggle";
 import { resolveJet } from "./jet";
 
 /**
@@ -9,7 +10,13 @@ import { resolveJet } from "./jet";
  * et lancement local. Le résultat n'est jamais persisté (rejouable à
  * volonté, aucun état serveur).
  */
-export function DiceBlockView({ node, updateAttributes, deleteNode, editor }: NodeViewProps) {
+export function DiceBlockView({
+  node,
+  updateAttributes,
+  deleteNode,
+  editor,
+  getPos,
+}: NodeViewProps) {
   const { label, expr } = node.attrs as { label: string; expr: string };
   const editable = editor.isEditable;
   const [result, setResult] = useState<{ total: number; detail: string } | null>(null);
@@ -59,6 +66,7 @@ export function DiceBlockView({ node, updateAttributes, deleteNode, editor }: No
         {result ? `${result.total}${result.detail ? ` (${result.detail})` : ""}` : ""}
       </output>
       {error && <span className="text-xs text-destructive">{error}</span>}
+      {editable && <BlockScopeToggle editor={editor} getPos={getPos} />}
       {editable && (
         <button
           type="button"

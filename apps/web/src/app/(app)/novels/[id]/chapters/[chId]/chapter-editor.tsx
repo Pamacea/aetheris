@@ -4,8 +4,10 @@ import Link from "next/link";
 import { EditorContent } from "@tiptap/react";
 import type { JSONContent } from "@tiptap/core";
 import { SAVE_LABELS } from "@/lib/novel-autosave";
+import { IconChevronLeft } from "../../../icons";
 import { useChapterAutosave } from "./chapter-editor-autosave";
 import { ChapterEditorToolbar } from "./chapter-editor-toolbar";
+import { ChapterTitleInput } from "./chapter-title";
 
 interface ChapterEditorProps {
   novelId: string;
@@ -46,17 +48,26 @@ export function ChapterEditor({
     <div className="flex flex-1 flex-col">
       <header className="bar flex flex-wrap items-center gap-3 pt-8 pb-4">
         <Link href={`/novels/${novelId}`} className="btn shrink-0 px-3 py-1.5 text-xs">
-          ← {novelTitle}
+          <IconChevronLeft className="h-3 w-3" />
+          {novelTitle}
         </Link>
 
-        <span className="min-w-0 flex-1 truncate text-sm text-muted">
-          {chapterTitle}
-          {status === "published" && (
-            <span className="ml-2 border border-accent bg-accent/10 px-1.5 py-0.5 text-[0.6rem] tracking-widest text-accent uppercase">
-              Publié
-            </span>
-          )}
-        </span>
+        {readOnly ? (
+          <span className="min-w-0 flex-1 truncate text-sm text-muted">{chapterTitle}</span>
+        ) : (
+          <ChapterTitleInput
+            novelId={novelId}
+            chapterId={chapterId}
+            title={chapterTitle}
+            className="font-medium"
+          />
+        )}
+
+        {status === "published" && (
+          <span className="shrink-0 border border-accent bg-accent/10 px-1.5 py-0.5 text-[0.6rem] tracking-widest text-accent uppercase">
+            Publié
+          </span>
+        )}
 
         {readOnly && (
           <span className="shrink-0 font-mono text-[0.65rem] text-muted">
@@ -82,19 +93,23 @@ export function ChapterEditor({
 
       {!readOnly && (
         <footer className="sticky bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur">
-          <div className="bar flex items-center gap-4 py-2">
+          {/* Barre centrée horizontalement dans la colonne d'édition ;
+              la ligne du bas porte l'état de sauvegarde et le compteur. */}
+          <div className="bar flex flex-col items-center gap-1.5 px-4 py-2">
             <ChapterEditorToolbar editor={editor} />
-            <span
-              aria-live="polite"
-              className={`shrink-0 text-[0.65rem] ${
-                saveState === "error" ? "text-destructive" : "text-muted"
-              }`}
-            >
-              {SAVE_LABELS[saveState]}
-            </span>
-            <span className="ml-auto shrink-0 font-mono text-[0.65rem] text-muted">
-              {words.toLocaleString("fr-FR")} mots
-            </span>
+            <div className="flex w-full items-center gap-4">
+              <span
+                aria-live="polite"
+                className={`shrink-0 text-[0.65rem] ${
+                  saveState === "error" ? "text-destructive" : "text-muted"
+                }`}
+              >
+                {SAVE_LABELS[saveState]}
+              </span>
+              <span className="ml-auto shrink-0 font-mono text-[0.65rem] text-muted">
+                {words.toLocaleString("fr-FR")} mots
+              </span>
+            </div>
           </div>
         </footer>
       )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCampaignSettings } from "./validate";
+import { applyPluginToggle, parseCampaignSettings } from "./validate";
 
 function form(entries: Record<string, string>): FormData {
   const fd = new FormData();
@@ -57,5 +57,34 @@ describe("parseCampaignSettings", () => {
     const result = parseCampaignSettings(new FormData());
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe("Titre de campagne requis.");
+  });
+});
+
+describe("applyPluginToggle", () => {
+  const base = ["lore-wiki", "combat", "journal"];
+
+  it("ajoute un module absent, en fin de liste", () => {
+    expect(applyPluginToggle(base, "ambiance", true)).toEqual([...base, "ambiance"]);
+  });
+
+  it("est idempotent : ré-appliquer ne change ni l'ordre ni le contenu", () => {
+    expect(applyPluginToggle(base, "combat", true)).toEqual(base);
+    expect(applyPluginToggle(base, "macros", false)).toEqual(base);
+  });
+
+  it("retire un module présent sans jamais dupliquer à l'activation", () => {
+    expect(applyPluginToggle(base, "combat", false)).toEqual(["lore-wiki", "journal"]);
+    expect(applyPluginToggle([...base, "combat"], "combat", true)).toEqual([...base, "combat"]);
+  });
+
+  it("refuse de retirer un id inconnu (core ou hors catalogue)", () => {
+    expect(applyPluginToggle(base, "lore-wiki", false)).toBeNull();
+    expect(applyPluginToggle(base, "vtt", false)).toBeNull();
+    expect(applyPluginToggle(base, "nawak", true)).toBeNull();
+  });
+
+  it("ne modifie jamais la liste passée (immuabilité)", () => {
+    applyPluginToggle(base, "combat", false);
+    expect(base).toEqual(["lore-wiki", "combat", "journal"]);
   });
 });

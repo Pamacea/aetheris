@@ -1,27 +1,36 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { CycleStatus } from "@/components/cycle-status";
 import { setMemberRole } from "./actions";
 
+const ROLES = [
+  { value: "GM", label: "MJ" },
+  { value: "PLAYER", label: "PJ" },
+];
+
 /**
- * Sélecteur MJ / Joueur d'un membre — écrit via server action ; le parent
- * impose `key={role}` pour resynchroniser l'état quand le serveur confirme.
+ * Rôle MJ / Joueur d'un membre — bouton cyclique (jamais de select), écrit
+ * via server action ; le parent impose `key={role}` pour resynchroniser
+ * l'état quand le serveur confirme.
  */
 export function MemberRoleSelect({
   campaignId,
   memberId,
   role,
+  name,
 }: {
   campaignId: string;
   memberId: string;
   role: string;
+  name: string;
 }) {
   const [value, setValue] = useState(role);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function change(next: string) {
-    if (next === value) return;
+    if (pending || next === value) return;
     setError(null);
     setValue(next);
     startTransition(async () => {
@@ -34,17 +43,14 @@ export function MemberRoleSelect({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <select
-        className="input py-1 text-xs"
-        value={value}
-        disabled={pending}
-        aria-label="Rôle du membre"
-        onChange={(e) => change(e.target.value)}
-      >
-        <option value="GM">MJ</option>
-        <option value="PLAYER">Joueur</option>
-      </select>
+    <div className="flex items-center gap-2 self-stretch">
+      <CycleStatus
+        states={ROLES}
+        current={value}
+        onCycle={change}
+        legend={`Rôle de ${name}`}
+        className="self-stretch"
+      />
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   );

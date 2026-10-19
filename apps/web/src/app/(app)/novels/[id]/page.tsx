@@ -7,6 +7,7 @@ import { ChapterList } from "./chapter-list";
 import { NovelMeta } from "./novel-meta";
 import { NovelPublicChapters } from "./novel-public-chapters";
 import { StatusBadge } from "../status-badge";
+import { IconChevronLeft } from "../icons";
 
 export default async function NovelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -33,8 +34,9 @@ export default async function NovelPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="bar flex flex-1 flex-col gap-8 py-12">
       <nav className="flex items-center gap-2 text-xs text-muted">
-        <Link href="/novels" className="hover:text-accent">
-          ← Romans
+        <Link href="/novels" className="flex items-center gap-1 hover:text-accent">
+          <IconChevronLeft className="h-3 w-3" />
+          Romans
         </Link>
         <span aria-hidden>/</span>
         <span className="truncate">{novel.title}</span>
@@ -50,7 +52,9 @@ export default async function NovelPage({ params }: { params: Promise<{ id: stri
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-3xl text-muted">📖</div>
+            <div className="flex h-full items-center justify-center text-3xl text-muted">
+              <span className="mark-tri" aria-hidden />
+            </div>
           )}
         </div>
 

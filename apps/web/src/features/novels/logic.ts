@@ -32,6 +32,24 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 }
 
 /**
+ * Document TipTap → JSON « plain » (objets `{}` / `[]` uniquement) avant
+ * server action. ProseMirror construit les `attrs` avec `Object.create(null)` :
+ * React refuse d'encoder ces objets (référence temporaire `$T`) et l'action
+ * échoue en 500 dès qu'un nœud porte la moindre attribute (alignement…).
+ */
+export function toPlainDoc<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((v) => toPlainDoc(v)) as T;
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = toPlainDoc(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
+/**
  * Nombre de mots d'un document TipTap : somme des nœuds `text` imbriqués.
  * Recalculé côté serveur à chaque sauvegarde — le compteur client ne fait
  * que de l'affichage, il n'est jamais la source de vérité.

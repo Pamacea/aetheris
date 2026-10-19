@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { CycleStatus } from "@/components/cycle-status";
 import { updateNovel } from "@/features/novels/actions";
 
-const STATUS_OPTIONS = [
+/** Cycle du statut du roman : un clic = état suivant. */
+const NOVEL_STATES = [
   { value: "draft", label: "Brouillon" },
   { value: "writing", label: "En écriture" },
   { value: "published", label: "Publié" },
@@ -23,7 +25,7 @@ export function NovelMeta({
   status: string;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [currentTitle, setCurrentTitle] = useState(title);
   const [currentSynopsis, setCurrentSynopsis] = useState(synopsis ?? "");
@@ -63,22 +65,15 @@ export function NovelMeta({
           className="input min-w-0 flex-1 font-medium tracking-wide"
           style={{ fontSize: "1.5rem" }}
         />
-        <select
-          name="roman-statut"
-          value={status}
-          onChange={(e) => save({ status: e.target.value as "draft" | "writing" | "published" })}
-          disabled={pending}
-          aria-label="Statut du roman"
-          // Idem : w-auto/py-* écrasés par .input — .input-sm + largeur inline.
-          className="input input-sm"
-          style={{ width: "auto" }}
-        >
-          {STATUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        {/* self-stretch : le bouton prend exactement la hauteur de l'input
+            Titre sur la même ligne (alignement sans hauteur en dur). */}
+        <CycleStatus
+          states={NOVEL_STATES}
+          current={status}
+          onCycle={(next) => save({ status: next as "draft" | "writing" | "published" })}
+          legend="Statut du roman"
+          className="self-stretch"
+        />
       </div>
 
       {editingSynopsis ? (
@@ -101,7 +96,7 @@ export function NovelMeta({
         <button
           type="button"
           onClick={() => setEditingSynopsis(true)}
-          className="min-h-6 border border-transparent px-1 py-0.5 text-left text-sm text-muted hover:border-border hover:text-foreground"
+          className="self-start px-0 py-0 text-left text-sm text-muted underline-offset-2 hover:text-foreground hover:underline focus-visible:text-foreground"
         >
           {currentSynopsis || "+ Ajouter un synopsis"}
         </button>

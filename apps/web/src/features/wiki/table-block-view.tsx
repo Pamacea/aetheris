@@ -1,6 +1,7 @@
 "use client";
 
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { BlockScopeToggle } from "./blocks-scope-toggle";
 import { parseRows } from "./readable";
 
 /** Matrice par défaut d'un nouveau bloc tableau (partagée avec l'extension). */
@@ -14,7 +15,13 @@ export const DEFAULT_TABLE_ROWS: string[][] = [
  * d'inputs, structure stockée en JSON dans `data-rows` (jamais dans le
  * DOM ProseMirror — le bloc est atomique).
  */
-export function TableBlockView({ node, updateAttributes, deleteNode, editor }: NodeViewProps) {
+export function TableBlockView({
+  node,
+  updateAttributes,
+  deleteNode,
+  editor,
+  getPos,
+}: NodeViewProps) {
   const editable = editor.isEditable;
   const stored = parseRows(String(node.attrs.rows ?? ""));
   const rows = stored.length > 0 ? stored : DEFAULT_TABLE_ROWS;
@@ -93,6 +100,7 @@ export function TableBlockView({ node, updateAttributes, deleteNode, editor }: N
           >
             − Colonne
           </button>
+          <BlockScopeToggle editor={editor} getPos={getPos} className="ml-1" />
           <button
             type="button"
             className="btn px-1.5 py-0.5 text-xs"

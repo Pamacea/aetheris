@@ -2,10 +2,10 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { sanitizeCss, saveCampaignThemeSchema } from "@aetheris/shared";
+import { pluginIdSchema, sanitizeCss, saveCampaignThemeSchema } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
-import { parseCampaignSettings } from "./validate";
+import { applyPluginToggle, parseCampaignSettings } from "./validate";
 
 /** État des formulaires de réglages (useActionState) — succès ou erreur affichée. */
 export type SettingsFormState = { ok: true } | { ok: false; error: string } | null;
@@ -93,6 +93,38 @@ export async function regenerateInviteCode(campaignId: string): Promise<Settings
   await prisma.campaign.update({
     where: { id: campaignId },
     data: { inviteCode: randomUUID() },
+  });
+  revalidateSettings(campaignId);
+  return { ok: true };
+}
+
+/**
+ * Active / désactive un module du catalogue (MJ). `pluginIdSchema` borne les
+ * ids : le core `lore-wiki` en sort et n'est jamais désactivable.
+ */
+export async function setPluginEnabled(
+  campaignId: string,
+  pluginId: string,
+  enabled: boolean,
+): Promise<SettingsActionResult> {
+  const denied = await requireGm(campaignId);
+  if (denied) return denied;
+
+  const parsed = pluginIdSchema.safeParse(pluginId);
+  if (!parsed.success) return invalid("Module inconnu.");
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { enabledPlugins: true },
+  });
+  if (!campaign) return invalid("Campagne introuvable.");
+
+  const next = applyPluginToggle(campaign.enabledPlugins, parsed.data, enabled === true);
+  if (!next) return invalid("Module inconnu.");
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { enabledPlugins: next },
   });
   revalidateSettings(campaignId);
   return { ok: true };

@@ -6,6 +6,7 @@ import {
   isPlainObject,
   isValidCoverImage,
   moveItem,
+  toPlainDoc,
 } from "./logic";
 
 describe("moveItem (réordonnancement des chapitres)", () => {
@@ -70,6 +71,29 @@ describe("countDocWords (comptage serveur)", () => {
     expect(countDocWords(null)).toBe(0);
     expect(countDocWords("un texte")).toBe(0);
     expect(countDocWords([1, 2])).toBe(0);
+  });
+});
+
+describe("toPlainDoc (attrs ProseMirror sans prototype)", () => {
+  it("reconstruit des objets à prototype Object pour tous les attrs imbriqués", () => {
+    const attrs = Object.create(null) as Record<string, unknown>;
+    attrs.textAlign = "center";
+    const doc = {
+      type: "doc",
+      content: [{ type: "paragraph", attrs, content: [{ type: "text", text: "salut" }] }],
+    };
+
+    const plain = toPlainDoc(doc);
+    expect(Object.getPrototypeOf(plain)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(plain.content![0]!.attrs)).toBe(Object.prototype);
+    expect(plain.content![0]!.attrs).toEqual({ textAlign: "center" });
+    expect(JSON.parse(JSON.stringify(plain))).toEqual(plain);
+  });
+
+  it("laisse les scalaires et null intacts", () => {
+    expect(toPlainDoc(null)).toBeNull();
+    expect(toPlainDoc(42)).toBe(42);
+    expect(toPlainDoc("x")).toBe("x");
   });
 });
 

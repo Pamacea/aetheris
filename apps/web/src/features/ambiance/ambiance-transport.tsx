@@ -64,7 +64,9 @@ export function AmbianceTransport({
           disabled={!isGM || !playlist || playlist.tracks.length === 0}
           aria-label="Piste précédente"
         >
-          ⏮
+          <svg viewBox="0 0 12 12" className="h-3 w-3 fill-current" aria-hidden>
+            <path d="M2 1h2v10H2zM10 1L4 6l6 5z" />
+          </svg>
         </button>
         <button
           type="button"
@@ -73,7 +75,16 @@ export function AmbianceTransport({
           disabled={!track}
           aria-label={playingLocal ? "Pause" : "Lecture"}
         >
-          {playingLocal ? "⏸ Pause" : "▶ Lire"}
+          {playingLocal ? (
+            <svg viewBox="0 0 12 12" className="h-3 w-3 fill-current" aria-hidden>
+              <path d="M2 1h3v10H2zM7 1h3v10H7z" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 12 12" className="h-3 w-3 fill-current" aria-hidden>
+              <path d="M2 1l9 5-9 5z" />
+            </svg>
+          )}
+          {playingLocal ? "Pause" : "Lire"}
         </button>
         <button
           type="button"
@@ -82,7 +93,9 @@ export function AmbianceTransport({
           disabled={!isGM || !playlist || playlist.tracks.length === 0}
           aria-label="Piste suivante"
         >
-          ⏭
+          <svg viewBox="0 0 12 12" className="h-3 w-3 fill-current" aria-hidden>
+            <path d="M8 1h2v10H8zM2 1l6 5-6 5z" />
+          </svg>
         </button>
       </div>
 

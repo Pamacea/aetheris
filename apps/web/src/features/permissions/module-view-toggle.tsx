@@ -45,7 +45,7 @@ export function ModuleViewToggle({
           checked={view}
           disabled={pending}
           aria-label={`${label} : consultation`}
-          className="accent-accent"
+          className="h-4 w-4 accent-accent"
           onChange={(e) => change(e.target.checked)}
         />
         voit

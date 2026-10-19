@@ -13,6 +13,9 @@ export function CampaignTabs({ campaignId }: { campaignId: string }) {
     { href: `${base}/journal`, label: "Journal" },
     { href: `${base}/choices`, label: "Choix" },
     { href: `${base}/ambiance`, label: "Ambiance" },
+    { href: `${base}/combat`, label: "Combat" },
+    { href: `${base}/fiches`, label: "Fiches" },
+    { href: `${base}/macros`, label: "Macros" },
     { href: `${base}/settings`, label: "Réglages" },
     { href: `${base}/permissions`, label: "Permissions" },
   ] as const;

@@ -1,3 +1,5 @@
+import { IconCross } from "./icons";
+
 interface CreateNovelDialogFieldsProps {
   cover: string | null;
   coverInputRef: { current: HTMLInputElement | null };
@@ -57,7 +59,7 @@ export function CreateNovelDialogFields({
               onClick={onCoverClear}
               aria-label="Retirer la couverture"
             >
-              ✕
+              <IconCross className="h-3 w-3" />
             </button>
           )}
         </div>

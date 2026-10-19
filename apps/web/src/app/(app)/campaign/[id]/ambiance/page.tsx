@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import {
   EMPTY_AMBIANCE_STATE,
   ambianceStateSchema,
@@ -6,8 +8,9 @@ import {
   type AmbianceState,
   type Playlist,
 } from "@aetheris/shared";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { requireCampaignPage } from "@/features/campaigns/require-member";
+import { requireCampaignPlugin } from "@/lib/campaign-server";
 import { AmbianceApp } from "@/features/ambiance/ambiance-app";
 
 /**
@@ -17,7 +20,11 @@ import { AmbianceApp } from "@/features/ambiance/ambiance-app";
  */
 export default async function AmbiancePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { member } = await requireCampaignPage(id, "ambiance");
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/login");
+  // Plugin désactivé (Réglages) ou grant refusé → 404, comme les autres modules.
+  const member = await requireCampaignPlugin(id, "ambiance");
+  if (!member) notFound();
   const isGM = member.role === "GM";
 
   const [rows, row] = await Promise.all([

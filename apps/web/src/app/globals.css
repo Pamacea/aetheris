@@ -194,9 +194,10 @@ h3 {
     border-color: var(--accent);
   }
 
-  /* Select : le chevron natif est collé à la bordure (clip-path) — marge droite. */
+  /* Select : le chevron natif est collé à la bordure (clip-path) — marge
+     droite généreuse pour qu'il respire. */
   select.input {
-    padding-inline: 1rem;
+    padding-inline: 1rem 2.75rem;
   }
 
   /* Taille compacte des contrôles de fiche (⚙ Taille du champ). */

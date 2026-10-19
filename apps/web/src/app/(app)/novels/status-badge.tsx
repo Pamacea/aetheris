@@ -6,7 +6,8 @@ const NOVEL_LABELS: Record<string, string> = {
 
 const CHAPTER_LABELS: Record<string, string> = {
   draft: "Brouillon",
-  review: "Relecture",
+  // Valeur `review` figée par le schema partagé — le libellé produit reste « En écriture ».
+  review: "En écriture",
   published: "Publié",
 };
 

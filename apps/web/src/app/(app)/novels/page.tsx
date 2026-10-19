@@ -80,8 +80,8 @@ export default async function NovelsPage({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={n.coverImage} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-lg text-muted">
-                        📖
+                      <div className="flex h-full items-center justify-center text-2xl text-muted">
+                        <span className="mark-tri" aria-hidden />
                       </div>
                     )}
                   </div>
