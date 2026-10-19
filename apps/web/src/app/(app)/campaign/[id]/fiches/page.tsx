@@ -49,7 +49,8 @@ export default async function FichesPage({ params }: { params: Promise<{ id: str
     .map((e) => ({ id: e.id, title: e.title, folder: e.folder, type: e.type }));
 
   return (
-    <div className="flex h-[calc(100dvh-4.25rem)] flex-col">
+    // 3.75rem header + 2.75rem onglets + ~0.5rem fil d'ariane.
+    <div className="flex h-[calc(100dvh-7rem)] flex-col">
       <div className="flex items-center justify-center gap-3 border-b border-border px-4 py-1.5">
         <nav
           className="flex flex-1 items-center gap-2 text-xs text-muted"

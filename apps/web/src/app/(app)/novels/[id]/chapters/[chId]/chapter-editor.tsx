@@ -93,11 +93,15 @@ export function ChapterEditor({
 
       {!readOnly && (
         <footer className="sticky bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur">
-          {/* Barre centrée horizontalement dans la colonne d'édition ;
-              la ligne du bas porte l'état de sauvegarde et le compteur. */}
-          <div className="bar flex flex-col items-center gap-1.5 px-4 py-2">
+          {/* Les 3 blocs partagent l'axe du panneau d'édition (46rem centré) :
+              toolbar au centre, état de sauvegarde et compteur aux deux
+              bords de la même colonne. */}
+          <div
+            className="mx-auto flex flex-col items-center gap-1.5 px-4 py-2"
+            style={{ width: "min(100%, 46rem)" }}
+          >
             <ChapterEditorToolbar editor={editor} />
-            <div className="flex w-full items-center gap-4">
+            <div className="flex w-full items-center justify-between gap-4">
               <span
                 aria-live="polite"
                 className={`shrink-0 text-[0.65rem] ${
@@ -106,7 +110,7 @@ export function ChapterEditor({
               >
                 {SAVE_LABELS[saveState]}
               </span>
-              <span className="ml-auto shrink-0 font-mono text-[0.65rem] text-muted">
+              <span className="shrink-0 font-mono text-[0.65rem] text-muted">
                 {words.toLocaleString("fr-FR")} mots
               </span>
             </div>

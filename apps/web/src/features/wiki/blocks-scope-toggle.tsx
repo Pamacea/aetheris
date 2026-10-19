@@ -2,9 +2,12 @@ import type { Editor } from "@tiptap/core";
 import { isBlockInGmSecret, setBlockGmScope } from "./blocks-scope";
 
 /**
- * Case « MJ » d'un bloc : bascule la portée en enveloppant le bloc dans un
- * `<gm-secret>` (retiré par stripGmSecrets côté joueurs et page publique).
- * Rendue uniquement en édition MJ (`editor.isEditable`).
+ * Portée du bloc : petit bouton d'état MJ / ALL (DA, `aria-pressed`, état
+ * actif accent — jamais de checkbox native). Clic → le bloc devient MJ
+ * (secret), re-clic → ALL (global). La bascule enveloppe/sort le bloc d'un
+ * `<gm-secret>` (strippé côté joueurs et page publique) — le toggle ne
+ * masque ni ne supprime rien. Rendu seulement en édition MJ
+ * (`editor.isEditable`) : les joueurs ne voient jamais ce bouton.
  */
 export function BlockScopeToggle({
   editor,
@@ -18,19 +21,21 @@ export function BlockScopeToggle({
   const pos = getPos();
   const gm = pos !== undefined && isBlockInGmSecret(editor.state, pos);
   return (
-    <label
-      className={`flex shrink-0 cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap text-muted ${className ?? ""}`}
-      title="Portée MJ : masqué aux joueurs et sur le lien public"
+    <button
+      type="button"
+      className={`btn px-1.5 py-0.5 text-xs whitespace-nowrap ${gm ? "border-accent text-accent" : ""} ${className ?? ""}`}
+      aria-pressed={gm}
+      disabled={pos === undefined}
+      title={
+        gm
+          ? "Bloc MJ (secret) — cliquer pour le rendre global (ALL)"
+          : "Bloc global — cliquer pour le passer en MJ"
+      }
+      onClick={() => {
+        if (pos !== undefined) setBlockGmScope(editor, pos, !gm);
+      }}
     >
-      <input
-        type="checkbox"
-        checked={gm}
-        disabled={pos === undefined}
-        onChange={(e) => {
-          if (pos !== undefined) setBlockGmScope(editor, pos, e.target.checked);
-        }}
-      />
-      MJ
-    </label>
+      {gm ? "MJ" : "ALL"}
+    </button>
   );
 }

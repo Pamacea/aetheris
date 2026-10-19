@@ -1,37 +1,35 @@
 "use client";
 
-import { useState } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { BlockDragHandle } from "./block-handle";
+import { BlockResizeEdges } from "./block-resize";
+import { deleteBlock } from "./blocks-scope";
 import { BlockScopeToggle } from "./blocks-scope-toggle";
+import { frameOf, frameStyle, isFloating, sizeTextCls } from "./blocks-frame";
 
 /**
  * Vue React d'un bloc de métadonnées : rend uniquement du texte React
  * (jamais de HTML brut → pas de canal XSS) et édite les attributs inline.
- * Config ⚙ (taille) et suppression × seulement en édition (éditeur MJ) :
- * côté joueur `editor.isEditable` est faux → aucun bouton d'écriture.
+ * Taille/cadrage : aucune commande — les bordures se redimensionnent à la
+ * souris (BlockResizeEdges). Portée = petit bouton d'état MJ / ALL,
+ * retour au flux (Flux) si flottant, suppression × visible : tout contrôle
+ * seulement en édition (`editable: isGM` → rien côté joueur).
  */
-export function MetaBlockView({
-  node,
-  updateAttributes,
-  deleteNode,
-  editor,
-  getPos,
-}: NodeViewProps) {
-  const { kind, label, value, size } = node.attrs as {
-    kind: string;
-    label: string;
-    value: string;
-    size: string;
-  };
-  const [cfg, setCfg] = useState(false);
+export function MetaBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
+  const { kind, label, value } = node.attrs as { kind: string; label: string; value: string };
+  const frame = frameOf(node.attrs);
   const editable = editor.isEditable;
-  const sizeCls = size === "sm" ? "text-xs" : size === "lg" ? "text-lg" : "text-sm";
+  const sizeCls = sizeTextCls(frame.size);
   return (
     <NodeViewWrapper
       as="span"
       contentEditable={false}
-      className="my-1 inline-flex items-center gap-2 border-l-2 border-accent bg-card px-2 py-1 align-middle"
+      style={frameStyle(frame)}
+      className="my-1 group relative inline-flex flex-wrap items-center gap-2 border-l-2 border-accent bg-card px-2 py-1 align-middle"
     >
+      {editable && (
+        <BlockDragHandle editor={editor} updateAttributes={updateAttributes} frame={frame} />
+      )}
       <input
         className={`input w-36 py-0.5 ${sizeCls}`}
         name="bloc-meta-libelle"
@@ -49,46 +47,30 @@ export function MetaBlockView({
         disabled={!editable}
         onChange={(e) => updateAttributes({ value: e.target.value })}
       />
-      {editable && (
-        <>
-          <button
-            type="button"
-            className="btn px-1.5 py-0.5 text-xs"
-            aria-label={`Configuration du bloc ${label}`}
-            aria-expanded={cfg}
-            title="Configuration du bloc"
-            onClick={() => setCfg(!cfg)}
-          >
-            ⚙
-          </button>
-          <button
-            type="button"
-            className="btn px-1.5 py-0.5 text-xs"
-            aria-label={`Supprimer le bloc ${label}`}
-            title="Supprimer le bloc"
-            onClick={() => deleteNode()}
-          >
-            ×
-          </button>
-        </>
+      {editable && <BlockScopeToggle editor={editor} getPos={getPos} />}
+      {editable && isFloating(frame) && (
+        <button
+          type="button"
+          className="btn px-1.5 py-0.5 text-xs"
+          title="Remettre le bloc dans le flux du texte"
+          onClick={() => updateAttributes({ x: null, y: null })}
+        >
+          Flux
+        </button>
       )}
-      {editable && cfg && (
-        <span className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs text-muted">
-            Taille
-            <select
-              className="input py-0.5 text-xs"
-              aria-label="Taille du bloc"
-              value={size || "md"}
-              onChange={(e) => updateAttributes({ size: e.target.value })}
-            >
-              <option value="sm">Petit</option>
-              <option value="md">Moyen</option>
-              <option value="lg">Grand</option>
-            </select>
-          </label>
-          <BlockScopeToggle editor={editor} getPos={getPos} />
-        </span>
+      {editable && (
+        <button
+          type="button"
+          className="btn px-1.5 py-0.5 text-xs"
+          aria-label={`Supprimer le bloc ${label}`}
+          title="Supprimer le bloc"
+          onClick={() => deleteBlock(editor, getPos())}
+        >
+          ×
+        </button>
+      )}
+      {editable && (
+        <BlockResizeEdges editor={editor} frame={frame} updateAttributes={updateAttributes} />
       )}
     </NodeViewWrapper>
   );

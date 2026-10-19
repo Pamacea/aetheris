@@ -4,10 +4,21 @@ import { useState } from "react";
 import { BLOCK_MIME, PALETTE_CHIPS, type BlockDragPayload } from "./blocks-dnd";
 
 /**
+ * Scrollbar visible, discrète (DA : tokens, coins du panneau intacts) —
+ * variante « thin » de `.no-scrollbar` (globals.css est hors périmètre
+ * d'édition de cette feature, les propriétés arbitraires Tailwind suffisent).
+ */
+const SCROLL_THIN =
+  "[scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] " +
+  "[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:bg-transparent " +
+  "[&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:hover:bg-accent-2";
+
+/**
  * Palette de blocs au-dessus de l'entrée : ouverture « + Blocs », chips à
  * glisser dans l'entrée (drop au curseur de la souris) ou à cliquer
  * (insertion au curseur). La portée choisie ici s'applique à l'insertion ;
  * chaque bloc reste reconfigurable (case MJ) après coup.
+ * La liste s'empile sur plusieurs lignes, bornée en hauteur avec scrollbar.
  */
 export function BlocksPalette({ onInsert }: { onInsert: (payload: BlockDragPayload) => void }) {
   const [open, setOpen] = useState(false);
@@ -57,7 +68,7 @@ export function BlocksPalette({ onInsert }: { onInsert: (payload: BlockDragPaylo
       </div>
 
       {open && (
-        <ul className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5">
+        <ul className={`${SCROLL_THIN} flex max-h-36 flex-wrap gap-1.5 overflow-y-auto pr-1 pb-1`}>
           {PALETTE_CHIPS.map((c) => (
             <li key={c.key}>
               <button

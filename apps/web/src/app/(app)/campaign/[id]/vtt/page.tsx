@@ -13,7 +13,7 @@ export default async function VttPage({ params }: { params: Promise<{ id: string
 
   return (
     <TriPanel rightPanel={<ChatPanel campaignId={id} initialMessages={messages} />}>
-      <div className="flex h-[calc(100dvh-3.75rem)] min-h-0 flex-col">
+      <div className="flex h-[calc(100dvh-3.75rem-2.75rem)] min-h-0 flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-1.5">
           <nav className="flex items-center gap-2 text-xs text-muted" aria-label="Fil d'ariane">
             <Link href={`/campaign/${id}`} className="hover:text-accent">

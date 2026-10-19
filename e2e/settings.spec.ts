@@ -10,14 +10,17 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("contrat : formulaire d'infos, éditeur de thème et code d'invitation", async ({ page }) => {
-  await expect(page.getByRole("heading", { level: 1, name: "Réglages" })).toBeVisible();
-  await expect(page.getByLabel("Titre")).toBeVisible();
-  await expect(page.locator("#theme-css")).toBeVisible();
-  await expect(page.locator("#theme-js")).toBeVisible();
+  // Le hub ouvre Réglages en modale (@modal) : le hub reste derrière et
+  // entre en conflit strict — tout se scope au dialog.
+  const dialog = page.getByRole("dialog", { name: "Réglages" });
+  await expect(dialog.getByRole("heading", { level: 1, name: "Réglages" })).toBeVisible();
+  await expect(dialog.getByLabel("Titre")).toBeVisible();
+  await expect(dialog.locator("#theme-css")).toBeVisible();
+  await expect(dialog.locator("#theme-js")).toBeVisible();
   // « Enregistrer » : formulaire d'infos + sauvegarde du thème
-  await expect(page.getByRole("button", { name: "Enregistrer" })).toHaveCount(2);
-  await expect(page.getByText("Code d'invitation")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copier le code" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Enregistrer" })).toHaveCount(2);
+  await expect(dialog.getByText("Code d'invitation")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Copier le code" })).toBeVisible();
 });
 
 test("modules : les 5 plugins du catalogue sont listés, core jamais désactivable", async ({

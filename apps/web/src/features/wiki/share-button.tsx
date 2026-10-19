@@ -68,27 +68,32 @@ export function ShareButton({
   }
 
   return (
-    <span className="flex flex-wrap items-center gap-2 text-xs">
+    // Lien à gauche, groupe d'actions à droite : min-w pour que
+    // justify-between ait un axe (sinon le conteneur est dimensionné
+    // au contenu et les deux restent collés).
+    <span className="flex min-w-72 flex-wrap items-center justify-between gap-2 text-xs">
       <a
-        className="text-accent hover:underline"
+        className="min-w-0 truncate text-accent hover:underline"
         href={`/shared/${current}`}
         target="_blank"
         rel="noreferrer"
       >
         Lien public
       </a>
-      <button type="button" className="btn px-2 py-1 text-xs" onClick={() => void copy()}>
-        {copied ? "Copié ✓" : "Copier"}
-      </button>
-      <button
-        type="button"
-        className="btn px-2 py-1 text-xs text-destructive"
-        disabled={busy}
-        onClick={() => void setShare(false)}
-      >
-        Révoquer
-      </button>
-      {error && <span className="text-xs text-destructive">{error}</span>}
+      <span className="flex items-center gap-2">
+        <button type="button" className="btn px-2 py-1 text-xs" onClick={() => void copy()}>
+          {copied ? "Copié ✓" : "Copier"}
+        </button>
+        <button
+          type="button"
+          className="btn px-2 py-1 text-xs text-destructive"
+          disabled={busy}
+          onClick={() => void setShare(false)}
+        >
+          Révoquer
+        </button>
+      </span>
+      {error && <span className="basis-full text-xs text-destructive">{error}</span>}
     </span>
   );
 }

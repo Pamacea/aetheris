@@ -5,6 +5,7 @@ import Suggestion from "@tiptap/suggestion";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
 import type { NoteBlock } from "@aetheris/shared";
+import { frameAttrSpecs, legacySize, parseFrameTokens } from "./blocks-frame";
 import { SuggestionList, type SuggestionItem, type SuggestionListRef } from "./suggestion-list";
 import { MetaBlockView } from "./meta-block-view";
 import { DiceBlockView } from "./dice-block-view";
@@ -78,11 +79,8 @@ export const MetaBlockNode = Node.create({
       kind: { default: "custom", renderHTML: (attrs) => ({ "data-kind": attrs.kind }) },
       label: { default: "", renderHTML: (attrs) => ({ "data-label": attrs.label }) },
       value: { default: "", renderHTML: (attrs) => ({ "data-value": attrs.value }) },
-      // Taille d'affichage ("" = md) : seule la valeur d'enum est persistée.
-      size: {
-        default: "",
-        renderHTML: (attrs) => (attrs.size ? { "data-size": attrs.size } : {}),
-      },
+      // Cadrage (taille/w/h/x/y) : persisté en tokens de classe `blk-*`.
+      ...frameAttrSpecs,
     };
   },
 
@@ -92,12 +90,14 @@ export const MetaBlockNode = Node.create({
         tag: "aetheris-block",
         getAttrs: (el) => {
           if (typeof el === "string") return false;
-          const size = el.getAttribute("data-size") ?? "";
+          const frame = parseFrameTokens(el.getAttribute("class"));
           return {
             kind: el.getAttribute("data-kind") || "custom",
             label: el.getAttribute("data-label") ?? "",
             value: el.getAttribute("data-value") ?? "",
-            size: size === "sm" || size === "lg" ? size : "",
+            ...frame,
+            // Anciens contenus : data-size="sm|lg" lisible en l'absence de token.
+            size: frame.size ?? legacySize(el.getAttribute("data-size")),
           };
         },
       },
@@ -130,6 +130,7 @@ export const DiceBlockNode = Node.create({
         default: "1d20",
         renderHTML: (attrs) => ({ "data-expr": attrs.expr }),
       },
+      ...frameAttrSpecs,
     };
   },
 
@@ -142,6 +143,7 @@ export const DiceBlockNode = Node.create({
           return {
             label: el.getAttribute("data-label") || "Jet",
             expr: el.getAttribute("data-expr") || "1d20",
+            ...parseFrameTokens(el.getAttribute("class")),
           };
         },
       },
@@ -172,6 +174,7 @@ export const TableBlockNode = Node.create({
         default: JSON.stringify(DEFAULT_TABLE_ROWS),
         renderHTML: (attrs) => ({ "data-rows": attrs.rows }),
       },
+      ...frameAttrSpecs,
     };
   },
 
@@ -181,7 +184,10 @@ export const TableBlockNode = Node.create({
         tag: "wiki-table",
         getAttrs: (el) => {
           if (typeof el === "string") return false;
-          return { rows: el.getAttribute("data-rows") || JSON.stringify(DEFAULT_TABLE_ROWS) };
+          return {
+            rows: el.getAttribute("data-rows") || JSON.stringify(DEFAULT_TABLE_ROWS),
+            ...parseFrameTokens(el.getAttribute("class")),
+          };
         },
       },
     ];

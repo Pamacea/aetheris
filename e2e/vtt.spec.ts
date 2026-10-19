@@ -8,7 +8,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("jeton : PV/CA et propriétaire édités par le MJ, persistés", async ({ page }) => {
-  await page.getByRole("link", { name: /table/i }).click();
+  // URL directe = page pleine (default.tsx) : en modale, la caméra du canvas
+  // change et les spots ci-dessous ratent le jeton.
+  await page.goto(`${new URL(page.url()).pathname}/vtt`);
   await expect(page).toHaveURL(/\/vtt/);
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible({ timeout: 30_000 });
@@ -59,9 +61,9 @@ test("joueur : PV éditables sur son jeton, jamais les autres champs", async ({ 
   await expect(player).toHaveURL(/\/campaign\//);
   const playerPath = new URL(player.url()).pathname;
 
-  // MJ (depuis le hub, donc avec le membre déjà dans la liste) : deux jetons,
-  // l'un remis au joueur.
-  await page.getByRole("link", { name: /table/i }).click();
+  // MJ (page pleine via URL directe, donc avec le membre déjà dans la liste) :
+  // deux jetons, l'un remis au joueur.
+  await page.goto(`${new URL(page.url()).pathname}/vtt`);
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Tokens", exact: true }).click();

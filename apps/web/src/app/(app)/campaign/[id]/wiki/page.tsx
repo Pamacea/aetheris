@@ -98,7 +98,8 @@ export default async function WikiPage({
   });
 
   return (
-    <div className="flex h-[calc(100dvh-4.25rem)] flex-col">
+    // 3.75rem header + 2.75rem onglets + ~0.5rem fil d'ariane.
+    <div className="flex h-[calc(100dvh-7rem)] flex-col">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-1.5">
         <nav className="flex items-center gap-2 text-xs text-muted" aria-label="Fil d'ariane">
           <Link href={`/campaign/${id}`} className="hover:text-accent">
@@ -107,9 +108,16 @@ export default async function WikiPage({
           <span>/</span>
           <span className="text-foreground">Lore Wiki</span>
         </nav>
-        <span className="text-[0.65rem] tracking-widest text-muted uppercase">
-          {isGM ? "Mode MJ" : "Mode joueur"}
-        </span>
+        <div className="flex items-center gap-2">
+          {isGM && (
+            <Link href={`/campaign/${id}/wiki/templates`} className="btn px-2 py-1 text-xs">
+              Modèles
+            </Link>
+          )}
+          <span className="text-[0.65rem] tracking-widest text-muted uppercase">
+            {isGM ? "Mode MJ" : "Mode joueur"}
+          </span>
+        </div>
       </div>
       <WikiApp
         campaignId={id}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignPage } from "@/features/campaigns/require-member";
 import { GraphClient } from "@/features/graph/GraphClient";
@@ -20,6 +21,13 @@ export default async function GraphPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div style={{ width: "min(100% - 3rem, 72rem)", marginInline: "auto" }}>
+      <nav className="mt-5 text-xs text-muted" aria-label="Fil d'ariane">
+        <Link href={`/campaign/${id}`} className="hover:text-accent">
+          ← Campagne
+        </Link>
+        <span className="mx-2">/</span>
+        <span className="text-foreground">Graphe de relations</span>
+      </nav>
       <h1 style={{ marginBlock: "1.25rem 1rem", fontSize: "1.35rem" }}>
         <span className="mark-tri" aria-hidden />
         Graphe de relations

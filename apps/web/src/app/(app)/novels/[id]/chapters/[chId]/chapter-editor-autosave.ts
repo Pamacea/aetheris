@@ -119,6 +119,14 @@ export function useChapterAutosave({ novelId, chapterId, content, readOnly }: Au
     },
   });
 
+  // Sans transaction initiale, le snapshot caché de useEditorState reste
+  // {editor:null} (immediatelyRender:false) : la toolbar ne s'afficherait
+  // qu'après la première frappe.
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dispatch(editor.state.tr.setMeta("init", true));
+  }, [editor]);
+
   // Restauration d'un brouillon local non sauvegardé (fermeture brutale,
   // erreur réseau…). Le brouillon est effacé à chaque sauvegarde réussie.
   useEffect(() => {

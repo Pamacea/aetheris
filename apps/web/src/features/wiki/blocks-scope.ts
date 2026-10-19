@@ -1,4 +1,5 @@
 import { findParentNodeClosestToPos, type Editor, type JSONContent } from "@tiptap/core";
+import type { Node } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 
 /** Nœuds de bloc manipulables par la palette (synchronisé avec extensions.ts). */
@@ -55,6 +56,45 @@ export function unwrapBlockFromSecret(state: EditorState, pos: number): Transact
   const secret = findParentNodeClosestToPos($pos, (n) => n.type.name === "gmSecret");
   if (!secret) return null;
   return state.tr.replaceWith(secret.pos, secret.pos + secret.node.nodeSize, secret.node.content);
+}
+
+/** Un secret est « vidé » : plus rien, ou seulement des paragraphes vides. */
+function isVacuousSecret(node: Node): boolean {
+  if (node.childCount === 0) return true;
+  let vacuous = true;
+  node.content.forEach((child) => {
+    if (child.type.name !== "paragraph" || child.childCount > 0) vacuous = false;
+  });
+  return vacuous;
+}
+
+/**
+ * Suppression d'un bloc : si son enveloppe `<gm-secret>` ne garde plus que du
+ * vide, elle part avec (pas de container MJ orphelin). Inversement, le toggle
+ * MJ ne supprime jamais le bloc (wrap/unwrap ci-dessus).
+ */
+export function deleteBlockAt(state: EditorState, pos: number): Transaction | null {
+  const $pos = state.doc.resolve(pos);
+  const block = $pos.nodeAfter;
+  if (!block || !BLOCK_NODES.has(block.type.name)) return null;
+  const secret = findParentNodeClosestToPos($pos, (n) => n.type.name === "gmSecret");
+  const tr = state.tr.delete(pos, pos + block.nodeSize);
+  if (!secret) return tr;
+  // La suppression est postérieure au début du secret : sa position est stable.
+  const after = tr.doc.nodeAt(secret.pos);
+  if (after && after.type.name === "gmSecret" && isVacuousSecret(after)) {
+    tr.delete(secret.pos, secret.pos + after.nodeSize);
+  }
+  return tr;
+}
+
+/** Suppression d'un bloc par la vue (bouton ×) : true si appliqué. */
+export function deleteBlock(editor: Editor, pos: number | undefined): boolean {
+  if (pos === undefined) return false;
+  const tr = deleteBlockAt(editor.state, pos);
+  if (!tr) return false;
+  editor.view.dispatch(tr);
+  return true;
 }
 
 /** Case « MJ » des vues de blocs : applique le changement de portée, true si appliqué. */

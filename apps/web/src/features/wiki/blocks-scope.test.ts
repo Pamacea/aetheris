@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { EditorState } from "@tiptap/pm/state";
 import type { Node } from "@tiptap/pm/model";
 import {
+  deleteBlockAt,
   isBlockInGmSecret,
   isInsideGmSecret,
   scopedContent,
@@ -103,5 +104,66 @@ describe("wrapBlockInSecret / unwrapBlockFromSecret", () => {
     const para = stateOf(schema.nodes.paragraph.create());
     expect(wrapBlockInSecret(para, 0)).toBeNull();
     expect(unwrapBlockFromSecret(para, 0)).toBeNull();
+  });
+});
+
+describe("deleteBlockAt", () => {
+  const para = () => schema.nodes.paragraph.create();
+  const textPara = () => schema.nodes.paragraph.create(null, schema.text("Notes MJ"));
+
+  it("emporte le <gm-secret> vidé par la suppression du bloc", () => {
+    const start = stateOf(secretOf(meta()), para());
+    const tr = deleteBlockAt(start, 1);
+    expect(tr).not.toBeNull();
+
+    const out = start.apply(tr!);
+    expect(out.doc.childCount).toBe(1);
+    expect(out.doc.firstChild?.type.name).toBe("paragraph");
+    expect(out.doc.firstChild?.type.name).not.toBe("gmSecret");
+  });
+
+  it("secret sans paragraphe de confort : le wrapper part aussi", () => {
+    const start = stateOf(schema.nodes.gmSecret.create(null, [meta()]));
+    const tr = deleteBlockAt(start, 1);
+    expect(tr).not.toBeNull();
+
+    // PM recadre le doc (`block+`) : le secret a disparu, un paragraphe
+    // vide le remplace — plus aucune enveloppe MJ orpheline.
+    const out = start.apply(tr!);
+    expect(out.doc.childCount).toBe(1);
+    expect(out.doc.firstChild?.type.name).toBe("paragraph");
+  });
+
+  it("garde le secret s'il reste du contenu MJ", () => {
+    const start = stateOf(schema.nodes.gmSecret.create(null, [meta(), textPara()]), para());
+    const tr = deleteBlockAt(start, 1);
+    expect(tr).not.toBeNull();
+
+    const out = start.apply(tr!);
+    expect(out.doc.childCount).toBe(2);
+    expect(out.doc.firstChild?.type.name).toBe("gmSecret");
+    expect(out.doc.firstChild?.textContent).toBe("Notes MJ");
+  });
+
+  it("deux blocs dans un secret : le wrapper survit au premier", () => {
+    const start = stateOf(schema.nodes.gmSecret.create(null, [meta(), dice(), para()]));
+    const tr = deleteBlockAt(start, 1);
+    expect(tr).not.toBeNull();
+
+    const out = start.apply(tr!);
+    expect(out.doc.firstChild?.type.name).toBe("gmSecret");
+    expect(out.doc.firstChild?.childCount).toBe(2);
+    expect(out.doc.firstChild?.firstChild?.type.name).toBe("diceBlock");
+  });
+
+  it("hors secret : suppression simple, position non-bloc refusée", () => {
+    const start = stateOf(meta(), para());
+    const tr = deleteBlockAt(start, 0);
+    expect(tr).not.toBeNull();
+    const out = start.apply(tr!);
+    expect(out.doc.childCount).toBe(1);
+    expect(out.doc.firstChild?.type.name).toBe("paragraph");
+
+    expect(deleteBlockAt(stateOf(para()), 0)).toBeNull();
   });
 });

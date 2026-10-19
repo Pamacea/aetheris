@@ -69,7 +69,8 @@ export function WikiEditor({
     editable: isGM,
     editorProps: {
       attributes: {
-        class: "wiki-prose",
+        // `relative` : conteneur des blocs en position libre (absolu % / px).
+        class: "wiki-prose relative",
         spellcheck: "false",
       },
       handleClick(_view, _pos, event) {
@@ -87,6 +88,29 @@ export function WikiEditor({
       handlers.current.onChange(handlers.current.noteId, ed.getHTML());
     },
   });
+
+  // Les blocs en position libre sont en absolu : ils n'alimentent pas la
+  // hauteur du flux. Le conteneur est agrandi via min-height pour tous les
+  // contenir — la largeur, elle, reste bornée à 100 % (responsive).
+  useEffect(() => {
+    if (!editor) return;
+    const sync = () => {
+      const root = editor.view.dom;
+      let bottom = 0;
+      for (const el of root.querySelectorAll<HTMLElement>("[data-node-view-wrapper]")) {
+        bottom = Math.max(bottom, el.offsetTop + el.offsetHeight);
+      }
+      if (bottom > 0) root.style.setProperty("min-height", `${bottom}px`);
+      else root.style.removeProperty("min-height");
+    };
+    editor.on("update", sync);
+    sync();
+    window.addEventListener("resize", sync);
+    return () => {
+      editor.off("update", sync);
+      window.removeEventListener("resize", sync);
+    };
+  }, [editor]);
 
   if (!editor) return null;
   // Copie locale : le rétrécissement de type ne descend pas dans les closures.

@@ -1,16 +1,52 @@
 "use client";
 
 import { useEditorState, type Editor } from "@tiptap/react";
+import { ColorPicker } from "./chapter-editor-color-picker";
 
 /** Couleur du surlignage (inline : `.novel-prose` n'a pas de style `mark`). */
 export const HIGHLIGHT = "#fde68a";
 
+/* Familles groupées : les 4 premières lisent les variables CSS du projet
+   (polices next/font déjà embarquées — aucune dépendance ajoutée), le reste
+   sont des stacks système libres de droits. */
 const FAMILIES = [
-  { value: "", label: "Police" },
-  { value: "Georgia, serif", label: "Georgia" },
-  { value: '"Times New Roman", serif', label: "Times" },
-  { value: '"Courier New", monospace', label: "Courier" },
+  {
+    label: "Projet",
+    options: [
+      { value: "var(--aetheris-font-display)", label: "Cinzel (titres)" },
+      { value: "var(--aetheris-font-lore), Georgia, serif", label: "Newsreader (lore)" },
+      { value: "var(--aetheris-font-ui)", label: "Jakarta (UI)" },
+      { value: "var(--aetheris-font-mono), monospace", label: "Geist Mono" },
+    ],
+  },
+  {
+    label: "Serif",
+    options: [
+      { value: "Georgia, serif", label: "Georgia" },
+      { value: '"Times New Roman", serif', label: "Times New Roman" },
+      { value: "Garamond, serif", label: "Garamond" },
+      { value: '"Palatino Linotype", Palatino, serif', label: "Palatino" },
+      { value: '"Book Antiqua", Palatino, serif', label: "Book Antiqua" },
+    ],
+  },
+  {
+    label: "Sans",
+    options: [
+      { value: "Verdana, sans-serif", label: "Verdana" },
+      { value: '"Trebuchet MS", sans-serif', label: "Trebuchet MS" },
+      { value: "system-ui, sans-serif", label: "System UI" },
+    ],
+  },
+  {
+    label: "Mono",
+    options: [
+      { value: '"Courier New", monospace', label: "Courier New" },
+      { value: "Consolas, monospace", label: "Consolas" },
+    ],
+  },
 ] as const;
+
+const FAMILY_VALUES: readonly string[] = FAMILIES.flatMap((g) => g.options.map((o) => o.value));
 
 type AlignMode = "left" | "center" | "right" | "justify";
 
@@ -21,14 +57,20 @@ const ALIGN_LABELS: Record<AlignMode, string> = {
   justify: "justifié",
 };
 
+/* Échelle typographique éditoriale : légende (12) → texte → intertitres →
+   display (48). */
 const SIZES = [
   { value: "", label: "Taille" },
+  { value: "12px", label: "12" },
   { value: "14px", label: "14" },
   { value: "16px", label: "16" },
   { value: "18px", label: "18" },
   { value: "20px", label: "20" },
   { value: "24px", label: "24" },
-  { value: "30px", label: "30" },
+  { value: "28px", label: "28" },
+  { value: "32px", label: "32" },
+  { value: "40px", label: "40" },
+  { value: "48px", label: "48" },
 ] as const;
 
 type ToolbarFlags = {
@@ -48,6 +90,7 @@ type ToolbarFlags = {
   table: boolean;
   align: string;
   color: string;
+  highlightColor: string;
   family: string;
   size: string;
   canUndo: boolean;
@@ -174,6 +217,7 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
     selector: ({ editor: ed }) => {
       if (!ed) return null;
       const textStyle = ed.getAttributes("textStyle");
+      const highlight = ed.getAttributes("highlight");
       return {
         bold: ed.isActive("bold"),
         italic: ed.isActive("italic"),
@@ -197,6 +241,7 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
               ? "justify"
               : "left",
         color: typeof textStyle.color === "string" ? textStyle.color : "",
+        highlightColor: typeof highlight.color === "string" ? highlight.color : "",
         family: typeof textStyle.fontFamily === "string" ? textStyle.fontFamily : "",
         size: typeof textStyle.fontSize === "string" ? textStyle.fontSize : "",
         canUndo: ed.can().undo(),
@@ -224,7 +269,7 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
       {/* Police + taille */}
       <span className="flex items-center gap-1">
         <select
-          value={FAMILIES.some((f) => f.value === flags.family) ? flags.family : ""}
+          value={FAMILY_VALUES.includes(flags.family) ? flags.family : ""}
           onChange={(e) => {
             const v = e.target.value;
             const chain = editor.chain().focus();
@@ -235,10 +280,15 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
           className={selectCls}
           style={{ width: "auto", padding: "0.25rem 1.4rem 0.25rem 0.5rem" }}
         >
-          {FAMILIES.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
+          <option value="">Police</option>
+          {FAMILIES.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.options.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <select
@@ -317,29 +367,34 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
 
       <Divider />
 
-      {/* Surlignage + couleur du texte */}
+      {/* Surlignage + couleur du texte : palettes custom (voir
+          chapter-editor-color-picker) — le natif type=color reste caché
+          derrière la pastille « Personnalisé ». */}
       <span className="flex items-center gap-1">
-        <button
-          type="button"
-          className={btn(flags.highlight)}
-          onClick={() => editor.chain().focus().toggleHighlight({ color: HIGHLIGHT }).run()}
-          title="Surligner (Ctrl+Maj+H)"
-          aria-label="Surligner"
-          aria-pressed={flags.highlight}
-        >
-          <span
-            className="block h-3 w-4 border border-border"
-            style={{ backgroundColor: HIGHLIGHT }}
-            aria-hidden
-          />
-        </button>
-        <input
-          type="color"
-          value={flags.color || "#e8e6e3"}
-          onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+        <ColorPicker
+          label="Surlignage"
+          value={flags.highlight ? flags.highlightColor || HIGHLIGHT : ""}
+          fallback={HIGHLIGHT}
+          active={flags.highlight}
+          title={
+            flags.highlight ? "Surlignage actif — choisir la couleur" : "Surligner (Ctrl+Maj+H)"
+          }
+          onPick={(hex) => {
+            const chain = editor.chain().focus();
+            // Re-clic sur la couleur déjà appliquée = retirer le surlignage.
+            (flags.highlight && (flags.highlightColor || HIGHLIGHT) === hex
+              ? chain.unsetHighlight()
+              : chain.setHighlight({ color: hex })
+            ).run();
+          }}
+        />
+        <ColorPicker
+          label="Couleur du texte"
+          value={flags.color}
+          fallback="#e8e6e3"
+          active={flags.color !== ""}
           title="Couleur du texte"
-          aria-label="Couleur du texte"
-          className="h-6 w-7 cursor-pointer border border-border bg-transparent p-0"
+          onPick={(hex) => editor.chain().focus().setColor(hex).run()}
         />
         <button
           type="button"

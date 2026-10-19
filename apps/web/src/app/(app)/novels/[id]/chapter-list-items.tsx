@@ -109,7 +109,7 @@ export function ChapterListItems({
               <span className="flex items-center gap-1">
                 <Link
                   href={`/novels/${novelId}/chapters/${c.id}`}
-                  className="btn px-2 py-0.5 text-xs"
+                  className="btn px-2 py-2.5 text-xs"
                 >
                   Écrire
                 </Link>
@@ -118,7 +118,7 @@ export function ChapterListItems({
                   onClick={() => onRemove(c.id)}
                   disabled={pending}
                   aria-label={`Supprimer ${c.title}`}
-                  className="btn px-2 py-0.5 text-xs"
+                  className="btn px-2 py-2.5 text-xs"
                 >
                   <IconCross />
                 </button>

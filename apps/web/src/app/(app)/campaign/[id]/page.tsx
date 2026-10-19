@@ -2,8 +2,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignPage } from "@/features/campaigns/require-member";
-import { CampaignTabs } from "./campaign-tabs";
 import { CopyCodeButton } from "./copy-code-button";
+
+/** Toolbar du hub : une carte = un module, titre + une ligne de description. */
+const MODULES = [
+  { slug: "vtt", title: "Table de jeu", desc: "Scène, jetons et grille pour jouer en ligne." },
+  { slug: "wiki", title: "Wiki", desc: "Chroniques, lieux et personnages du monde." },
+  { slug: "graph", title: "Graphe de relations", desc: "Visualisez les liens entre les entités." },
+  { slug: "journal", title: "Journal", desc: "Notes et captures du MJ pour raconter la session." },
+  { slug: "choices", title: "Choix", desc: "Sondages pour trancher une décision en groupe." },
+  { slug: "ambiance", title: "Ambiance", desc: "Playlists et pistes sonores de la scène." },
+  { slug: "combat", title: "Combat & Initiative", desc: "Tours, initiative et jetons de combat." },
+  { slug: "fiches", title: "Fiches joueurs", desc: "Personnages, PV et gabarits de fiche." },
+  { slug: "macros", title: "Macros", desc: "Raccourcis exécutés en sandbox et envoyés au chat." },
+  { slug: "settings", title: "Réglages", desc: "Infos, modules, thème et code d'invitation." },
+  { slug: "permissions", title: "Permissions", desc: "Rôles et droits de chaque membre." },
+] as const;
 
 export default async function CampaignHubPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -51,7 +65,29 @@ export default async function CampaignHubPage({ params }: { params: Promise<{ id
         )}
       </header>
 
-      <CampaignTabs campaignId={id} />
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xs tracking-widest text-muted uppercase">Modules</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {MODULES.map((mod) => (
+            <Link
+              key={mod.slug}
+              href={`/campaign/${id}/${mod.slug}`}
+              className="panel group flex flex-col gap-1 p-4 transition hover:bg-card-hover"
+            >
+              <span className="flex items-center justify-between gap-2 text-sm font-semibold tracking-wide">
+                {mod.title}
+                <span
+                  aria-hidden
+                  className="text-accent opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  →
+                </span>
+              </span>
+              <span className="text-xs text-muted">{mod.desc}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
