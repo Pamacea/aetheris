@@ -30,18 +30,18 @@ export function useCampaignSocket(campaignId: string): UseCampaignSocketResult {
       socket.emit("campaign:join", { campaignId });
     };
     const onDisconnect = () => setConnected(false);
-    const onError = (err: Error) => console.error("[ws]", err.message);
+    // Pas de log sur connect_error : socket.io retente en boucle (backoff)
+    // et le navigateur logge déjà l'échec réseau ; un console.error par
+    // tentative déclenche l'overlay Next à chaque restart du serveur.
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
-    socket.on("connect_error", onError);
     if (socket.connected) onConnect();
     else socket.connect();
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
-      socket.off("connect_error", onError);
       // Clamped : StrictMode (mount/unmount/mount) ne doit jamais
       // passer sous zéro, sinon plus personne ne déconnecterait.
       refs = Math.max(0, refs - 1);
