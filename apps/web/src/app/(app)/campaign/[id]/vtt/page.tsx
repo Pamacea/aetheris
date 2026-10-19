@@ -7,8 +7,8 @@ import { TriPanel } from "@/components/tri-panel";
 
 export default async function VttPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { member } = await requireCampaignPage(id);
-  const { messages, initialScene } = await loadVttPageData(id);
+  const { member } = await requireCampaignPage(id, "vtt");
+  const { messages, initialScene, members } = await loadVttPageData(id);
   const isGM = member.role === "GM";
 
   return (
@@ -26,7 +26,13 @@ export default async function VttPage({ params }: { params: Promise<{ id: string
             {isGM ? "Mode MJ" : "Mode joueur"}
           </span>
         </div>
-        <VttApp isGM={isGM} campaignId={id} initialScene={initialScene} />
+        <VttApp
+          isGM={isGM}
+          campaignId={id}
+          userId={member.userId}
+          members={members}
+          initialScene={initialScene}
+        />
       </div>
     </TriPanel>
   );

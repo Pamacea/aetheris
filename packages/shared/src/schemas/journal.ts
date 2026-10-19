@@ -22,6 +22,8 @@ export const createHandoutSchema = z.object({
   title: z.string().min(1).max(160),
   content: z.string().max(10000).default(""),
   imageUrl: z.string().max(2048).nullish(),
+  /** false/omis = brouillon MJ seul (JournalEntry.shared). */
+  shared: z.boolean().optional(),
 });
 export type CreateHandout = z.infer<typeof createHandoutSchema>;
 

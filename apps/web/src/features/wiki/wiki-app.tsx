@@ -5,17 +5,19 @@ import { useCallback } from "react";
 import { fold } from "@/lib/text";
 import { createWikiEntry } from "./actions";
 import { useWikiAutosave } from "./autosave";
+import { BacklinksPanel } from "./backlinks-panel";
 import { WikiEditor } from "./editor";
 import { EntriesPanel } from "./entries-panel";
 import { WikiAppHistory } from "./history";
 import { NoteHeader } from "./note-header";
+import { TemplateForm } from "./templates/template-form";
 import { useWikiAppState } from "./wiki-app-state";
 import type { WikiAppProps } from "./types";
 
-export type { WikiActiveEntry, WikiEntryMeta, WikiAppProps } from "./types";
+export type { WikiActiveEntry, WikiEntryMeta, WikiAppProps, WikiTemplateMeta } from "./types";
 
-/** Wiki : panneau d'entrées à gauche, éditeur TipTap au centre. */
-export function WikiApp({ campaignId, entries, active, isGM }: WikiAppProps) {
+/** Wiki : panneau d'entrées à gauche, éditeur TipTap au centre, liens entrants à droite. */
+export function WikiApp({ campaignId, entries, active, templates, backlinks, isGM }: WikiAppProps) {
   const router = useRouter();
   const autosave = useWikiAutosave(campaignId);
   const w = useWikiAppState(campaignId, entries, autosave);
@@ -34,12 +36,22 @@ export function WikiApp({ campaignId, entries, active, isGM }: WikiAppProps) {
       if (!isGM) return;
       const res = await createWikiEntry(campaignId, { title });
       if (res.ok) {
-        setLocalEntries((prev) => [...prev, { id: res.id, title, folder: null }]);
+        setLocalEntries((prev) => [...prev, { id: res.id, title, folder: null, type: "note" }]);
         router.push(`/campaign/${campaignId}/wiki?note=${res.id}`);
       }
     },
     [campaignId, flush, isGM, localEntries, router, selectEntry, setLocalEntries],
   );
+
+  // Statut du formulaire de fiche → même indicateur que l'éditeur.
+  const handleFormStatus = (s: "saving" | "saved" | "error") => {
+    autosave.setStatus(s);
+    if (s === "saved") {
+      autosave.setSavedAt(
+        new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      );
+    }
+  };
 
   const restored = w.restored && w.restored.id === active?.id ? w.restored : null;
 
@@ -48,6 +60,7 @@ export function WikiApp({ campaignId, entries, active, isGM }: WikiAppProps) {
       <EntriesPanel
         campaignId={campaignId}
         entries={w.localEntries}
+        templates={templates}
         isGM={isGM}
         active={active}
         newOpen={w.newOpen}
@@ -69,6 +82,21 @@ export function WikiApp({ campaignId, entries, active, isGM }: WikiAppProps) {
               setLocalEntries={w.setLocalEntries}
               onHistory={() => void w.openHistory(active.id)}
             />
+
+            {active.template && (
+              <TemplateForm
+                key={`form-${active.id}`}
+                campaignId={campaignId}
+                entityId={active.id}
+                schemaRaw={active.template.schema}
+                initialData={active.data}
+                notes={w.localEntries}
+                templates={templates}
+                onStatus={handleFormStatus}
+                onNavigate={(id) => void selectEntry(id)}
+              />
+            )}
+
             <div className="flex-1 overflow-y-auto px-5 py-6 md:px-10">
               <WikiEditor
                 key={`${active.id}:${restored?.rev ?? 0}`}
@@ -96,6 +124,8 @@ export function WikiApp({ campaignId, entries, active, isGM }: WikiAppProps) {
           </div>
         )}
       </main>
+
+      <BacklinksPanel backlinks={backlinks} selectEntry={w.selectEntry} />
 
       {w.history && (
         <WikiAppHistory

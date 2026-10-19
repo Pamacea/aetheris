@@ -2,7 +2,13 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { createWikiNoteSchema, saveWikiNoteSchema, updateWikiNoteSchema } from "@aetheris/shared";
+import {
+  createWikiNoteSchema,
+  sanitizeFieldData,
+  saveWikiNoteSchema,
+  templateSchemaSchema,
+  updateWikiNoteSchema,
+} from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
 import { sanitizeWikiHtml } from "@/lib/sanitize-wiki";
@@ -32,7 +38,7 @@ async function ownedEntity(campaignId: string, entityId: string) {
 
 export async function createWikiEntry(
   campaignId: string,
-  input: { title: string; folder?: string },
+  input: { title: string; folder?: string; templateId?: string },
 ): Promise<WikiActionResult> {
   const member = await requireCampaignMember(campaignId);
   if (!member) return invalid("Accès refusé.");
@@ -40,6 +46,19 @@ export async function createWikiEntry(
 
   const parsed = createWikiNoteSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error.issues[0]?.message ?? "Titre invalide.");
+
+  // Entrée basée sur un template : type = templateId, data = valeurs par défaut.
+  let templateData: Record<string, unknown> | null = null;
+  if (parsed.data.templateId) {
+    const template = await prisma.jsonTemplate.findFirst({
+      where: { id: parsed.data.templateId, campaignId },
+      select: { schema: true },
+    });
+    if (!template) return invalid("Template introuvable.");
+    const schema = templateSchemaSchema.safeParse(template.schema);
+    if (!schema.success) return invalid("Schéma de template corrompu.");
+    templateData = sanitizeFieldData(schema.data, {});
+  }
 
   // Résolution de titre : une entrée au même titre (insensible à la casse)
   // est réutilisée pour éviter les doublons de liens [[...]].
@@ -52,8 +71,8 @@ export async function createWikiEntry(
   const entry = await prisma.entity.create({
     data: {
       title: parsed.data.title,
-      type: "note",
-      data: {},
+      type: parsed.data.templateId ?? "note",
+      data: (templateData ?? {}) as object,
       folder: parsed.data.folder ?? null,
       contentHtml: "<p></p>",
       campaignId,

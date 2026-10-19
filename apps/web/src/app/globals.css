@@ -78,168 +78,171 @@ h3 {
   font-weight: 600;
 }
 
-/* ---------- Boutons (carrés, angles taillés, jamais de radius) ---------- */
+/* ---------- Boutons (carrés, angles taillés, jamais de radius) ----------
+   Dans @layer components : sinon (non-layeré) ces classes écrasaient TOUS
+   les utilitaires Tailwind (padding, text-xs, hover:bg-card-hover…). */
 
-.btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1.4rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  line-height: 1;
-  cursor: pointer;
-  text-decoration: none;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--foreground);
-  /* contours cassés : coupes asymétriques (haut-droite / bas-gauche) */
-  clip-path: polygon(
-    0 0,
-    calc(100% - 10px) 0,
-    100% 10px,
-    100% 100%,
-    10px 100%,
-    0 calc(100% - 10px)
-  );
-  transition:
-    filter 0.15s ease,
-    background 0.15s ease;
-}
+@layer components {
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--foreground);
+    /* contours cassés : coupes asymétriques (haut-droite / bas-gauche) */
+    clip-path: polygon(
+      0 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% 100%,
+      10px 100%,
+      0 calc(100% - 10px)
+    );
+    transition:
+      filter 0.15s ease,
+      background 0.15s ease;
+  }
 
-.btn:hover {
-  filter: brightness(1.18);
-  background: var(--card-hover);
-}
+  .btn:hover {
+    filter: brightness(1.18);
+    background: var(--card-hover);
+  }
 
-.btn:active {
-  filter: brightness(0.92);
-}
+  .btn:active {
+    filter: brightness(0.92);
+  }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-.btn-primary {
-  /* assombri pour garder le texte clair AA sur le rouge (le --accent pur
+  .btn-primary {
+    /* assombri pour garder le texte clair AA sur le rouge (le --accent pur
      sert désormais au texte) */
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--accent) 75%, #000) 0%,
-    var(--accent-2) 100%
-  );
-  border-color: #6e2610;
-  color: var(--accent-foreground);
-}
+    background: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--accent) 75%, #000) 0%,
+      var(--accent-2) 100%
+    );
+    border-color: #6e2610;
+    color: var(--accent-foreground);
+  }
 
-.btn-primary:hover {
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--accent) 85%, #000) 0%,
-    var(--accent-2) 100%
-  );
-}
+  .btn-primary:hover {
+    background: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--accent) 85%, #000) 0%,
+      var(--accent-2) 100%
+    );
+  }
 
-/* Variante triangle / ruban (pointe à droite) */
-.btn-tri {
-  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
-  padding-right: 1.9rem;
-}
+  /* Variante triangle / ruban (pointe à droite) */
+  .btn-tri {
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+    padding-right: 1.9rem;
+  }
 
-/* Variante brisée : fissure diagonale visible */
-.btn-broken::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    118deg,
-    transparent 44%,
-    rgba(0, 0, 0, 0.6) 45%,
-    rgba(0, 0, 0, 0.6) 50%,
-    transparent 51%
-  );
-  opacity: 0.5;
-}
+  /* Variante brisée : fissure diagonale visible */
+  .btn-broken::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      118deg,
+      transparent 44%,
+      rgba(0, 0, 0, 0.6) 45%,
+      rgba(0, 0, 0, 0.6) 50%,
+      transparent 51%
+    );
+    opacity: 0.5;
+  }
 
-/* ---------- Champs (carrés, angle taillé) ---------- */
+  /* ---------- Champs (carrés, angle taillé) ---------- */
 
-.input {
-  width: 100%;
-  padding: 0.6rem 0.85rem;
-  background: var(--background);
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  font-size: 0.9rem;
-  outline: none;
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
-  transition: border-color 0.15s ease;
-}
+  .input {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    background: var(--background);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    font-size: 0.9rem;
+    outline: none;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    transition: border-color 0.15s ease;
+  }
 
-.input::placeholder {
-  /* opacity 1 : le 0,7 fallait à 3,4:1 (aide = texte normal AA) */
-  color: var(--muted);
-  opacity: 1;
-}
+  .input::placeholder {
+    /* opacity 1 : le 0,7 fallait à 3,4:1 (aide = texte normal AA) */
+    color: var(--muted);
+    opacity: 1;
+  }
 
-.input:focus {
-  border-color: var(--accent);
-}
+  .input:focus {
+    border-color: var(--accent);
+  }
 
-/* Select : le chevron natif est collé à la bordure (clip-path) — marge droite. */
-select.input {
-  padding-inline: 1rem;
-}
+  /* Select : le chevron natif est collé à la bordure (clip-path) — marge droite. */
+  select.input {
+    padding-inline: 1rem;
+  }
 
-/* Taille compacte des contrôles de fiche (⚙ Taille du champ).
-   Non-layeré comme .input : un utilitaire Tailwind (py-0.5) serait écrasé. */
-.input-sm {
-  padding: 0.35rem 0.6rem;
-  font-size: 0.8rem;
-}
+  /* Taille compacte des contrôles de fiche (⚙ Taille du champ). */
+  .input-sm {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+  }
 
-/* Scroll de la table : fonctionne (molette/touchpad) sans trait visuel. */
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+  /* Scroll de la table : fonctionne (molette/touchpad) sans trait visuel. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 
-/* Chevrons natifs masqués : les steppers de fiche portent la DA. */
-.input[type="number"]::-webkit-inner-spin-button,
-.input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.input[type="number"] {
-  appearance: textfield;
-}
+  /* Chevrons natifs masqués : les steppers de fiche portent la DA. */
+  .input[type="number"]::-webkit-inner-spin-button,
+  .input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .input[type="number"] {
+    appearance: textfield;
+  }
 
-/* ---------- Panneaux (angles taillés) ---------- */
+  /* ---------- Panneaux (angles taillés) ---------- */
 
-.panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  clip-path: polygon(
-    0 0,
-    calc(100% - 16px) 0,
-    100% 16px,
-    100% 100%,
-    16px 100%,
-    0 calc(100% - 16px)
-  );
-}
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    clip-path: polygon(
+      0 0,
+      calc(100% - 16px) 0,
+      100% 16px,
+      100% 100%,
+      16px 100%,
+      0 calc(100% - 16px)
+    );
+  }
 
-/* Panneau centré étroit (login, inscription) — les utilitaires max-w-* sont interdits par PARRY */
-.panel-form {
-  width: min(100%, 28rem);
-  margin-inline: auto;
+  /* Panneau centré étroit (login, inscription) — les utilitaires max-w-* sont interdits par PARRY */
+  .panel-form {
+    width: min(100%, 28rem);
+    margin-inline: auto;
+  }
 }
 
 /* Conteneurs landing — idem : pas de max-w-* (PARRY) */

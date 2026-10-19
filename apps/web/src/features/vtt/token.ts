@@ -38,17 +38,32 @@ export function buildToken(t: TokenState, selectedToken: string | null): Contain
   body.addChild(initial);
   c.addChild(body);
 
+  const fontSize = Math.max(10, Math.round(t.size * 0.22));
   const label = new Text({
     text: t.name,
     style: {
       fontFamily: "Cinzel, serif",
-      fontSize: Math.max(10, Math.round(t.size * 0.22)),
+      fontSize,
       fill: cssColor("--aetheris-foreground", 0xe7dcc6, 0.25),
     },
   });
   label.anchor.set(0.5, 0);
   label.y = t.size / 2 + 6;
   c.addChild(label);
+
+  // PV / CA sous le nom : affichés dès qu'ils sont renseignés.
+  const stats: string[] = [];
+  if (t.hpMax != null) stats.push(`${t.hp ?? 0}/${t.hpMax} PV`);
+  if (t.ac != null) stats.push(`CA ${t.ac}`);
+  if (stats.length > 0) {
+    const statLine = new Text({
+      text: stats.join(" · "),
+      style: { fontFamily: "Cinzel, serif", fontSize, fill: 0xe7dcc6 },
+    });
+    statLine.anchor.set(0.5, 0);
+    statLine.y = label.y + fontSize + 2;
+    c.addChild(statLine);
+  }
 
   if (t.id === selectedToken) {
     c.addChild(

@@ -68,6 +68,10 @@ export const sceneTokenSchema = z.object({
   hp: z.number().nullable(),
   hpMax: z.number().nullable(),
   noteId: z.string().min(1).max(64).nullable().optional(),
+  // .default(null) : les payloads antérieurs (sans les champs) restent valides.
+  ac: z.number().int().min(0).max(99).nullable().default(null),
+  /** Membre de la campagne propriétaire du jeton (PV/CA) — null = MJ seul. */
+  ownerId: z.string().min(1).max(64).nullable().default(null),
 });
 export type SceneToken = z.infer<typeof sceneTokenSchema>;
 

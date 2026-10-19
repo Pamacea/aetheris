@@ -9,12 +9,17 @@ import {
 } from "react";
 import { createLink, deleteLink } from "./actions";
 import {
+  clampZoom,
+  curveControl,
+  curveMidpoint,
   hasLinkBetween,
   initialPositions,
+  screenToGraph,
   type GraphLink,
   type GraphNode,
   VIEW_H,
   VIEW_W,
+  zoomAround,
 } from "./layout";
 
 interface SimState {
@@ -106,6 +111,11 @@ function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+/** Écrit la transform (zoom + pan) du <g> de vue — écouteur stable pour les handlers. */
+function applyView(el: SVGGElement | null, view: { zoom: number; pan: Pos }): void {
+  el?.setAttribute("transform", `translate(${view.pan.x} ${view.pan.y}) scale(${view.zoom})`);
+}
+
 export function GraphClient({
   campaignId,
   nodes,
@@ -132,18 +142,23 @@ export function GraphClient({
   const linksRef = useRef(links);
   const hiddenRef = useRef(hidden);
   const dragRef = useRef<string | null>(null);
+  const panRef = useRef<{ cx: number; cy: number; px: number; py: number } | null>(null);
   const movedRef = useRef(false);
   const hoveredRef = useRef<string | null>(null);
   const runningRef = useRef(false);
   const wakeRef = useRef<() => void>(() => {});
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const viewGRef = useRef<SVGGElement | null>(null);
   const nodeEls = useRef(new Map<string, SVGGElement>());
   // Deux maps (et non un objet) : les ref inline sont recréées à chaque rendu,
   // React détache puis réattache — chaque map reste cohérente indépendamment.
-  const edgeVis = useRef(new Map<string, SVGLineElement>());
-  const edgeHit = useRef(new Map<string, SVGLineElement>());
+  const edgeVis = useRef(new Map<string, SVGPathElement>());
+  const edgeHit = useRef(new Map<string, SVGPathElement>());
   const labelRef = useRef<SVGTextElement | null>(null);
+  // Vue (zoom + pan) mutée par les interactions, écrite directement dans le DOM :
+  // un seul <g> porte la transform, aucun re-render React.
+  const viewRef = useRef({ zoom: 1, pan: { x: 0, y: 0 } });
 
   /** Positions complètes pour les entités reçues ; true si un nœud a été ajouté. */
   const ensurePos = (): boolean => {
@@ -174,13 +189,10 @@ export function GraphClient({
       const pa = l && pos.get(l.fromEntityId);
       const pb = l && pos.get(l.toEntityId);
       if (!l || !pa || !pb) continue;
-      for (const line of [vis, edgeHit.current.get(id)]) {
-        if (!line) continue;
-        line.setAttribute("x1", String(pa.x));
-        line.setAttribute("y1", String(pa.y));
-        line.setAttribute("x2", String(pb.x));
-        line.setAttribute("y2", String(pb.y));
-      }
+      const c = curveControl(pa, pb);
+      const d = `M ${pa.x} ${pa.y} Q ${c.x} ${c.y} ${pb.x} ${pb.y}`;
+      vis.setAttribute("d", d);
+      edgeHit.current.get(id)?.setAttribute("d", d);
     }
     const labelEl = labelRef.current;
     const hl = hoveredRef.current
@@ -190,8 +202,9 @@ export function GraphClient({
       const pa = pos.get(hl.fromEntityId);
       const pb = pos.get(hl.toEntityId);
       if (pa && pb) {
-        labelEl.setAttribute("x", String((pa.x + pb.x) / 2));
-        labelEl.setAttribute("y", String((pa.y + pb.y) / 2 - 6));
+        const mid = curveMidpoint(pa, curveControl(pa, pb), pb);
+        labelEl.setAttribute("x", String(mid.x));
+        labelEl.setAttribute("y", String(mid.y - 6));
       }
     }
   };
@@ -238,16 +251,45 @@ export function GraphClient({
       raf = requestAnimationFrame(tick);
     };
     wakeRef.current();
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      // StrictMode remonte l'effet en dev : sans ce reset, le réveil suivant
+      // croit la boucle encore vivante et ne la relance jamais.
+      runningRef.current = false;
+    };
     // Montée unique : paint/ensurePos ne referment que des refs stables.
   }, []);
+
+  // Molette → zoom autour du pointeur. Listener natif non-passif : React attache
+  // wheel en passif, preventDefault y serait ignoré et la page défilerait.
+  const hasGraph = nodes.length > 0;
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!hasGraph || !svg) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = svg.getBoundingClientRect();
+      const p = {
+        x: ((e.clientX - rect.left) / rect.width) * VIEW_W,
+        y: ((e.clientY - rect.top) / rect.height) * VIEW_H,
+      };
+      const v = viewRef.current;
+      const next = clampZoom(v.zoom * Math.exp(-e.deltaY * 0.0015));
+      v.pan = zoomAround(p, v.pan, v.zoom, next);
+      v.zoom = next;
+      applyView(viewGRef.current, v);
+    };
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onWheel);
+  }, [hasGraph]);
 
   const hover = (id: string | null) => {
     hoveredRef.current = id;
     setHovered(id);
   };
 
-  const toView = (clientX: number, clientY: number): Pos => {
+  /** Client → coordonnée écran dans le viewBox (indépendante du zoom). */
+  const toScreen = (clientX: number, clientY: number): Pos => {
     const rect = svgRef.current!.getBoundingClientRect();
     return {
       x: ((clientX - rect.left) / rect.width) * VIEW_W,
@@ -255,25 +297,60 @@ export function GraphClient({
     };
   };
 
+  /** Client → coordonnée locale du graphe (tient compte du zoom/pan). */
+  const toGraph = (clientX: number, clientY: number): Pos => {
+    const { pan, zoom } = viewRef.current;
+    return screenToGraph(toScreen(clientX, clientY), pan, zoom);
+  };
+
   const onNodeDown = (e: ReactPointerEvent, id: string) => {
     e.stopPropagation();
     dragRef.current = id;
     movedRef.current = false;
-    svgRef.current?.setPointerCapture(e.pointerId);
     wakeRef.current();
+  };
+
+  /** Fond du graphe → déplacement de la vue (pan). */
+  const onSvgDown = (e: ReactPointerEvent) => {
+    const { pan } = viewRef.current;
+    panRef.current = { cx: e.clientX, cy: e.clientY, px: pan.x, py: pan.y };
+    movedRef.current = false;
   };
 
   const onSvgMove = (e: ReactPointerEvent) => {
     const id = dragRef.current;
-    if (!id) return;
-    posRef.current!.set(id, toView(e.clientX, e.clientY));
+    const start = panRef.current;
+    if (!id && !start) return;
+    // Capture différée au premier mouvement : capturée dès le pointerdown, elle
+    // retargetterait le click sur le svg et ni la sélection ni la suppression
+    // de lien n'atteindraient leur handler.
+    svgRef.current?.setPointerCapture(e.pointerId);
+    if (id) {
+      posRef.current!.set(id, toGraph(e.clientX, e.clientY));
+      movedRef.current = true;
+      wakeRef.current();
+      return;
+    }
+    if (!start) return;
+    const rect = svgRef.current!.getBoundingClientRect();
+    viewRef.current.pan = {
+      x: start.px + ((e.clientX - start.cx) / rect.width) * VIEW_W,
+      y: start.py + ((e.clientY - start.cy) / rect.height) * VIEW_H,
+    };
     movedRef.current = true;
-    wakeRef.current();
+    applyView(viewGRef.current, viewRef.current);
   };
 
   const onSvgUp = () => {
     dragRef.current = null;
+    panRef.current = null;
     wakeRef.current();
+  };
+
+  const onRecenter = () => {
+    viewRef.current.zoom = 1;
+    viewRef.current.pan = { x: 0, y: 0 };
+    applyView(viewGRef.current, viewRef.current);
   };
 
   const onNodeClick = (id: string) => {
@@ -351,6 +428,14 @@ export function GraphClient({
             {t} ({nodes.filter((n) => n.type === t).length})
           </button>
         ))}
+        <button
+          type="button"
+          className="btn"
+          style={{ marginInlineStart: "auto", padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}
+          onClick={onRecenter}
+        >
+          Recentrer
+        </button>
       </div>
 
       <div className="panel" style={{ padding: "0.5rem", background: "var(--background)" }}>
@@ -363,100 +448,104 @@ export function GraphClient({
             ref={svgRef}
             viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
             style={{ width: "100%", height: "auto", display: "block", touchAction: "none" }}
+            onPointerDown={onSvgDown}
             onPointerMove={onSvgMove}
             onPointerUp={onSvgUp}
             onPointerLeave={onSvgUp}
           >
-            {shownLinks.map((l) => {
-              const on = hovered === l.id;
-              const pa = base[l.fromEntityId] ?? { x: VIEW_W / 2, y: VIEW_H / 2 };
-              const pb = base[l.toEntityId] ?? { x: VIEW_W / 2, y: VIEW_H / 2 };
-              return (
-                <g key={l.id}>
-                  {/* Coordonnées d'entrée (stables) ; paint() prend le relais. */}
-                  <line
+            {/* Groupe de vue : zoom + pan écrits directement par applyView(). */}
+            <g ref={viewGRef}>
+              {shownLinks.map((l) => {
+                const on = hovered === l.id;
+                const pa = base[l.fromEntityId] ?? { x: VIEW_W / 2, y: VIEW_H / 2 };
+                const pb = base[l.toEntityId] ?? { x: VIEW_W / 2, y: VIEW_H / 2 };
+                const c = curveControl(pa, pb);
+                // Coordonnées d'entrée (stables) ; paint() prend le relais.
+                const d = `M ${pa.x} ${pa.y} Q ${c.x} ${c.y} ${pb.x} ${pb.y}`;
+                return (
+                  <g key={l.id}>
+                    <path
+                      ref={(el) => {
+                        if (el) edgeVis.current.set(l.id, el);
+                        else edgeVis.current.delete(l.id);
+                      }}
+                      d={d}
+                      fill="none"
+                      stroke={on ? "var(--accent)" : "var(--muted)"}
+                      strokeWidth={on ? 2 : 1.25}
+                    />
+                    <path
+                      ref={(el) => {
+                        if (el) edgeHit.current.set(l.id, el);
+                        else edgeHit.current.delete(l.id);
+                      }}
+                      d={d}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={16}
+                      style={{ cursor: "pointer" }}
+                      onPointerEnter={() => hover(l.id)}
+                      onPointerLeave={() => hover(null)}
+                      onClick={() => {
+                        if (!movedRef.current) void onDelete(l);
+                      }}
+                    />
+                  </g>
+                );
+              })}
+
+              {visible.map((n) => {
+                const sel = selection.includes(n.id);
+                const p = base[n.id] ?? { x: VIEW_W / 2, y: VIEW_H / 2 };
+                return (
+                  <g
+                    key={n.id}
                     ref={(el) => {
-                      if (el) edgeVis.current.set(l.id, el);
-                      else edgeVis.current.delete(l.id);
+                      if (el) nodeEls.current.set(n.id, el);
+                      else nodeEls.current.delete(n.id);
                     }}
-                    x1={pa.x}
-                    y1={pa.y}
-                    x2={pb.x}
-                    y2={pb.y}
-                    stroke={on ? "var(--accent)" : "var(--muted)"}
-                    strokeWidth={on ? 2 : 1.25}
-                  />
-                  <line
-                    ref={(el) => {
-                      if (el) edgeHit.current.set(l.id, el);
-                      else edgeHit.current.delete(l.id);
-                    }}
-                    x1={pa.x}
-                    y1={pa.y}
-                    x2={pb.x}
-                    y2={pb.y}
-                    stroke="transparent"
-                    strokeWidth={14}
+                    transform={`translate(${p.x} ${p.y})`}
                     style={{ cursor: "pointer" }}
-                    onPointerEnter={() => hover(l.id)}
-                    onPointerLeave={() => hover(null)}
-                    onClick={() => void onDelete(l)}
-                  />
-                </g>
-              );
-            })}
-
-            {visible.map((n) => {
-              const sel = selection.includes(n.id);
-              const p = base[n.id] ?? { x: VIEW_W / 2, y: VIEW_H / 2 };
-              return (
-                <g
-                  key={n.id}
-                  ref={(el) => {
-                    if (el) nodeEls.current.set(n.id, el);
-                    else nodeEls.current.delete(n.id);
-                  }}
-                  transform={`translate(${p.x} ${p.y})`}
-                  style={{ cursor: "pointer" }}
-                  onPointerDown={(e) => onNodeDown(e, n.id)}
-                  onClick={() => onNodeClick(n.id)}
-                >
-                  <title>{n.title}</title>
-                  <rect
-                    x={-NODE_W / 2}
-                    y={-NODE_H / 2}
-                    width={NODE_W}
-                    height={NODE_H}
-                    fill="var(--card)"
-                    stroke={sel ? "var(--accent)" : "var(--border)"}
-                    strokeWidth={sel ? 2.5 : 1}
-                  />
-                  <text
-                    y={4}
-                    textAnchor="middle"
-                    fontSize={12}
-                    fill="var(--foreground)"
-                    style={{ pointerEvents: "none", userSelect: "none" }}
+                    onPointerDown={(e) => onNodeDown(e, n.id)}
+                    onClick={() => onNodeClick(n.id)}
                   >
-                    {truncate(n.title, 16)}
-                  </text>
-                </g>
-              );
-            })}
+                    <title>{n.title}</title>
+                    <rect
+                      x={-NODE_W / 2}
+                      y={-NODE_H / 2}
+                      width={NODE_W}
+                      height={NODE_H}
+                      fill="var(--card)"
+                      stroke={sel ? "var(--accent)" : "var(--border)"}
+                      strokeWidth={sel ? 2.5 : 1}
+                    />
+                    <text
+                      y={4}
+                      textAnchor="middle"
+                      fontSize={12}
+                      fill="var(--foreground)"
+                      style={{ pointerEvents: "none", userSelect: "none" }}
+                    >
+                      {truncate(n.title, 16)}
+                    </text>
+                  </g>
+                );
+              })}
 
-            {hovered && (
-              <text
-                ref={labelRef}
-                x={VIEW_W / 2}
-                y={VIEW_H / 2}
-                textAnchor="middle"
-                fontSize={12}
-                fill="var(--accent)"
-                style={{ pointerEvents: "none" }}
-              >
-                {links.find((l) => l.id === hovered)?.label ?? "sans libellé"}
-              </text>
-            )}
+              {hovered && (
+                <text
+                  ref={labelRef}
+                  x={VIEW_W / 2}
+                  y={VIEW_H / 2}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill="var(--accent)"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {links.find((l) => l.id === hovered)?.label ?? "sans libellé"}
+                </text>
+              )}
+            </g>
           </svg>
         )}
       </div>

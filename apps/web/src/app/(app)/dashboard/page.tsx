@@ -94,7 +94,7 @@ export default async function DashboardPage() {
         <Link href="/novels" className="panel block p-4 transition hover:bg-card-hover">
           <span className="font-medium">Studio d&apos;écriture</span>
           <p className="mt-1 text-xs text-muted">
-            Romans, chapitres, publication — bientôt disponible. Ouvrir le studio →
+            Romans, chapitres, publication — votre studio d’écriture. Ouvrir le studio →
           </p>
         </Link>
       </section>

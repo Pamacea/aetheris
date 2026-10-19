@@ -1,9 +1,10 @@
 import { VttFogBar } from "./fog-bar";
 import { VttGridBar } from "./grid-bar";
+import { VttHpBar } from "./hp-bar";
 import type { VttState } from "./state";
 import { VttTokenBar } from "./token-bar";
 import { VttToolbar } from "./toolbar";
-import type { TokenState, VttApi } from "./types";
+import type { TokenState, VttApi, VttMember } from "./types";
 import { TOOLS } from "./types";
 import { VttWallBar } from "./wall-bar";
 
@@ -18,6 +19,8 @@ interface VttToolbarsProps {
   setTokenNum: (id: string, key: "size", raw: string) => void;
   deleteToken: (id: string) => void;
   apiRef: { current: VttApi | null };
+  userId: string;
+  members: VttMember[];
 }
 
 /** Barre d'outils + barre d'outil active (Grille/Tokens/Murs/Brouillard), tous MJ. */
@@ -31,6 +34,8 @@ export function VttToolbars({
   setTokenNum,
   deleteToken,
   apiRef,
+  userId,
+  members,
 }: VttToolbarsProps) {
   // Joueur : Curseur + Vue uniquement — tout le reste édite la table (MJ).
   const visibleTools = TOOLS.filter((t) => isGM || !t.gmOnly);
@@ -45,6 +50,17 @@ export function VttToolbars({
         activeHint={activeTool?.hint}
         zoom={st.zoom}
       />
+
+      {/* PV/CA : visible pour le MJ, ou pour le propriétaire du jeton sélectionné. */}
+      {selected && (
+        <VttHpBar
+          token={selected}
+          isGM={isGM}
+          userId={userId}
+          members={members}
+          updateToken={updateToken}
+        />
+      )}
 
       {st.tool === "grid" && (
         <VttGridBar

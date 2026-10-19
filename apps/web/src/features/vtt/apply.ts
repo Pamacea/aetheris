@@ -39,7 +39,8 @@ export function applyTokens(ctx: VttSceneCtx, list: TokenState[], sel: string | 
         t.color === o.color &&
         t.size === o.size &&
         t.hp === o.hp &&
-        t.hpMax === o.hpMax
+        t.hpMax === o.hpMax &&
+        t.ac === o.ac
       );
     });
   if (sameShape) {

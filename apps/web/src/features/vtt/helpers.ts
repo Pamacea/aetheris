@@ -36,5 +36,44 @@ export function newSceneToken(
     color: TOKEN_COLORS[index % TOKEN_COLORS.length],
     hp: null,
     hpMax: null,
+    ac: null,
+    ownerId: null,
   };
+}
+
+/** Saisie numérique entière bornée ; null si vide ou non numérique. */
+export function clampInt(raw: string, min: number, max: number): number | null {
+  if (!raw.trim()) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+/** PV : 0 ≤ hp ≤ hpMax (jeton sans max : plafond de repli). */
+export function clampHp(raw: string, hpMax: number | null): number | null {
+  return clampInt(raw, 0, hpMax ?? 9999);
+}
+
+/** Édition d'un jeton : MJ, ou le propriétaire pour ses propres PV. */
+export function canEditToken(
+  token: { ownerId: string | null },
+  isGM: boolean,
+  userId: string,
+): boolean {
+  return isGM || (token.ownerId !== null && token.ownerId === userId);
+}
+
+/**
+ * URL de carte distante : uniquement http(s) absolu, null sinon.
+ * Les blob: ne passent pas ici — ils viennent de l'upload (fallback local).
+ */
+export function resolveMapUrl(raw: string): string | null {
+  const input = raw.trim();
+  if (!input) return null;
+  try {
+    const url = new URL(input);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
 }

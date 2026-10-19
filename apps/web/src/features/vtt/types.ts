@@ -38,6 +38,15 @@ export interface TokenState {
   color: string; // #rrggbb
   hp: number | null;
   hpMax: number | null;
+  ac: number | null;
+  /** Membre propriétaire du jeton (id utilisateur) — null = MJ seul. */
+  ownerId: string | null;
+}
+
+/** Membre de campagne affiché dans le sélecteur de propriétaire (MJ). */
+export interface VttMember {
+  userId: string;
+  name: string;
 }
 
 /** Tracé de mur : polyigne de sommets snappés (bloque la ligne de vue). */
@@ -136,6 +145,10 @@ export interface VttBridge {
 export interface VttAppProps {
   isGM: boolean;
   campaignId: string;
+  /** Utilisateur courant — droit d'édition des PV sur ses propres jetons. */
+  userId: string;
+  /** Membres de la campagne (sélecteur de propriétaire, côté MJ). */
+  members: VttMember[];
   /** État persisté — null = scène neuve. */
   initialScene?: SceneState | null;
 }

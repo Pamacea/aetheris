@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { VTT_BAR_CLS } from "./bars";
+import { resolveMapUrl } from "./helpers";
 import type { GridSettings, GridType } from "./types";
 
 interface VttGridBarProps {
@@ -22,11 +23,20 @@ export function VttGridBar({
   objectUrlRef,
   onFileChange,
 }: VttGridBarProps) {
-  const [urlDraft, setUrlDraft] = useState("");
+  // Carte distante persistée affichée (le blob: de l'upload reste local).
+  const [urlDraft, setUrlDraft] = useState(() =>
+    mapUrl && !mapUrl.startsWith("blob:") ? mapUrl : "",
+  );
+  const [urlError, setUrlError] = useState(false);
   const applyUrl = (e: React.FormEvent) => {
     e.preventDefault();
-    const url = urlDraft.trim();
-    if (!url) return;
+    // http(s) absolu uniquement — le reste (blob:, javascript:, relatif) est rejeté.
+    const url = resolveMapUrl(urlDraft);
+    if (!url) {
+      setUrlError(true);
+      return;
+    }
+    setUrlError(false);
     if (objectUrlRef.current) {
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
@@ -47,13 +57,21 @@ export function VttGridBar({
         <input
           className="input w-56 py-1 text-xs"
           value={urlDraft}
-          onChange={(e) => setUrlDraft(e.target.value)}
+          onChange={(e) => {
+            setUrlDraft(e.target.value);
+            setUrlError(false);
+          }}
           placeholder="https://…/carte.png"
           aria-label="URL de la carte"
         />
         <button type="submit" className="btn px-2 py-1 text-xs">
           Charger
         </button>
+        {urlError && (
+          <span role="alert" className="text-[0.65rem] text-destructive">
+            URL http(s) invalide
+          </span>
+        )}
       </form>
       {mapUrl && (
         <button

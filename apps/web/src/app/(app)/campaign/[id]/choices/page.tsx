@@ -11,7 +11,7 @@ import { ChoicesApp, type ChoiceView } from "@/features/choices/choices-app";
  */
 export default async function ChoicesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { member } = await requireCampaignPage(id);
+  const { member } = await requireCampaignPage(id, "choices");
   const isGM = member.role === "GM";
 
   const rows = await prisma.playerChoice.findMany({

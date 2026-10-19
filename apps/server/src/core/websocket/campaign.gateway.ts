@@ -10,8 +10,9 @@ import {
 import { Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Server, Socket } from "socket.io";
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 import {
+  ambianceStateSchema,
   campaignJoinSchema,
   chatMessageSchema,
   chatSendSchema,
@@ -58,6 +59,17 @@ function parseWs<T>(schema: ZodType<T>, raw: unknown): T {
   }
   return result.data;
 }
+
+/** C→S : relais d'état d'ambiance (persisté côté Next par server action). */
+const ambianceStateRelaySchema = z.object({
+  campaignId: z.uuid(),
+  state: ambianceStateSchema,
+});
+
+/** C→S : invalidation « liste des playlists modifiée » (refresh des vues). */
+const ambiancePlaylistsChangedSchema = z.object({
+  campaignId: z.uuid(),
+});
 
 /**
  * Gateway Socket.io — rooms par campagne (`campaign:${id}`).
@@ -316,6 +328,50 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     return { ok: true };
   }
 
+  /**
+   * Relais de l'état d'ambiance (lecture synchronisée) : le MJ a déjà
+   * persisté (server action) puis notifie — le gateway re-vérifie
+   * l'adhésion (MJ exigé, la lecture est pilotée par le MJ) et rejoue
+   * l'état dans la room, sans toucher à la donnée.
+   */
+  @SubscribeMessage("ambiance:state")
+  async ambianceState(
+    @MessageBody() raw: unknown,
+    @ConnectedSocket() socket: Socket,
+  ): Promise<{ ok: true } | undefined> {
+    const { campaignId, state } = parseWs(ambianceStateRelaySchema, raw);
+    const data = await this.requireAuth(socket);
+    if (!data.userId) throw new WsException("Non authentifié");
+    if (!data.campaigns?.includes(campaignId)) {
+      throw new WsException("Room non rejointe");
+    }
+    if (!this.allowEvent(socket, "ambiance:state", 5)) return undefined;
+    await this.requireMember(socket, campaignId, { gmOnly: true });
+
+    socket.to(`campaign:${campaignId}`).emit("ambiance:state", { campaignId, state });
+    return { ok: true };
+  }
+
+  /** Liste des playlists d'ambiance modifiée : invalidation dans la room
+   *  (les vues server fraîches sont relues par chaque client). */
+  @SubscribeMessage("ambiance:playlists-changed")
+  async ambiancePlaylistsChanged(
+    @MessageBody() raw: unknown,
+    @ConnectedSocket() socket: Socket,
+  ): Promise<{ ok: true } | undefined> {
+    const { campaignId } = parseWs(ambiancePlaylistsChangedSchema, raw);
+    const data = await this.requireAuth(socket);
+    if (!data.userId) throw new WsException("Non authentifié");
+    if (!data.campaigns?.includes(campaignId)) {
+      throw new WsException("Room non rejointe");
+    }
+    if (!this.allowEvent(socket, "ambiance:playlists-changed", 5)) return undefined;
+    await this.requireMember(socket, campaignId);
+
+    socket.to(`campaign:${campaignId}`).emit("ambiance:playlists-changed", { campaignId });
+    return { ok: true };
+  }
+
   /** Déplacement de token (drag) : broadcast aux AUTRES clients de la room. */
   @SubscribeMessage("token:move")
   async tokenMove(@MessageBody() raw: unknown, @ConnectedSocket() socket: Socket): Promise<void> {
@@ -377,7 +433,31 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
       throw new WsException("Room non rejointe");
     }
     if (!this.allowEvent(socket, "scene:commit", 10)) return undefined;
-    await this.requireMember(socket, campaignId);
+    const member = await this.requireMember(socket, campaignId);
+
+    // Commit = state complet : un joueur ne peut toucher qu'aux champs
+    // (PV/CA/propriétaire) des jetons dont il est propriétaire.
+    if (member.role !== "GM") {
+      const prev = await this.prisma.vttScene.findUnique({
+        where: { campaignId },
+        select: { state: true },
+      });
+      const prevTokens = new Map<string, Record<string, unknown>>(
+        ((prev?.state as { tokens?: Record<string, unknown>[] } | null)?.tokens ?? []).map((t) => [
+          String(t.id),
+          t,
+        ]),
+      );
+      for (const t of state.tokens ?? []) {
+        const old = prevTokens.get(String(t.id));
+        if (!old) throw new WsException("Création de jeton réservée au MJ");
+        const touched =
+          t.hp !== old.hp || t.hpMax !== old.hpMax || t.ac !== old.ac || t.ownerId !== old.ownerId;
+        if (touched && old.ownerId !== data.userId) {
+          throw new WsException("Jeton non modifiable");
+        }
+      }
+    }
 
     this.scheduleScenePersist(campaignId, state);
     socket.to(`campaign:${campaignId}`).emit("scene:state", state);

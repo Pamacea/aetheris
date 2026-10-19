@@ -1,17 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { createWikiEntry } from "./actions";
 import { fold } from "@/lib/text";
-import type { WikiActiveEntry, WikiEntryMeta } from "./types";
+import type { WikiActiveEntry, WikiEntryMeta, WikiTemplateMeta } from "./types";
 
 /**
- * Panneau gauche (pattern « entrées ») : recherche, création,
- * dossiers + liste des entrées du wiki.
+ * Panneau gauche (pattern « entrées ») : recherche, création
+ * (avec choix d'un template), dossiers + liste des entrées du wiki.
  */
 export function EntriesPanel({
   campaignId,
   entries,
+  templates,
   isGM,
   active,
   newOpen,
@@ -20,6 +22,7 @@ export function EntriesPanel({
 }: {
   campaignId: string;
   entries: WikiEntryMeta[];
+  templates: WikiTemplateMeta[];
   isGM: boolean;
   active: WikiActiveEntry | null;
   newOpen: boolean;
@@ -29,6 +32,7 @@ export function EntriesPanel({
   const [query, setQuery] = useState("");
   const [title, setTitle] = useState("");
   const [folder, setFolder] = useState("");
+  const [templateId, setTemplateId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
@@ -37,6 +41,7 @@ export function EntriesPanel({
     const res = await createWikiEntry(campaignId, {
       title: title.trim(),
       ...(folder.trim() ? { folder: folder.trim() } : {}),
+      ...(templateId ? { templateId } : {}),
     });
     if (!res.ok) {
       setError(res.error);
@@ -46,6 +51,7 @@ export function EntriesPanel({
     setNewOpen(false);
     setTitle("");
     setFolder("");
+    setTemplateId("");
     await selectEntry(res.id);
   }
 
@@ -109,6 +115,27 @@ export function EntriesPanel({
                 <option key={f} value={f} />
               ))}
             </datalist>
+            <select
+              className="input py-1 text-sm"
+              name="entree-template"
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value)}
+            >
+              <option value="">Note libre (sans template)</option>
+              {[...new Set(templates.map((t) => t.category ?? ""))]
+                .sort((a, b) => a.localeCompare(b, "fr"))
+                .map((cat) => (
+                  <optgroup key={cat || "__none"} label={cat || "Sans catégorie"}>
+                    {templates
+                      .filter((t) => (t.category ?? "") === cat)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+            </select>
             {error && <p className="text-xs text-destructive">{error}</p>}
             <button type="submit" className="btn btn-primary py-1 text-xs">
               Créer
@@ -118,6 +145,14 @@ export function EntriesPanel({
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2">
+        {isGM && (
+          <Link
+            href={`/campaign/${campaignId}/wiki/templates`}
+            className="mb-3 block border-l-2 border-transparent px-2 py-1.5 text-sm text-muted hover:border-accent hover:text-foreground"
+          >
+            Modèles ({templates.length})
+          </Link>
+        )}
         {grouped.size === 0 && (
           <p className="p-3 text-xs text-muted">{query ? "Aucun résultat." : "Aucune entrée."}</p>
         )}

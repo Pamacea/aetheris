@@ -1,12 +1,10 @@
-import { notFound } from "next/navigation";
-import { requireCampaignMember } from "@/lib/campaign-server";
 import { prisma } from "@/lib/prisma";
+import { requireCampaignPage } from "@/features/campaigns/require-member";
 import { GraphClient } from "@/features/graph/GraphClient";
 
 export default async function GraphPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const member = await requireCampaignMember(id);
-  if (!member) notFound();
+  await requireCampaignPage(id, "graph");
 
   const [entities, links] = await Promise.all([
     prisma.entity.findMany({

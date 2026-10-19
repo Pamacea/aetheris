@@ -18,7 +18,7 @@ export type { VttTool, GridType, GridSettings, TokenState, WallLine } from "./ty
  * (`scene:state` / `scene:commit`), barres d'outils et canvas PixiJS.
  * Le rendu Pixi vit dans `scene.ts` (liaison via `VttBridge`).
  */
-export function VttApp({ isGM, campaignId, initialScene = null }: VttAppProps) {
+export function VttApp({ isGM, campaignId, userId, members, initialScene = null }: VttAppProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<VttApi | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -99,6 +99,8 @@ export function VttApp({ isGM, campaignId, initialScene = null }: VttAppProps) {
         setTokenNum={setTokenNum}
         deleteToken={deleteToken}
         apiRef={apiRef}
+        userId={userId}
+        members={members}
       />
       <VttStage tool={st.tool} containerRef={containerRef} />
     </div>
