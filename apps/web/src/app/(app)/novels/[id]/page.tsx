@@ -32,7 +32,7 @@ export default async function NovelPage({ params }: { params: Promise<{ id: stri
   const hasPublicContent = isOwner || novel.status === "published" || publishedCount > 0;
 
   return (
-    <div className="bar flex flex-1 flex-col gap-8 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-8 py-12">
       <nav className="flex items-center gap-2 text-xs text-muted">
         <Link href="/novels" className="flex items-center gap-1 hover:text-accent">
           <IconChevronLeft className="h-3 w-3" />

@@ -33,15 +33,13 @@ export default async function MacrosPage({ params }: { params: Promise<{ id: str
             <Link href={`/campaign/${id}`} className="hover:text-accent">
               ← Campagne
             </Link>
-            <span>/</span>
-            <span className="text-foreground">Constructeur de macros</span>
           </nav>
           <span className="text-[0.65rem] tracking-widest text-muted uppercase">
             {member.role === "GM" ? "Mode MJ" : "Mode joueur"}
           </span>
         </div>
 
-        <div className="bar flex flex-1 flex-col gap-4 overflow-y-auto py-8">
+        <div className="w-full px-6 flex flex-1 flex-col gap-4 overflow-y-auto py-8">
           <header>
             <h1 className="text-3xl tracking-wide">
               <span className="mark-tri" aria-hidden />

@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="bar flex flex-1 flex-col gap-10 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-10 py-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl tracking-wide">

@@ -59,8 +59,6 @@ export default async function FichesPage({ params }: { params: Promise<{ id: str
           <Link href={`/campaign/${id}`} className="hover:text-accent">
             ← Campagne
           </Link>
-          <span>/</span>
-          <span className="text-foreground">Fiches joueurs</span>
         </nav>
         <span className="text-[0.65rem] tracking-widest text-muted uppercase">
           {isGM ? "Mode MJ" : "Mode joueur"}

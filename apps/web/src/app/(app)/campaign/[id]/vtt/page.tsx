@@ -19,8 +19,6 @@ export default async function VttPage({ params }: { params: Promise<{ id: string
             <Link href={`/campaign/${id}`} className="hover:text-accent">
               ← Campagne
             </Link>
-            <span>/</span>
-            <span className="text-foreground">Table de jeu</span>
           </nav>
           <span className="text-[0.65rem] tracking-widest text-muted uppercase">
             {isGM ? "Mode MJ" : "Mode joueur"}

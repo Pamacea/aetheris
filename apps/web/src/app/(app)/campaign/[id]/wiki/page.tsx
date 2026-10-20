@@ -105,8 +105,6 @@ export default async function WikiPage({
           <Link href={`/campaign/${id}`} className="hover:text-accent">
             ← Campagne
           </Link>
-          <span>/</span>
-          <span className="text-foreground">Lore Wiki</span>
         </nav>
         <div className="flex items-center gap-2">
           {isGM && (

@@ -18,9 +18,9 @@ describe("selectFiches", () => {
       ],
       templates,
     );
-    expect(res.map((f) => [f.id, f.title, f.templateName])).toEqual([
-      ["e1", "Astrid", "Héros"],
-      ["e3", "Loup", "Bestiaire"],
+    expect(res.map((f) => [f.id, f.title, f.templateName, f.category])).toEqual([
+      ["e1", "Astrid", "Héros", null],
+      ["e3", "Loup", "Bestiaire", "Bestiaire"],
     ]);
   });
 

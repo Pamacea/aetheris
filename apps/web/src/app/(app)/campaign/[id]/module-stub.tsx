@@ -1,7 +1,7 @@
 /** Page provisoire des modules que personne ne reconstruit (protégés par requireCampaignPage). */
 export function ModuleStub({ title }: { title: string }) {
   return (
-    <div className="bar flex flex-1 flex-col gap-6 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-6 py-12">
       <h1 className="text-3xl tracking-wide">
         <span className="mark-tri" aria-hidden />
         {title}

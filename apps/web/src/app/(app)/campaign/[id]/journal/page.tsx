@@ -45,13 +45,11 @@ export default async function JournalPage({ params }: { params: Promise<{ id: st
   }));
 
   return (
-    <div className="bar flex flex-1 flex-col gap-6 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-6 py-12">
       <nav className="text-xs text-muted" aria-label="Fil d'ariane">
         <Link href={`/campaign/${id}`} className="hover:text-accent">
           ← Campagne
         </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">Journal de bord</span>
       </nav>
 
       <header>

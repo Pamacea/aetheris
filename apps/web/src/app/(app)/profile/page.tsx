@@ -8,7 +8,7 @@ export default async function ProfilePage() {
   if (!session) redirect("/login");
 
   return (
-    <div className="bar flex flex-1 flex-col gap-8 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-8 py-12">
       <header>
         <h1 className="text-3xl tracking-wide">
           <span className="mark-tri" aria-hidden />

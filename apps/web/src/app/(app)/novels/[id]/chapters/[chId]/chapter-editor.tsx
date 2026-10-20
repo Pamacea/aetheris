@@ -46,7 +46,7 @@ export function ChapterEditor({
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="bar flex flex-wrap items-center gap-3 pt-8 pb-4">
+      <header className="w-full px-6 flex flex-wrap items-center gap-3 pt-8 pb-4">
         <Link href={`/novels/${novelId}`} className="btn shrink-0 px-3 py-1.5 text-xs">
           <IconChevronLeft className="h-3 w-3" />
           {novelTitle}

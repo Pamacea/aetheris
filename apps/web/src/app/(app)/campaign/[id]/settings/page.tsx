@@ -40,17 +40,11 @@ export default async function CampaignSettingsPage({
   if (!campaign) notFound();
 
   return (
-    <div className="bar flex flex-1 flex-col gap-6 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-6 py-12">
       <nav className="text-xs text-muted" aria-label="Fil d'ariane">
         <Link href={`/campaign/${id}`} className="hover:text-accent">
           ← Campagne
         </Link>
-        <span className="mx-2">/</span>
-        <Link href={`/campaign/${id}`} className="text-foreground hover:text-accent">
-          {campaign.title}
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">Réglages</span>
       </nav>
 
       <header>

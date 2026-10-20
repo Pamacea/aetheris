@@ -31,12 +31,6 @@ export default async function TemplatesPage({ params }: { params: Promise<{ id: 
           <Link href={`/campaign/${id}`} className="hover:text-accent">
             ← Campagne
           </Link>
-          <span>/</span>
-          <Link href={`/campaign/${id}/wiki`} className="hover:text-accent">
-            Lore Wiki
-          </Link>
-          <span>/</span>
-          <span className="text-foreground">Modèles</span>
         </nav>
         <span className="text-[0.65rem] tracking-widest text-muted uppercase">
           {isGM ? "Mode MJ" : "Mode joueur"}

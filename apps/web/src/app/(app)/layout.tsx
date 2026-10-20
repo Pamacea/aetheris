@@ -6,13 +6,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <nav className="sticky top-0 z-40 border-b border-border bg-card/85 backdrop-blur">
-        <div className="bar flex items-center justify-between gap-4 py-3">
+        <div className="w-full px-6 flex items-center justify-between gap-4 py-3">
           <Link
             href="/dashboard"
+            aria-label="Aetheris"
             className="shrink-0 text-sm font-semibold tracking-[0.2em] uppercase"
           >
             <span className="mark-tri" aria-hidden />
-            Aetheris
+            <span className="hidden sm:inline">Aetheris</span>
           </Link>
 
           <TopNav />

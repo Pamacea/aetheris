@@ -4,6 +4,8 @@ export type FicheRow = {
   id: string;
   title: string;
   templateName: string;
+  /** Catégorie du template (sous-onglets du module), null si non renseignée. */
+  category: string | null;
   schemaRaw: unknown;
   data: Record<string, unknown>;
 };
@@ -32,6 +34,7 @@ export function selectFiches(entities: EntityRow[], templates: WikiTemplateMeta[
         id: e.id,
         title: e.title,
         templateName: template.name,
+        category: template.category,
         schemaRaw: template.schema,
         data: withoutBlocks(e.data),
       },

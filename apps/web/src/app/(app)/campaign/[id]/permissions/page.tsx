@@ -33,7 +33,7 @@ export default async function PermissionsPage({ params }: { params: Promise<{ id
   if (!campaign) notFound();
 
   return (
-    <div className="bar flex flex-1 flex-col gap-8 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-8 py-12">
       <nav className="text-xs text-muted" aria-label="Fil d'ariane">
         <Link href="/dashboard" className="hover:text-accent">
           Campagnes
@@ -42,8 +42,6 @@ export default async function PermissionsPage({ params }: { params: Promise<{ id
         <Link href={`/campaign/${id}`} className="hover:text-accent">
           {campaign.title}
         </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">Permissions</span>
       </nav>
 
       <header>

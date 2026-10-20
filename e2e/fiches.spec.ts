@@ -30,9 +30,8 @@ test("fiches : template → entité → édition avec autosave", async ({ page }
 
   // 3. Page Fiches : la fiche apparaît, s'édite, autosave membre.
   await page.goto(`${path}/fiches`);
-  await expect(page.getByRole("navigation", { name: "Fil d'ariane" })).toContainText(
-    "Fiches joueurs",
-  );
+  // Le fil ne garde que le retour campagne (le module vit dans la top bar).
+  await expect(page.getByRole("navigation", { name: "Fil d'ariane" })).toContainText("Campagne");
   await page.getByRole("button", { name: ficheTitle }).click();
   await expect(page.getByText(/Fiche · 1 champ/)).toBeVisible();
   await page.getByLabel(/Texte court/).fill("Valkyrie");

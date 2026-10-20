@@ -31,7 +31,7 @@ export default async function CampaignHubPage({ params }: { params: Promise<{ id
   if (!campaign) notFound();
 
   return (
-    <div className="bar flex flex-1 flex-col gap-8 py-12">
+    <div className="w-full px-6 flex flex-1 flex-col gap-8 py-12">
       <nav className="text-xs text-muted" aria-label="Fil d'ariane">
         <Link href="/dashboard" className="hover:text-accent">
           Campagnes

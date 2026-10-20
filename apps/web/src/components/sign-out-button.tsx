@@ -8,6 +8,7 @@ export function SignOutButton({ className }: { className?: string }) {
   return (
     <button
       type="button"
+      aria-label="Se déconnecter"
       onClick={async () => {
         await signOut();
         router.push("/");
@@ -15,7 +16,9 @@ export function SignOutButton({ className }: { className?: string }) {
       }}
       className={className ?? "btn"}
     >
-      Se déconnecter
+      {/* Compact sous md : la top bar mobile laisse la place aux modules. */}
+      <span className="md:hidden">Sortir</span>
+      <span className="hidden md:inline">Se déconnecter</span>
     </button>
   );
 }

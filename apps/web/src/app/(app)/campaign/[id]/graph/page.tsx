@@ -20,13 +20,11 @@ export default async function GraphPage({ params }: { params: Promise<{ id: stri
   ]);
 
   return (
-    <div style={{ width: "min(100% - 3rem, 72rem)", marginInline: "auto" }}>
+    <div className="w-full px-6">
       <nav className="mt-5 text-xs text-muted" aria-label="Fil d'ariane">
         <Link href={`/campaign/${id}`} className="hover:text-accent">
           ← Campagne
         </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">Graphe de relations</span>
       </nav>
       <h1 style={{ marginBlock: "1.25rem 1rem", fontSize: "1.35rem" }}>
         <span className="mark-tri" aria-hidden />

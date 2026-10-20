@@ -10,6 +10,8 @@ type View =
   | { kind: "detail"; id: string }
   | { kind: "form"; editingId?: string };
 
+type Filtre = "tous" | "partages" | "brouillons";
+
 /**
  * Journal de bord : handouts (titre, contenu, image, partage) du MJ.
  * Pas de temps réel — server actions + `router.refresh()` suffisent.
@@ -31,6 +33,7 @@ export function JournalApp({
   const [content, setContent] = useState("");
   const [shared, setShared] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filtre, setFiltre] = useState<Filtre>("tous");
   const [pending, startTransition] = useTransition();
 
   /** Après chaque mutation réussie : la page serveur est rechargée. */
@@ -235,11 +238,41 @@ export function JournalApp({
   }
 
   // ── Liste ────────────────────────────────────────────────────────
+  // Les joueurs n'ont qu'une cohorte (déjà filtrée serveur) : pas d'onglets.
+  const listees = isGM
+    ? entries.filter((e) => filtre === "tous" || (filtre === "partages" ? e.shared : !e.shared))
+    : entries;
+
   return (
     <div className="flex flex-col gap-4">
+      {isGM && (
+        <nav aria-label="Filtres du journal" className="flex flex-wrap items-center gap-1">
+          {(
+            [
+              ["tous", "Tous"],
+              ["partages", "Partagés"],
+              ["brouillons", "Brouillons"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFiltre(id)}
+              aria-current={filtre === id ? "page" : undefined}
+              className={
+                filtre === id
+                  ? "btn btn-primary px-3 py-1.5 text-xs"
+                  : "btn border-transparent px-3 py-1.5 text-xs text-muted hover:text-foreground"
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
       <p className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
         <span>
-          {entries.length} handout{entries.length > 1 ? "s" : ""}
+          {listees.length} handout{listees.length > 1 ? "s" : ""}
           {!isGM && " partagés"}
         </span>
         {isGM && (
@@ -249,15 +282,17 @@ export function JournalApp({
         )}
       </p>
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {entries.length === 0 ? (
+      {listees.length === 0 ? (
         <p className="panel p-6 text-center text-sm text-muted">
-          {isGM
-            ? "Aucun handout — créez le premier (texte + image) pour le partager aux joueurs."
-            : "Le MJ n'a encore rien partagé."}
+          {!isGM
+            ? "Le MJ n'a encore rien partagé."
+            : entries.length === 0
+              ? "Aucun handout — créez le premier (texte + image) pour le partager aux joueurs."
+              : "Aucun handout dans ce filtre."}
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {entries.map((e) => (
+          {listees.map((e) => (
             <li key={e.id}>
               <button
                 type="button"
