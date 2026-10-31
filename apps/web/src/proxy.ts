@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Rate-limit en mémoire sur `/api/auth/*` (inscription, connexion, OAuth).
  * Sans nouvelle dépendance : fenêtre glissante ip → horodatages.
- * Next 16 a renommé `middleware` en `proxy` (déprécié, toujours lu) :
- * renommer en `src/proxy.ts` + `export function proxy` au prochain passage.
+ * Next 16 : `middleware` est remplacé par `proxy`, qui tourne en Node.js
+ * (obligatoire sur Vercel Services, où l'Edge Runtime est refusé).
  *
  * shortcut: quota unique (pas de cloisonnement sign-in / découverte de
  * compte) et stockage par process — remis à zéro au redémarrage, inutile
@@ -48,7 +48,7 @@ const SESSION_COOKIES = [
 ];
 const PROTECTED_PREFIXES = ["/dashboard", "/novels", "/profile"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
