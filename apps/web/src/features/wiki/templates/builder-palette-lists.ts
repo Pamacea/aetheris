@@ -15,41 +15,20 @@ export const LISTES_GROUP: { title: string; items: PaletteItem[] } = {
     {
       key: "list-inventaire",
       label: "Inventaire",
-      hint: "Nom, quantité, poids…",
-      make: (id) => ({
-        ...makeField("list", id, "Inventaire"),
-        columns: [
-          { id: "nom", label: "Nom", type: "text" },
-          { id: "quantite", label: "Quantité", type: "number" },
-          { id: "poids", label: "Poids", type: "number" },
-        ],
-      }),
+      hint: "Fiches liées, quantité, poids, objets équipés…",
+      make: (id) => makeField("inventory", id, "Inventaire"),
     },
     {
       key: "list-sorts",
       label: "Sorts",
-      hint: "Nom, niveau, école…",
-      make: (id) => ({
-        ...makeField("list", id, "Sorts"),
-        columns: [
-          { id: "nom", label: "Nom", type: "text" },
-          { id: "niveau", label: "Niveau", type: "number" },
-          { id: "ecole", label: "École", type: "text" },
-        ],
-      }),
+      hint: "Fiches liées, coût, recharge, dégâts, passif…",
+      make: (id) => makeField("ability", id, "Sorts"),
     },
     {
       key: "list-competences",
       label: "Compétences",
-      hint: "Nom, valeur, maîtrise…",
-      make: (id) => ({
-        ...makeField("list", id, "Compétences"),
-        columns: [
-          { id: "nom", label: "Nom", type: "text" },
-          { id: "valeur", label: "Valeur", type: "number" },
-          { id: "maitrise", label: "Maîtrise", type: "text" },
-        ],
-      }),
+      hint: "Fiches liées, coût, modificateur passif…",
+      make: (id) => makeField("ability", id, "Compétences"),
     },
   ],
 };

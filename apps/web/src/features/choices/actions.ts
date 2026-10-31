@@ -3,6 +3,7 @@
 import { createChoiceSchema, resolveChoiceSchema, voteChoiceSchema } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
+import { canViewModule } from "@/lib/grants";
 import { choiceSelect, toChoiceView, type ChoiceView } from "./choice-view";
 import { clampOptionIndex, parseOptions } from "./vote-logic";
 
@@ -88,6 +89,10 @@ export async function castVote(
 
   const ctx = await requireChoice(campaignId, choiceId);
   if (!ctx) return invalid("Non connecté ou choix introuvable.");
+  // La page filtre déjà, mais un module masqué doit aussi refuser l'écriture.
+  if (!canViewModule(ctx.member.permissions, "choices", ctx.member.role)) {
+    return invalid("Module Choix désactivé.");
+  }
   if (ctx.choice.status !== "open") return invalid("Ce choix est clôturé.");
 
   const resolved = resolveIndex(parsed.data.optionIndex, ctx.choice.options);

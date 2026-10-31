@@ -2,7 +2,8 @@ import { Sprite, Texture } from "pixi.js";
 import { applyTokens } from "./apply";
 import { area, redrawDraft, redrawGrid, redrawWalls } from "./draw";
 import { scheduleFog } from "./fog";
-import { type VttApi, type VttBridge, type VttSceneCtx } from "./types";
+import { newId } from "./helpers";
+import { type VttApi, type VttBridge, type VttSceneCtx, type WallLine } from "./types";
 
 /**
  * API exposée à React (`apiRef`) : chaque appel répercute un setter d'état
@@ -65,20 +66,29 @@ export function buildVttApi(
     setWalls(list) {
       if (list === ctx.wallStates) return;
       ctx.wallStates = list;
-      redrawWalls(ctx.wallGfx, list);
+      // Sélection orpheline (mur supprimé) : le rendu n'a plus rien à surligner.
+      if (ctx.wallSelection && !list.some((w) => w.id === ctx.wallSelection?.wallId)) {
+        ctx.wallSelection = null;
+      }
+      redrawWalls(ctx.wallGfx, list, ctx.isGM, ctx.wallSelection);
       scheduleFog(ctx);
+    },
+    setWallSelection(sel) {
+      ctx.wallSelection = sel;
+      redrawWalls(ctx.wallGfx, ctx.wallStates, ctx.isGM, sel);
     },
     setFog(on, cells) {
       ctx.fogEnabled = on;
       ctx.sightCells = cells;
       scheduleFog(ctx);
     },
-    finishDraft() {
+    finishDraft(type) {
       if (ctx.draft.length >= 2) {
-        const next = [...ctx.wallStates, [...ctx.draft]];
+        const wall: WallLine = { id: newId(), type, points: [...ctx.draft] };
+        const next = [...ctx.wallStates, wall];
         ctx.wallStates = next;
         bridge.setWalls(next);
-        redrawWalls(ctx.wallGfx, next);
+        redrawWalls(ctx.wallGfx, next, ctx.isGM, ctx.wallSelection);
         scheduleFog(ctx);
       }
       ctx.draft = [];

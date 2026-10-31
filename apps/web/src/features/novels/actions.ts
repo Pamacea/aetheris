@@ -1,15 +1,19 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
   createChapterSchema,
   createNovelSchema,
   saveChapterContentSchema,
+  setNovelShareSchema,
   updateChapterSchema,
   updateNovelSchema,
 } from "@aetheris/shared";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getNovelRole } from "./access";
 import { chapterStatusPatch, countDocWords, isPlainObject, isValidCoverImage } from "./logic";
 
 export type NovelActionResult = { ok: true; id: string } | { ok: false; error: string };
@@ -24,17 +28,19 @@ async function requireAuthor(): Promise<string | null> {
   return session?.user.id ?? null;
 }
 
-/** Vérifie que le roman appartient à l'utilisateur (toute mutation). */
-async function requireNovelOwner(userId: string, novelId: string): Promise<boolean> {
-  const novel = await prisma.novel.findFirst({
-    where: { id: novelId, authorId: userId },
-    select: { id: true },
-  });
-  return novel !== null;
+/** Vérifie que l'utilisateur peut éditer le roman (auteur ou collaborateur). */
+async function requireNovelEditor(userId: string, novelId: string): Promise<boolean> {
+  return (await getNovelRole(novelId, userId)) !== null;
+}
+
+/** Auteur seul : métadonnées, publication et suppression du roman. */
+async function requireNovelAuthor(userId: string, novelId: string): Promise<boolean> {
+  return (await getNovelRole(novelId, userId)) === "author";
 }
 
 function revalidateNovel(novelId: string): void {
   revalidatePath("/novels");
+  revalidatePath("/library");
   revalidatePath(`/novels/${novelId}`);
 }
 
@@ -43,6 +49,8 @@ function revalidateNovel(novelId: string): void {
 export async function createNovel(input: {
   title: string;
   synopsis?: string;
+  genre?: string | null;
+  tags?: string[];
 }): Promise<NovelActionResult> {
   const userId = await requireAuthor();
   if (!userId) return invalid("Non connecté.");
@@ -56,6 +64,8 @@ export async function createNovel(input: {
     data: {
       title: parsed.data.title,
       synopsis: parsed.data.synopsis ?? null,
+      genre: parsed.data.genre ?? null,
+      tags: parsed.data.tags ?? [],
       authorId: userId,
     },
     select: { id: true },
@@ -72,11 +82,13 @@ export async function updateNovel(
     synopsis?: string | null;
     status?: "draft" | "writing" | "published";
     coverImage?: string | null;
+    genre?: string | null;
+    tags?: string[];
   },
 ): Promise<NovelActionResult> {
   const userId = await requireAuthor();
   if (!userId) return invalid("Non connecté.");
-  if (!(await requireNovelOwner(userId, novelId))) return invalid("Roman introuvable.");
+  if (!(await requireNovelAuthor(userId, novelId))) return invalid("Roman introuvable.");
 
   const parsed = updateNovelSchema.safeParse(input);
   if (!parsed.success) {
@@ -101,7 +113,7 @@ export async function createChapter(
 ): Promise<NovelActionResult> {
   const userId = await requireAuthor();
   if (!userId) return invalid("Non connecté.");
-  if (!(await requireNovelOwner(userId, novelId))) return invalid("Roman introuvable.");
+  if (!(await requireNovelEditor(userId, novelId))) return invalid("Roman introuvable.");
 
   const parsed = createChapterSchema.safeParse(input);
   if (!parsed.success) {
@@ -129,7 +141,12 @@ export async function updateChapter(
 ): Promise<NovelActionResult> {
   const userId = await requireAuthor();
   if (!userId) return invalid("Non connecté.");
-  if (!(await requireNovelOwner(userId, novelId))) return invalid("Roman introuvable.");
+  const role = await getNovelRole(novelId, userId);
+  if (!role) return invalid("Roman introuvable.");
+  // L'éditeur écrit ; seul l'auteur publie ou dépublie un chapitre.
+  if (input.status !== undefined && role !== "author") {
+    return invalid("Publication réservée à l'auteur.");
+  }
 
   const parsed = updateChapterSchema.safeParse(input);
   if (!parsed.success) {
@@ -162,7 +179,7 @@ export async function deleteChapter(
 ): Promise<NovelActionResult> {
   const userId = await requireAuthor();
   if (!userId) return invalid("Non connecté.");
-  if (!(await requireNovelOwner(userId, novelId))) return invalid("Roman introuvable.");
+  if (!(await requireNovelAuthor(userId, novelId))) return invalid("Roman introuvable.");
 
   const owned = await prisma.chapter.findFirst({
     where: { id: chapterId, novelId },
@@ -192,7 +209,7 @@ export async function reorderChapters(
 ): Promise<NovelActionResult> {
   const userId = await requireAuthor();
   if (!userId) return invalid("Non connecté.");
-  if (!(await requireNovelOwner(userId, novelId))) return invalid("Roman introuvable.");
+  if (!(await requireNovelEditor(userId, novelId))) return invalid("Roman introuvable.");
 
   const chapters = await prisma.chapter.findMany({
     where: { novelId },
@@ -223,7 +240,7 @@ export async function saveChapterContent(
 ): Promise<NovelActionResult> {
   const userId = await requireAuthor();
   if (!userId) return invalid("Non connecté.");
-  if (!(await requireNovelOwner(userId, novelId))) return invalid("Roman introuvable.");
+  if (!(await requireNovelEditor(userId, novelId))) return invalid("Roman introuvable.");
 
   const parsed = saveChapterContentSchema.safeParse(input);
   if (!parsed.success) {
@@ -246,4 +263,94 @@ export async function saveChapterContent(
   });
 
   return { ok: true, id: chapterId };
+}
+
+// ───────────────────────── Partage ─────────────────────────
+
+export type NovelShareResult = { ok: true; token: string | null } | { ok: false; error: string };
+
+/**
+ * Active, change de mode ou révoque le lien de partage.
+ * Réservé à l'auteur : un éditeur ne gère pas les droits du roman.
+ */
+export async function setNovelShare(
+  novelId: string,
+  mode: "read" | "review" | "edit" | null,
+): Promise<NovelShareResult> {
+  const userId = await requireAuthor();
+  if (!userId) return { ok: false, error: "Non connecté." };
+
+  const parsed = setNovelShareSchema.safeParse({ mode });
+  if (!parsed.success) return { ok: false, error: "Mode de partage invalide." };
+  const nextMode = parsed.data.mode;
+
+  const novel = await prisma.novel.findFirst({
+    where: { id: novelId, authorId: userId },
+    select: { id: true, shareToken: true, shareMode: true },
+  });
+  if (!novel) return { ok: false, error: "Roman introuvable." };
+
+  if (nextMode === null) {
+    await prisma.novel.update({
+      where: { id: novelId },
+      data: { shareToken: null, shareMode: null },
+    });
+    // Révoquer le lien retire aussi les accès qu'il a accordés.
+    await prisma.novelCollaborator.deleteMany({ where: { novelId } });
+    revalidatePath(`/novels/${novelId}`);
+    return { ok: true, token: null };
+  }
+
+  // Quitter le mode éditeur retire les rôles accordés par le lien.
+  if (nextMode !== "edit") {
+    await prisma.novelCollaborator.deleteMany({ where: { novelId } });
+  }
+
+  // Un token de lecture déjà distribué ne doit jamais devenir une invitation à écrire.
+  if (novel.shareToken && (nextMode !== "edit" || novel.shareMode === "edit")) {
+    await prisma.novel.update({ where: { id: novelId }, data: { shareMode: nextMode } });
+    revalidatePath(`/shared/novel/${novel.shareToken}`, "layout");
+    revalidatePath(`/novels/${novelId}`);
+    return { ok: true, token: novel.shareToken };
+  }
+
+  // Boucle courte : une collision de token unique (P2002) est rejouée.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const token = randomBytes(9).toString("base64url");
+    try {
+      await prisma.novel.update({
+        where: { id: novelId },
+        data: { shareToken: token, shareMode: nextMode },
+      });
+      revalidatePath(`/shared/novel/${token}`, "layout");
+      revalidatePath(`/novels/${novelId}`);
+      return { ok: true, token };
+    } catch (e) {
+      if ((e as { code?: string }).code !== "P2002") throw e;
+    }
+  }
+  return { ok: false, error: "Impossible de générer un lien." };
+}
+
+/** Acceptation d'un lien « éditeur » : ajoute le collaborateur puis ouvre le roman. */
+export async function joinNovelAsEditor(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "").trim();
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const novel = await prisma.novel.findFirst({
+    where: { shareToken: token, shareMode: "edit" },
+    select: { id: true },
+  });
+  if (!novel) redirect("/library");
+
+  await prisma.novelCollaborator.upsert({
+    where: { novelId_userId: { novelId: novel.id, userId: session.user.id } },
+    create: { novelId: novel.id, userId: session.user.id, role: "editor" },
+    update: {},
+  });
+
+  revalidatePath(`/novels/${novel.id}`);
+  redirect(`/novels/${novel.id}`);
 }

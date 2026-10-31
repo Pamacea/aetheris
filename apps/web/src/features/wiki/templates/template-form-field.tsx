@@ -1,6 +1,7 @@
 import type { TemplateField } from "@aetheris/shared";
 import type { NoteDragPayload } from "./note-drop";
 import type { WikiNoteMeta } from "../types";
+import type { LinkedNote } from "./linked-notes";
 import { noteOver, notePayload, dropLink } from "./note-drop";
 import { fieldChrome, type FieldChrome, type FieldDice } from "./template-form-chrome";
 import {
@@ -20,6 +21,7 @@ import { JsField } from "./template-form-js-field";
 type FieldRuntime = {
   setValue: (id: string, v: unknown) => void;
   notes: WikiNoteMeta[];
+  linked: Record<string, LinkedNote>;
   categoryOf: (n: WikiNoteMeta) => string | null;
   numericScope: Record<string, number>;
   jsScope: Record<string, unknown>;
@@ -42,6 +44,7 @@ export function TemplateField({
   value,
   setValue,
   notes,
+  linked = {},
   categoryOf,
   numericScope,
   jsScope,
@@ -52,6 +55,7 @@ export function TemplateField({
   value: unknown;
   setValue: (id: string, v: unknown) => void;
   notes: WikiNoteMeta[];
+  linked?: Record<string, LinkedNote>;
   categoryOf: (n: WikiNoteMeta) => string | null;
   numericScope: Record<string, number>;
   jsScope: Record<string, unknown>;
@@ -62,6 +66,7 @@ export function TemplateField({
   const rt: FieldRuntime = {
     setValue,
     notes,
+    linked,
     categoryOf,
     numericScope,
     jsScope,
@@ -87,6 +92,8 @@ export function TemplateField({
         <MultiSelectField key={field.id} field={field} value={value} chrome={chrome} rt={rt} />
       );
     case "list":
+    case "ability":
+    case "inventory":
       return <ListField key={field.id} field={field} value={value} chrome={chrome} rt={rt} />;
     case "toggle":
       return <ToggleField key={field.id} field={field} value={value} chrome={chrome} rt={rt} />;

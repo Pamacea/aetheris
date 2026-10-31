@@ -33,6 +33,23 @@ describe("selectFiches", () => {
     expect(res[0]?.data).toEqual({ pv: 12 });
   });
 
+  it("transmet les joueurs assignés (liste vide si non assignée)", () => {
+    const res = selectFiches(
+      [
+        {
+          id: "e1",
+          title: "Astrid",
+          type: "tpl-1",
+          data: {},
+          assignees: [{ userId: "u1" }, { userId: "u2" }],
+        },
+        { id: "e2", title: "Loup", type: "tpl-2", data: {} },
+      ],
+      templates,
+    );
+    expect(res.map((f) => f.assigneeIds)).toEqual([["u1", "u2"], []]);
+  });
+
   it("retourne une liste vide sans template", () => {
     expect(selectFiches([{ id: "e1", title: "Astrid", type: "tpl-1", data: {} }], [])).toEqual([]);
   });

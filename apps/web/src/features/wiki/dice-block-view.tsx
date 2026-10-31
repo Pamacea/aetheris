@@ -2,24 +2,18 @@
 
 import { useState } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
-import { BlockDragHandle } from "./block-handle";
-import { BlockResizeEdges } from "./block-resize";
 import { deleteBlock } from "./blocks-scope";
 import { BlockScopeToggle } from "./blocks-scope-toggle";
-import { frameOf, frameStyle, isFloating, sizeTextCls } from "./blocks-frame";
 import { resolveJet } from "./jet";
 
 /**
- * Vue React d'un bloc « Jet de dés » : libellé + expression (`1d20+3`)
- * et lancement local. Le résultat n'est jamais persisté (rejouable à
- * volonté, aucun état serveur). Dimension à la souris par les bordures,
- * portée = petit bouton d'état MJ / ALL — édition MJ seulement.
+ * Vue d'un bloc « Jet de dés » : libellé + expression (`1d20+3`) et
+ * lancement local. Le résultat n'est jamais persisté (rejouable à volonté).
+ * Bloc dans le flux : aucune position absolue, aucune poignée.
  */
 export function DiceBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const { label, expr } = node.attrs as { label: string; expr: string };
-  const frame = frameOf(node.attrs);
   const editable = editor.isEditable;
-  const sizeCls = sizeTextCls(frame.size);
   const [result, setResult] = useState<{ total: number; detail: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,23 +30,19 @@ export function DiceBlockView({ node, updateAttributes, editor, getPos }: NodeVi
 
   return (
     <NodeViewWrapper
-      as="span"
+      as="div"
       contentEditable={false}
-      style={frameStyle(frame)}
-      className="my-1 group relative inline-flex flex-wrap items-center gap-2 border-l-2 border-accent bg-card px-2 py-1"
+      className="my-2 flex flex-wrap items-center gap-2 border-l-2 border-accent bg-card px-2 py-1.5"
     >
-      {editable && (
-        <BlockDragHandle editor={editor} updateAttributes={updateAttributes} frame={frame} />
-      )}
       <input
-        className={`input w-32 py-0.5 ${sizeCls}`}
+        className="input w-32 py-0.5 text-xs"
         aria-label="Libellé du jet"
         value={label}
         disabled={!editable}
         onChange={(e) => updateAttributes({ label: e.target.value })}
       />
       <input
-        className={`input w-36 py-0.5 font-mono ${sizeCls}`}
+        className="input w-36 py-0.5 font-mono text-xs"
         aria-label="Expression du jet (ex. 1d20+3)"
         value={expr}
         disabled={!editable}
@@ -72,16 +62,6 @@ export function DiceBlockView({ node, updateAttributes, editor, getPos }: NodeVi
       </output>
       {error && <span className="text-xs text-destructive">{error}</span>}
       {editable && <BlockScopeToggle editor={editor} getPos={getPos} />}
-      {editable && isFloating(frame) && (
-        <button
-          type="button"
-          className="btn px-1.5 py-0.5 text-xs"
-          title="Remettre le bloc dans le flux du texte"
-          onClick={() => updateAttributes({ x: null, y: null })}
-        >
-          Flux
-        </button>
-      )}
       {editable && (
         <button
           type="button"
@@ -92,9 +72,6 @@ export function DiceBlockView({ node, updateAttributes, editor, getPos }: NodeVi
         >
           ×
         </button>
-      )}
-      {editable && (
-        <BlockResizeEdges editor={editor} frame={frame} updateAttributes={updateAttributes} />
       )}
     </NodeViewWrapper>
   );

@@ -1,6 +1,9 @@
 import { templateSchemaSchema, type TemplateField, type TemplateFieldKind } from "@aetheris/shared";
 import type { WikiTemplateMeta } from "../types";
 
+/** Identifiant technique d'un champ (formules, synchro VTT). */
+export const FIELD_ID_RE = /^[a-z][a-z0-9_-]{0,63}$/;
+
 export const KIND_LABELS: Record<TemplateFieldKind, string> = {
   text: "Texte court",
   textarea: "Texte long",
@@ -9,12 +12,33 @@ export const KIND_LABELS: Record<TemplateFieldKind, string> = {
   select: "Liste",
   multiSelect: "Choix multiples",
   list: "Liste répétable",
+  ability: "Sort / compétence",
+  inventory: "Inventaire / équipement",
   toggle: "Interrupteur",
   tag: "Lien wiki",
   image: "Image",
   formula: "Formule",
   css: "CSS",
   js: "Code JS",
+};
+
+/** Glyphe monospace d'un type de champ (palette et lignes du builder). */
+export const KIND_GLYPHS: Record<TemplateFieldKind, string> = {
+  text: "Aa",
+  textarea: "¶",
+  number: "#",
+  counter: "±",
+  select: "▾",
+  multiSelect: "☰",
+  list: "▤",
+  ability: "✦",
+  inventory: "⚔",
+  toggle: "◑",
+  tag: "[[",
+  image: "▣",
+  formula: "ƒ",
+  css: "{}",
+  js: "JS",
 };
 
 /**
@@ -59,6 +83,55 @@ export function makeField(kind: TemplateFieldKind, id: string, label: string): T
         label,
         kind: "list",
         columns: [{ id: "colonne1", label: "Colonne", type: "text" }],
+      };
+    case "ability":
+      return {
+        id,
+        label,
+        kind: "ability",
+        columns: [
+          { id: "lien", label: "Fiche", type: "tag" },
+          { id: "nom", label: "Nom", type: "text" },
+          { id: "cout", label: "Coût", type: "number" },
+          { id: "recharge", label: "Recharge", type: "text" },
+          { id: "degats", label: "Dégâts / soin", type: "formula" },
+          { id: "actif", label: "Actif", type: "toggle" },
+          { id: "stat", label: "Stat modifiée", type: "text" },
+          { id: "mod", label: "Bonus", type: "number" },
+          {
+            id: "mod_type",
+            label: "Type de bonus",
+            type: "select",
+            options: [
+              { value: "flat", label: "Fixe" },
+              { value: "percent", label: "Pourcentage" },
+            ],
+          },
+        ],
+      };
+    case "inventory":
+      return {
+        id,
+        label,
+        kind: "inventory",
+        columns: [
+          { id: "lien", label: "Fiche", type: "tag" },
+          { id: "nom", label: "Objet", type: "text" },
+          { id: "quantite", label: "Quantité", type: "number" },
+          { id: "poids", label: "Poids", type: "number" },
+          { id: "equipe", label: "Équipé", type: "toggle" },
+          { id: "stat", label: "Stat modifiée", type: "text" },
+          { id: "mod", label: "Bonus", type: "number" },
+          {
+            id: "mod_type",
+            label: "Type de bonus",
+            type: "select",
+            options: [
+              { value: "flat", label: "Fixe" },
+              { value: "percent", label: "Pourcentage" },
+            ],
+          },
+        ],
       };
     case "toggle":
       return { id, label, kind: "toggle" };

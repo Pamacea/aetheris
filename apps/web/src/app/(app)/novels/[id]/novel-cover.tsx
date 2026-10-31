@@ -122,7 +122,7 @@ export function NovelCover({
                     e.preventDefault();
                     pick(e.dataTransfer.files[0]);
                   }}
-                  className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1 border border-dashed border-border px-4 py-6 text-center text-sm transition hover:bg-card-hover"
+                  className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-1 border border-dashed border-border px-4 py-6 text-center text-sm transition hover:bg-card-hover"
                 >
                   <input
                     type="file"

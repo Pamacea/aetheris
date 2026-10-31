@@ -97,3 +97,60 @@ export function isValidCoverImage(value: string | null | undefined): boolean {
   if (value.startsWith("http://") || value.startsWith("https://")) return value.length <= 2_048;
   return value.startsWith("data:image/") && value.length <= MAX_COVER_CHARS;
 }
+
+/** Genres proposés à la saisie (un genre inconnu déjà en base reste affiché). */
+export const NOVEL_GENRES = [
+  "Fantasy",
+  "Fantasy sombre",
+  "Science-fiction",
+  "Fantastique",
+  "Horreur",
+  "Thriller",
+  "Polar",
+  "Mystère",
+  "Romance",
+  "Aventure",
+  "Historique",
+  "Contemporain",
+  "Jeunesse",
+  "Young Adult",
+  "Poésie",
+  "Autre",
+] as const;
+
+/** Genres proposés : la liste connue d'abord, puis ceux trouvés en base. */
+export function mergeGenres(genres: (string | null)[]): string[] {
+  const known = new Set<string>(NOVEL_GENRES);
+  const extras = [...new Set(genres)]
+    .filter((g): g is string => Boolean(g) && !known.has(g!))
+    .sort((a, b) => a.localeCompare(b, "fr"));
+  return [...NOVEL_GENRES, ...extras];
+}
+
+/** Tags saisis en CSV → tableau normalisé (max 10, 40 caractères chacun). */
+export function parseTags(input: string): string[] {
+  const seen = new Set<string>();
+  for (const raw of input.split(",")) {
+    const tag = raw.trim();
+    if (tag && tag.length <= 40) seen.add(tag);
+    if (seen.size === 10) break;
+  }
+  return [...seen];
+}
+
+/** Rôle d'un utilisateur sur un roman : auteur ou collaborateur éditeur. */
+export type NovelRole = "author" | "editor";
+
+/** Lecture d'un roman : tout membre, ou n'importe qui si le roman est publié. */
+export function canReadNovel(role: NovelRole | null, novelStatus: string): boolean {
+  return role !== null || novelStatus === "published";
+}
+
+/** Lecture d'un chapitre : tout membre, ou publié dans un roman publié. */
+export function canReadChapter(
+  role: NovelRole | null,
+  novelStatus: string,
+  chapterStatus: string,
+): boolean {
+  return role !== null || (novelStatus === "published" && chapterStatus === "published");
+}

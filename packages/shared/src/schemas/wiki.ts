@@ -24,6 +24,7 @@ export type CreateWikiNoteInput = z.infer<typeof createWikiNoteSchema>;
 export const updateWikiNoteSchema = z.object({
   title: wikiTitleSchema.optional(),
   folder: wikiFolderSchema.nullable().optional(),
+  gmOnly: z.boolean().optional(),
 });
 export type UpdateWikiNoteInput = z.infer<typeof updateWikiNoteSchema>;
 

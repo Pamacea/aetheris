@@ -1,9 +1,9 @@
-import { findParentNodeClosestToPos, type Editor, type JSONContent } from "@tiptap/core";
+import { findParentNodeClosestToPos, type Editor } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 
 /** Nœuds de bloc manipulables par la palette (synchronisé avec extensions.ts). */
-const BLOCK_NODES = new Set(["metaBlock", "diceBlock", "tableBlock"]);
+const BLOCK_NODES = new Set(["diceBlock", "tableBlock"]);
 
 /** La position est déjà à l'intérieur d'un `<gm-secret>` (parent ou ancêtre). */
 export function isInsideGmSecret(state: EditorState, pos: number): boolean {
@@ -18,21 +18,6 @@ export function isInsideGmSecret(state: EditorState, pos: number): boolean {
 export function isBlockInGmSecret(state: EditorState, pos: number): boolean {
   const block = state.doc.resolve(pos).nodeAfter;
   return !!block && BLOCK_NODES.has(block.type.name) && isInsideGmSecret(state, pos);
-}
-
-/**
- * Contenu à insérer en `at` : portée MJ → enveloppé dans `<gm-secret>`, le
- * même filtre que `stripGmSecrets()` (lecture joueur + page publique).
- * shortcut: en dessous d'un secret existant, la portée MJ est déjà active.
- */
-export function scopedContent(
-  state: EditorState,
-  content: JSONContent,
-  gm: boolean,
-  at: number,
-): JSONContent {
-  if (!gm || isInsideGmSecret(state, at)) return content;
-  return { type: "gmSecret", content: [content, { type: "paragraph" }] };
 }
 
 /** Enveloppe le bloc désigné par `pos` — null si ce n'est pas un bloc ou s'il est déjà secret. */

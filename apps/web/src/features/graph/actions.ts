@@ -19,7 +19,7 @@ const deleteSchema = z.object({
   id: z.string().min(1),
 });
 
-/** Crée un lien entre 2 entités de la campagne (membre uniquement). */
+/** Crée un lien entre 2 entités de la campagne (MJ uniquement). */
 export async function createLink(input: unknown): Promise<LinkActionResult> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Données invalides." };
@@ -29,6 +29,7 @@ export async function createLink(input: unknown): Promise<LinkActionResult> {
 
   const member = await requireCampaignMember(campaignId);
   if (!member) return { ok: false, error: "Accès refusé." };
+  if (member.role !== "GM") return { ok: false, error: "Réservé aux MJ." };
 
   const count = await prisma.entity.count({
     where: { campaignId, id: { in: [fromEntityId, toEntityId] } },
@@ -52,7 +53,7 @@ export async function createLink(input: unknown): Promise<LinkActionResult> {
   return { ok: true };
 }
 
-/** Supprime un lien de la campagne (membre uniquement). */
+/** Supprime un lien de la campagne (MJ uniquement). */
 export async function deleteLink(input: unknown): Promise<LinkActionResult> {
   const parsed = deleteSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Données invalides." };
@@ -60,6 +61,7 @@ export async function deleteLink(input: unknown): Promise<LinkActionResult> {
 
   const member = await requireCampaignMember(campaignId);
   if (!member) return { ok: false, error: "Accès refusé." };
+  if (member.role !== "GM") return { ok: false, error: "Réservé aux MJ." };
 
   const link = await prisma.entityLink.findUnique({
     where: { id },

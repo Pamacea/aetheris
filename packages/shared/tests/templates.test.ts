@@ -2,7 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 // Import depuis dist/ : `node --test` ne réécrit pas les spécificateurs
 // `.js` → `.ts` ; le script `test` rebuild avant de lancer les tests.
-import { sanitizeFieldData, updateTemplateSchema } from "../dist/schemas/templates.js";
+import {
+  LIST_FIELD_DEFAULT_ROWS,
+  MAX_IMAGE_FIELD_CHARS,
+  TEXTAREA_FIELD_DEFAULT_ROWS,
+  cellsFree,
+  fieldLayout,
+  fieldSpan,
+  packFields,
+  sanitizeFieldData,
+  templateSchemaSchema,
+  updateTemplateSchema,
+} from "../dist/schemas/templates.js";
+import { TEMPLATE_PRESETS } from "../dist/schemas/template-presets.js";
+import { SYSTEM_GENRES } from "../dist/schemas/game-systems.js";
 
 function withRoll(roll: string) {
   return {
@@ -75,6 +88,7 @@ test("width/size acceptés sur tout kind, valeur hors enum refusée", () => {
       fields: [
         { id: "force", label: "Force", kind: "number", width: "sm", size: "sm" },
         { id: "nom", label: "Nom", kind: "text", width: "full", size: "md" },
+        { id: "rang", label: "Rang", kind: "text", width: "1/3" },
       ],
     },
   });
@@ -83,6 +97,131 @@ test("width/size acceptés sur tout kind, valeur hors enum refusée", () => {
     schema: { fields: [{ id: "force", label: "F", kind: "number", width: "xl" }] },
   });
   assert.equal(ko.success, false);
+});
+
+test("span/minHeight acceptés, bornes refusées", () => {
+  const ok = updateTemplateSchema.safeParse({
+    schema: { fields: [{ id: "t", label: "T", kind: "text", span: 5, minHeight: 120 }] },
+  });
+  assert.equal(ok.success, true);
+  for (const bad of [{ span: 0 }, { span: 13 }, { minHeight: 47 }]) {
+    const ko = updateTemplateSchema.safeParse({
+      schema: { fields: [{ id: "t", label: "T", kind: "text", ...bad }] },
+    });
+    assert.equal(ko.success, false, `rejet attendu pour ${JSON.stringify(bad)}`);
+  }
+});
+
+test("fieldSpan : span prime sur width, sinon largeur historique/défaut", () => {
+  assert.equal(fieldSpan({ span: 5, width: "full", kind: "text" }), 5);
+  assert.equal(fieldSpan({ width: "full", kind: "text" }), 12);
+  assert.equal(fieldSpan({ kind: "number" }), 3);
+});
+
+test("fieldLayout : défauts legacy et clamp des bornes", () => {
+  assert.deepEqual(fieldLayout({}), { x: 0, y: 0, w: 2, h: 2 });
+  assert.deepEqual(fieldLayout({ span: 5, minHeight: 120 }), { x: 0, y: 0, w: 5, h: 2 });
+  assert.deepEqual(fieldLayout({ span: 1 }), { x: 0, y: 0, w: 1, h: 2 });
+  assert.deepEqual(fieldLayout({ layout: { x: -3, y: -1, w: 99, h: 500 } }), {
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 199,
+  });
+  assert.deepEqual(fieldLayout({ layout: { x: 11, y: 250, w: 4, h: 1 } }), {
+    x: 8,
+    y: 197,
+    w: 4,
+    h: 2,
+  });
+  // Largeur minimale 1 conservée ; x borné à 12 - w.
+  assert.deepEqual(fieldLayout({ layout: { x: 11, y: 0, w: 1, h: 2 } }), {
+    x: 11,
+    y: 0,
+    w: 1,
+    h: 2,
+  });
+});
+
+test("updateTemplateSchema : customCss optionnel, borné, effaçable", () => {
+  assert.equal(updateTemplateSchema.safeParse({ customCss: ".x { color: red; }" }).success, true);
+  assert.equal(updateTemplateSchema.safeParse({ customCss: null }).success, true);
+  assert.equal(updateTemplateSchema.safeParse({ customCss: "a".repeat(20_001) }).success, false);
+  // Absent = champ non touché (l'autosave du builder n'écrase pas le style).
+  const parsed = updateTemplateSchema.parse({ name: "Gobelin" });
+  assert.equal("customCss" in parsed, false);
+});
+
+test("fieldLayout : hauteur par défaut des tableaux", () => {
+  assert.equal(fieldLayout({ kind: "list" }).h, LIST_FIELD_DEFAULT_ROWS);
+  assert.equal(fieldLayout({ kind: "ability" }).h, LIST_FIELD_DEFAULT_ROWS);
+  assert.equal(fieldLayout({ kind: "inventory" }).h, LIST_FIELD_DEFAULT_ROWS);
+  assert.equal(fieldLayout({ kind: "text" }).h, 2);
+  assert.equal(fieldLayout({ kind: "textarea" }).h, TEXTAREA_FIELD_DEFAULT_ROWS);
+  assert.equal(fieldLayout({ kind: "number" }).h, 2);
+  // Un layout explicite reste prioritaire : aucun reflow des modèles existants.
+  assert.equal(fieldLayout({ kind: "list", layout: { x: 0, y: 0, w: 4, h: 4 } }).h, 4);
+});
+
+test("TEMPLATE_PRESETS : ids uniques, schémas valides, genres connus", () => {
+  const ids = TEMPLATE_PRESETS.map((p) => p.id);
+  assert.equal(new Set(ids).size, ids.length, "ids de presets dupliqués");
+  for (const p of TEMPLATE_PRESETS) {
+    const r = templateSchemaSchema.safeParse(p.schema);
+    assert.equal(r.success, true, `${p.id} : ${r.success ? "" : r.error.issues[0]?.message}`);
+    if (p.genre) {
+      assert.ok(
+        SYSTEM_GENRES.some((g) => g.id === p.genre),
+        `${p.id} : genre inconnu ${p.genre}`,
+      );
+    }
+  }
+});
+
+test("TEMPLATE_PRESETS : aucun champ css résiduel (style porté par customCss)", () => {
+  for (const p of TEMPLATE_PRESETS) {
+    assert.equal(
+      p.schema.fields.some((f) => f.kind === "css"),
+      false,
+      `${p.id} contient encore un champ css`,
+    );
+  }
+});
+
+test("packFields : attribue des layouts sans chevauchement", () => {
+  const packed = packFields([
+    { id: "a", label: "A", kind: "text" },
+    { id: "b", label: "B", kind: "number" },
+    { id: "c", label: "C", kind: "textarea" },
+  ]);
+  assert.deepEqual(
+    packed.map((f) => f.layout),
+    [
+      { x: 0, y: 0, w: 2, h: 2 },
+      { x: 2, y: 0, w: 2, h: 2 },
+      // Texte long : hauteur par défaut plus grande (libellé + zone).
+      { x: 4, y: 0, w: 2, h: TEXTAREA_FIELD_DEFAULT_ROWS },
+    ],
+  );
+  for (let i = 0; i < packed.length; i++) {
+    const l = packed[i].layout;
+    assert.equal(cellsFree(packed, l.x, l.y, l.w, l.h, i), true);
+  }
+});
+
+test("packFields : respecte un layout existant", () => {
+  const packed = packFields([
+    { id: "a", label: "A", kind: "text", layout: { x: 0, y: 0, w: 6, h: 4 } },
+    { id: "b", label: "B", kind: "text", span: 6 },
+  ]);
+  assert.deepEqual(packed[1].layout, { x: 6, y: 0, w: 6, h: 2 });
+});
+
+test("cellsFree : collision rectangle et index ignoré", () => {
+  const fields = [{ id: "a", label: "A", kind: "text", layout: { x: 0, y: 0, w: 6, h: 4 } }];
+  assert.equal(cellsFree(fields, 0, 0, 6, 4, -1), false);
+  assert.equal(cellsFree(fields, 6, 0, 6, 4, -1), true);
+  assert.equal(cellsFree(fields, 0, 0, 6, 4, 0), true);
 });
 
 test("ancien payload select (sans source/free) toujours valide", () => {
@@ -172,6 +311,43 @@ test("sanitizeFieldData multiSelect : filtre, cap 50, non-tableau → défaut", 
     ],
   };
   assert.equal((sanitizeFieldData(capSchema, { s: many }).s as string[]).length, 50);
+});
+
+test("sanitizeFieldData tag multiple : trim, dédup, non-chaînes filtrées, cap 50", () => {
+  const multiTag = {
+    fields: [{ id: "lie", label: "Lié à", kind: "tag" as const, multiple: true }],
+  };
+  assert.deepEqual(sanitizeFieldData(multiTag, { lie: [" a ", "b", "a", 3, "", "b"] }).lie, [
+    "a",
+    "b",
+  ]);
+  const many = Array.from({ length: 60 }, (_, i) => `n${i}`);
+  assert.equal((sanitizeFieldData(multiTag, { lie: many }).lie as string[]).length, 50);
+  assert.deepEqual(sanitizeFieldData(multiTag, { lie: "pas-un-tableau" }).lie, []);
+  assert.deepEqual(sanitizeFieldData(multiTag, { lie: ["x".repeat(100)] }).lie, ["x".repeat(80)]);
+});
+
+test("sanitizeFieldData tag simple : un tableau résiduel devient null", () => {
+  const simple = { fields: [{ id: "lie", label: "Lié à", kind: "tag" as const }] };
+  assert.equal(sanitizeFieldData(simple, { lie: ["a"] }).lie, null);
+  assert.equal(sanitizeFieldData(simple, { lie: "a" }).lie, "a");
+});
+
+test("image : data URI longue acceptée (défaut) et non tronquée à 500 caractères", () => {
+  const long = `data:image/png;base64,${"A".repeat(1_000_000)}`;
+  const parsed = templateSchemaSchema.safeParse({
+    fields: [{ id: "illu", label: "Illustration", kind: "image", default: long }],
+  });
+  assert.equal(parsed.success, true);
+  if (!parsed.success) return;
+  assert.equal(sanitizeFieldData(parsed.data, { illu: long }).illu, long);
+  assert.equal(
+    (
+      sanitizeFieldData(parsed.data, { illu: "A".repeat(MAX_IMAGE_FIELD_CHARS + 10) })
+        .illu as string
+    ).length,
+    MAX_IMAGE_FIELD_CHARS,
+  );
 });
 
 test("sanitizeFieldData text : maxLength appliquée, défaut 5000 sinon", () => {

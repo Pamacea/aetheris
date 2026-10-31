@@ -58,7 +58,7 @@ export function randomSeed(): number {
 
 // ── Parsing ──────────────────────────────────────────────────────────
 const TERM_RE = /([+-]?)\s*(?:(\d*)d(\d+)(?:(kh|kl)(\d+))?|(\d+))/gi;
-const MACRO_RE = /@([a-z0-9_\-]+)/gi;
+const MACRO_RE = /@([a-z0-9_.\-]+)/gi;
 const ADV_WORDS = new Set(["adv", "avantage", "edge"]);
 const DIS_WORDS = new Set(["dis", "désavantage", "desavantage", "disadv"]);
 

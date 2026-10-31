@@ -7,18 +7,16 @@ import {
   deleteBlockAt,
   isBlockInGmSecret,
   isInsideGmSecret,
-  scopedContent,
   unwrapBlockFromSecret,
   wrapBlockInSecret,
 } from "./blocks-scope";
-import { DiceBlockNode, GmSecretNode, MetaBlockNode, TableBlockNode } from "./extensions";
+import { DiceBlockNode, GmSecretNode, TableBlockNode } from "./extensions";
 
 // Schéma réel de l'éditeur (sans vue React ni DOM) : les transforms ci-dessous
 // s'exercent sur les nœuds gm-secret / blocs tels que l'éditeur les déclare.
 const schema = getSchema([
   StarterKit.configure({ heading: false, link: false }),
   GmSecretNode,
-  MetaBlockNode,
   DiceBlockNode,
   TableBlockNode,
 ]);
@@ -27,47 +25,25 @@ function stateOf(...content: Node[]): EditorState {
   return EditorState.create({ schema, doc: schema.node("doc", null, content) });
 }
 
-const meta = () => schema.nodes.metaBlock.create({ kind: "custom", label: "Ère", value: "X" });
 const dice = () => schema.nodes.diceBlock.create({ label: "Jet", expr: "1d20" });
+const table = () => schema.nodes.tableBlock.create();
 const secretOf = (block: Node) =>
   schema.nodes.gmSecret.create(null, [block, schema.nodes.paragraph.create()]);
 
 describe("isInsideGmSecret", () => {
   it("false sur un document sans secret", () => {
-    expect(isInsideGmSecret(stateOf(meta(), schema.nodes.paragraph.create()), 0)).toBe(false);
+    expect(isInsideGmSecret(stateOf(dice(), schema.nodes.paragraph.create()), 0)).toBe(false);
   });
 
   it("true pour une position à l'intérieur d'un secret", () => {
-    const state = stateOf(secretOf(meta()));
+    const state = stateOf(secretOf(dice()));
     expect(isInsideGmSecret(state, 1)).toBe(true);
-  });
-});
-
-describe("scopedContent", () => {
-  const block = { type: "metaBlock", attrs: { kind: "custom", label: "Ère", value: "" } };
-
-  it("portée tous : contenu inséré tel quel", () => {
-    const state = stateOf(schema.nodes.paragraph.create());
-    expect(scopedContent(state, block, false, 0)).toBe(block);
-  });
-
-  it("portée MJ : enveloppé dans <gm-secret> + paragraphe", () => {
-    const state = stateOf(schema.nodes.paragraph.create());
-    expect(scopedContent(state, block, true, 0)).toEqual({
-      type: "gmSecret",
-      content: [block, { type: "paragraph" }],
-    });
-  });
-
-  it("déjà dans un secret : pas de double enveloppe", () => {
-    const state = stateOf(secretOf(meta()));
-    expect(scopedContent(state, block, true, 1)).toBe(block);
   });
 });
 
 describe("wrapBlockInSecret / unwrapBlockFromSecret", () => {
   it("enveloppe un bloc et sort dissous le secret", () => {
-    const start = stateOf(meta());
+    const start = stateOf(dice());
     const wrapped = wrapBlockInSecret(start, 0);
     expect(wrapped).not.toBeNull();
 
@@ -80,12 +56,12 @@ describe("wrapBlockInSecret / unwrapBlockFromSecret", () => {
     expect(unwrapped).not.toBeNull();
     const out = inside.apply(unwrapped!);
     expect(out.doc.childCount).toBe(2);
-    expect(out.doc.firstChild?.type.name).toBe("metaBlock");
+    expect(out.doc.firstChild?.type.name).toBe("diceBlock");
     expect(isBlockInGmSecret(out, 0)).toBe(false);
   });
 
-  it("tous les kinds de bloc sont concernés", () => {
-    for (const block of [meta(), dice(), schema.nodes.tableBlock.create()]) {
+  it("tous les blocs de palette sont concernés", () => {
+    for (const block of [dice(), table()]) {
       const state = stateOf(block);
       const tr = wrapBlockInSecret(state, 0);
       expect(tr, block.type.name).not.toBeNull();
@@ -94,10 +70,10 @@ describe("wrapBlockInSecret / unwrapBlockFromSecret", () => {
   });
 
   it("refuse un double wrap, un unwrap hors secret et une position non-bloc", () => {
-    const already = stateOf(secretOf(meta()));
+    const already = stateOf(secretOf(dice()));
     expect(wrapBlockInSecret(already, 1)).toBeNull();
 
-    const plain = stateOf(meta());
+    const plain = stateOf(dice());
     expect(unwrapBlockFromSecret(plain, 0)).toBeNull();
 
     // Position d'un paragraphe : ni wrap ni unwrap.
@@ -112,18 +88,17 @@ describe("deleteBlockAt", () => {
   const textPara = () => schema.nodes.paragraph.create(null, schema.text("Notes MJ"));
 
   it("emporte le <gm-secret> vidé par la suppression du bloc", () => {
-    const start = stateOf(secretOf(meta()), para());
+    const start = stateOf(secretOf(dice()), para());
     const tr = deleteBlockAt(start, 1);
     expect(tr).not.toBeNull();
 
     const out = start.apply(tr!);
     expect(out.doc.childCount).toBe(1);
     expect(out.doc.firstChild?.type.name).toBe("paragraph");
-    expect(out.doc.firstChild?.type.name).not.toBe("gmSecret");
   });
 
   it("secret sans paragraphe de confort : le wrapper part aussi", () => {
-    const start = stateOf(schema.nodes.gmSecret.create(null, [meta()]));
+    const start = stateOf(schema.nodes.gmSecret.create(null, [dice()]));
     const tr = deleteBlockAt(start, 1);
     expect(tr).not.toBeNull();
 
@@ -135,7 +110,7 @@ describe("deleteBlockAt", () => {
   });
 
   it("garde le secret s'il reste du contenu MJ", () => {
-    const start = stateOf(schema.nodes.gmSecret.create(null, [meta(), textPara()]), para());
+    const start = stateOf(schema.nodes.gmSecret.create(null, [dice(), textPara()]), para());
     const tr = deleteBlockAt(start, 1);
     expect(tr).not.toBeNull();
 
@@ -146,18 +121,18 @@ describe("deleteBlockAt", () => {
   });
 
   it("deux blocs dans un secret : le wrapper survit au premier", () => {
-    const start = stateOf(schema.nodes.gmSecret.create(null, [meta(), dice(), para()]));
+    const start = stateOf(schema.nodes.gmSecret.create(null, [dice(), table(), para()]));
     const tr = deleteBlockAt(start, 1);
     expect(tr).not.toBeNull();
 
     const out = start.apply(tr!);
     expect(out.doc.firstChild?.type.name).toBe("gmSecret");
     expect(out.doc.firstChild?.childCount).toBe(2);
-    expect(out.doc.firstChild?.firstChild?.type.name).toBe("diceBlock");
+    expect(out.doc.firstChild?.firstChild?.type.name).toBe("tableBlock");
   });
 
   it("hors secret : suppression simple, position non-bloc refusée", () => {
-    const start = stateOf(meta(), para());
+    const start = stateOf(dice(), para());
     const tr = deleteBlockAt(start, 0);
     expect(tr).not.toBeNull();
     const out = start.apply(tr!);

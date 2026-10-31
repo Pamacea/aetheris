@@ -41,7 +41,7 @@ export function JsField({
   }
 
   return (
-    <div className={`flex flex-col gap-1 md:col-span-2 ${widthCls ?? ""}`}>
+    <div className={`flex flex-col gap-1 ${widthCls ?? ""}`}>
       {label}
       <textarea
         className="input min-h-20 py-2 font-mono text-xs"

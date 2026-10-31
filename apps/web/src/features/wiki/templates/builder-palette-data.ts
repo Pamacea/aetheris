@@ -1,8 +1,11 @@
+import { fold } from "@/lib/text";
 import type { PaletteItem } from "./builder-field-factory";
 import { makeField } from "./builder-field-factory";
 import { LISTES_GROUP } from "./builder-palette-lists";
 
-const PALETTE_GROUPS: { title: string; items: PaletteItem[] }[] = [
+export type PaletteGroup = { title: string; items: PaletteItem[] };
+
+const PALETTE_GROUPS: PaletteGroup[] = [
   {
     title: "Texte",
     items: [
@@ -99,12 +102,6 @@ const PALETTE_GROUPS: { title: string; items: PaletteItem[] }[] = [
     title: "Code",
     items: [
       {
-        key: "css",
-        label: "CSS",
-        hint: "Style custom de la fiche",
-        make: (id) => makeField("css", id, "CSS"),
-      },
-      {
         key: "js",
         label: "Code JS",
         hint: "Valeur calculée (sandbox)",
@@ -115,5 +112,17 @@ const PALETTE_GROUPS: { title: string; items: PaletteItem[] }[] = [
 ];
 
 const PALETTE_ITEMS = PALETTE_GROUPS.flatMap((g) => g.items);
+
+/** Filtre la palette sur le libellé, l'aide ou la clé (casse et accents ignorés). */
+export function filterPaletteGroups(groups: PaletteGroup[], query: string): PaletteGroup[] {
+  const q = fold(query.trim());
+  if (!q) return groups;
+  return groups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((item) => fold(`${item.label} ${item.hint} ${item.key}`).includes(q)),
+    }))
+    .filter((g) => g.items.length > 0);
+}
 
 export { PALETTE_GROUPS, PALETTE_ITEMS };

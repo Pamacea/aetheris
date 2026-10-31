@@ -15,6 +15,7 @@ export function useTemplateIO(st: BuilderState) {
       templates: items.map((t) => ({
         name: t.name,
         ...(t.category ? { category: t.category } : {}),
+        ...(t.customCss ? { customCss: t.customCss } : {}),
         schema: t.schema,
       })),
     };

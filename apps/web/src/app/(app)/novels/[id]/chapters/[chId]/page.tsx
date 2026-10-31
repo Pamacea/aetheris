@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { JSONContent } from "@tiptap/core";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getNovelRole } from "@/features/novels/access";
+import { canReadChapter } from "@/features/novels/logic";
 import { ChapterEditor } from "./chapter-editor";
 
 export default async function ChapterPage({
@@ -17,7 +19,7 @@ export default async function ChapterPage({
     select: {
       id: true,
       title: true,
-      authorId: true,
+      status: true,
       chapters: {
         select: { id: true, title: true, status: true },
         orderBy: { position: "asc" },
@@ -31,10 +33,12 @@ export default async function ChapterPage({
   });
   if (!chapter) notFound();
 
-  const isOwner = session?.user.id === novel.authorId;
-  // Lecture publique : les chapitres publiés sont lisibles par tous,
-  // l'édition reste réservée à l'auteur.
-  if (!isOwner && chapter.status !== "published") notFound();
+  const role = await getNovelRole(id, session?.user.id);
+  if (!canReadChapter(role, novel.status, chapter.status)) notFound();
+
+  // Lecteur : les titres de brouillons ne doivent pas fuiter dans le tiroir.
+  const chapters =
+    role === null ? novel.chapters.filter((c) => c.status === "published") : novel.chapters;
 
   return (
     <ChapterEditor
@@ -44,8 +48,8 @@ export default async function ChapterPage({
       chapterTitle={chapter.title}
       content={(chapter.content as JSONContent | null) ?? null}
       status={chapter.status}
-      readOnly={!isOwner}
-      chapters={novel.chapters}
+      readOnly={role === null}
+      chapters={chapters}
     />
   );
 }

@@ -246,8 +246,13 @@ export function VttDesktop({
           fenêtres (z très haut) pour rester le lanceur permanent. */}
       <nav
         aria-label="Dock des modules"
-        className="absolute bottom-3 left-1/2 z-[9999] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 gap-0.5 overflow-x-auto border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
+        className="no-scrollbar absolute bottom-3 left-1/2 z-[9999] flex h-8 max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
       >
+        {/* Outils de la table (portail depuis VttToolbar), puis les modules. */}
+        <div
+          id="vtt-dock-tools"
+          className="mr-1 flex shrink-0 items-center border-r border-border pr-1.5"
+        />
         {DOCK_MODULES.map((mod) => {
           const isOpen = Boolean(windows[mod.slug]);
           return (

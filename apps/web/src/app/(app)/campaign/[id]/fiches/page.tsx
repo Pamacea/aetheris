@@ -5,6 +5,8 @@ import { requireCampaignPlugin } from "@/lib/campaign-server";
 import { redirectModuleToDesktop } from "@/features/campaigns/require-member";
 import { FichesApp } from "@/features/fiches/fiches-app";
 import { selectFiches } from "@/features/fiches/fiches";
+import { visibleEntityWhere } from "@/features/fiches/access";
+import { linkedNoteVisuals } from "@/features/wiki/templates/linked-notes";
 import type { WikiEntryMeta, WikiTemplateMeta } from "@/features/wiki/types";
 
 /**
@@ -32,27 +34,57 @@ export default async function FichesPage({
   const [rawTemplates, entities] = await Promise.all([
     prisma.jsonTemplate.findMany({
       where: { campaignId: id },
-      select: { id: true, name: true, category: true, schema: true },
+      select: { id: true, name: true, category: true, schema: true, customCss: true },
       orderBy: { name: "asc" },
     }),
     prisma.entity.findMany({
-      where: { campaignId: id },
-      select: { id: true, title: true, folder: true, type: true, data: true },
+      // Joueur : fiches non-MJ sans assigné (lecture seule) ou à lui.
+      where: { campaignId: id, ...visibleEntityWhere(member.role, member.userId) },
+      select: {
+        id: true,
+        title: true,
+        folder: true,
+        type: true,
+        data: true,
+        gmOnly: true,
+        assignees: { select: { userId: true } },
+      },
       orderBy: { title: "asc" },
     }),
   ]);
+
+  // Sélecteur d'assignation : réservé au MJ.
+  const members = isGM
+    ? await prisma.campaignMember.findMany({
+        where: { campaignId: id },
+        select: { userId: true, user: { select: { name: true } } },
+        orderBy: [{ role: "asc" }, { id: "asc" }],
+      })
+    : [];
 
   const templates: WikiTemplateMeta[] = rawTemplates.map((t) => ({
     id: t.id,
     name: t.name,
     category: t.category,
     schema: t.schema,
+    customCss: t.customCss,
   }));
+  const templateById = new Map(templates.map((t) => [t.id, t]));
   const fiches = selectFiches(entities, templates);
   // L'entité legacy « block-lib » (bibliothèque de blocs) n'est pas une note.
   const notes: WikiEntryMeta[] = entities
     .filter((e) => e.type !== "block-lib")
-    .map((e) => ({ id: e.id, title: e.title, folder: e.folder, type: e.type }));
+    .map((e) => ({
+      id: e.id,
+      title: e.title,
+      folder: e.folder,
+      type: e.type,
+      gmOnly: e.gmOnly,
+      ...linkedNoteVisuals(
+        templateById.get(e.type) ?? null,
+        (e.data ?? {}) as Record<string, unknown>,
+      ),
+    }));
 
   return (
     // 3.75rem top bar (modules fusionnés) + ~0.5rem fil d'ariane.
@@ -62,7 +94,15 @@ export default async function FichesPage({
           {isGM ? "Mode MJ" : "Mode joueur"}
         </span>
       </div>
-      <FichesApp campaignId={id} fiches={fiches} notes={notes} templates={templates} />
+      <FichesApp
+        campaignId={id}
+        fiches={fiches}
+        notes={notes}
+        templates={templates}
+        isGM={isGM}
+        viewerId={member.userId}
+        members={members.map((m) => ({ userId: m.userId, name: m.user.name }))}
+      />
     </div>
   );
 }

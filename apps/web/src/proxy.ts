@@ -46,7 +46,7 @@ const SESSION_COOKIES = [
   "__Secure-better-auth.session_token",
   "better-auth.session_data",
 ];
-const PROTECTED_PREFIXES = ["/dashboard", "/novels", "/profile"];
+const PROTECTED_PREFIXES = ["/dashboard", "/profile"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -71,5 +71,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/auth/:path*", "/dashboard/:path*", "/novels/:path*", "/profile/:path*"],
+  matcher: ["/api/auth/:path*", "/dashboard/:path*", "/profile/:path*"],
 };

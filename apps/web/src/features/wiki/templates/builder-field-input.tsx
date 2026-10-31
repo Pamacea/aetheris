@@ -17,10 +17,10 @@ export function FieldInput({
   list?: string;
 }) {
   return (
-    <label className="flex flex-col gap-0.5">
-      <span className="text-[0.6rem] tracking-widest text-muted uppercase">{label}</span>
+    <label className="flex min-h-7 items-center justify-between gap-2">
+      <span className="shrink-0 text-[0.6rem] tracking-widest text-muted uppercase">{label}</span>
       <input
-        className={`input w-32 py-1 text-xs ${mono ? "font-mono" : ""}`}
+        className={`input h-7 w-36 min-w-0 px-2 py-0 text-xs ${mono ? "font-mono" : ""}`}
         name={label}
         type={type}
         value={value}

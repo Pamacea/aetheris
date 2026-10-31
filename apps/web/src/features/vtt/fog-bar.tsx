@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { VTT_BAR_CLS } from "./bars";
+import { VTT_PANEL_CLS } from "./bars";
 
 interface VttFogBarProps {
   fogOn: boolean;
@@ -8,11 +8,14 @@ interface VttFogBarProps {
   setSightCells: Dispatch<SetStateAction<number>>;
 }
 
-/** Barre de l'outil Brouillard : activation + portée de vue en cellules. */
+/** Panneau de l'outil Brouillard : activation + portée de vue en cellules. */
 export function VttFogBar({ fogOn, setFogOn, sightCells, setSightCells }: VttFogBarProps) {
   return (
-    <div className={VTT_BAR_CLS}>
-      <label className="flex items-center gap-1.5 text-muted">
+    <div className={VTT_PANEL_CLS}>
+      <label
+        className="flex items-center gap-1.5 text-muted"
+        title="La vision des tokens perce le brouillard ; les murs coupent la ligne de vue."
+      >
         <input
           type="checkbox"
           className="h-4 w-4 accent-[var(--accent)]"
@@ -36,9 +39,6 @@ export function VttFogBar({ fogOn, setFogOn, sightCells, setSightCells }: VttFog
         />
         cellules
       </label>
-      <span className="text-[0.65rem] text-muted">
-        La vision des tokens perce le brouillard ; les murs coupent la ligne de vue.
-      </span>
     </div>
   );
 }

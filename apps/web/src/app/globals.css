@@ -194,16 +194,76 @@ h3 {
     border-color: var(--accent);
   }
 
-  /* Select : le chevron natif est collé à la bordure (clip-path) — marge
-     droite généreuse pour qu'il respire. */
+  /* Select : chevron maison (le natif reste collé à la bordure, insensible au
+     padding) — même facture dans tous les thèmes, gap réglable à droite. */
   select.input {
-    padding-inline: 1rem 2.75rem;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-inline: 1rem 2.5rem;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+      linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position:
+      calc(100% - 1.15rem) calc(50% - 1px),
+      calc(100% - 0.85rem) calc(50% - 1px);
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
   }
 
   /* Taille compacte des contrôles de fiche (⚙ Taille du champ). */
   .input-sm {
     padding: 0.35rem 0.6rem;
     font-size: 0.8rem;
+  }
+
+  /* ---------- Cases à cocher (style Aetheris) ----------
+     La taille vient des utilitaires Tailwind (h-4 / h-3.5) ; 1rem par défaut. */
+  input[type="checkbox"] {
+    display: inline-grid;
+    place-content: center;
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+    appearance: none;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: var(--background);
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  input[type="checkbox"]::before {
+    content: "";
+    width: 0.6em;
+    height: 0.6em;
+    transform: scale(0);
+    transition: transform 0.12s ease-in-out;
+    background: var(--accent);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+
+  input[type="checkbox"]:hover {
+    border-color: var(--accent);
+  }
+
+  input[type="checkbox"]:checked {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, var(--background));
+  }
+
+  input[type="checkbox"]:checked::before {
+    transform: scale(1);
+  }
+
+  input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+
+  input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   /* Scroll de la table : fonctionne (molette/touchpad) sans trait visuel. */
@@ -319,6 +379,14 @@ h3 {
 
 .wiki-prose p {
   margin: 0.5em 0;
+}
+
+.wiki-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted);
+  pointer-events: none;
 }
 
 .wiki-prose ul,
@@ -517,6 +585,17 @@ html[data-embed] [data-app-chrome] {
 /* Le chrome disparaît : les pages modules reprennent toute la hauteur. */
 html[data-embed] main > div {
   height: 100dvh !important;
+}
+
+/* Modules sans conteneur scrollable dédié (Journal) : le document de l'iframe
+   défile — on masque son trait comme dans les autres fenêtres VTT. */
+html[data-embed],
+html[data-embed] body {
+  scrollbar-width: none;
+}
+html[data-embed] body::-webkit-scrollbar,
+html[data-embed]::-webkit-scrollbar {
+  display: none;
 }
 
 /* ============================================================

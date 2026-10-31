@@ -120,10 +120,12 @@ export function GraphClient({
   campaignId,
   nodes,
   links,
+  isGM,
 }: {
   campaignId: string;
   nodes: GraphNode[];
   links: GraphLink[];
+  isGM: boolean;
 }) {
   const [selection, setSelection] = useState<string[]>([]);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
@@ -361,6 +363,7 @@ export function GraphClient({
   };
 
   const onDelete = async (l: GraphLink) => {
+    if (!isGM) return;
     const name = l.label ?? "sans libellé";
     if (!window.confirm(`Supprimer le lien « ${name} » ?`)) return;
     setBusy(true);
@@ -371,7 +374,7 @@ export function GraphClient({
   };
 
   const onCreate = async () => {
-    if (selection.length !== 2) return;
+    if (!isGM || selection.length !== 2) return;
     setBusy(true);
     setError(null);
     const res = await createLink({
@@ -483,11 +486,11 @@ export function GraphClient({
                       fill="none"
                       stroke="transparent"
                       strokeWidth={16}
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: isGM ? "pointer" : "default" }}
                       onPointerEnter={() => hover(l.id)}
                       onPointerLeave={() => hover(null)}
                       onClick={() => {
-                        if (!movedRef.current) void onDelete(l);
+                        if (isGM && !movedRef.current) void onDelete(l);
                       }}
                     />
                   </g>
@@ -550,46 +553,50 @@ export function GraphClient({
         )}
       </div>
 
-      {/* Création de lien */}
-      <div
-        className="panel"
-        style={{
-          padding: "0.75rem",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.5rem",
-          alignItems: "center",
-        }}
-      >
-        <span className="text-muted" style={{ fontSize: "0.85rem" }}>
-          {selection.length === 0 && "Cliquez 2 entités pour créer un lien."}
-          {selection.length === 1 && `Sélection : ${byId.get(selection[0])?.title} → …`}
-          {selection.length === 2 &&
-            `${byId.get(selection[0])?.title} → ${byId.get(selection[1])?.title}`}
-          {pairBlocked && selection.length === 2 && " (déjà liées)"}
-        </span>
-        <input
-          className="input"
-          style={{ flex: "1 1 12rem", width: "auto" }}
-          placeholder="Libellé (ex. « allié de »)"
-          value={label}
-          maxLength={80}
-          onChange={(e) => setLabel(e.target.value)}
-        />
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={pairBlocked || busy}
-          onClick={() => void onCreate()}
+      {/* Création de lien — MJ uniquement */}
+      {isGM && (
+        <div
+          className="panel"
+          style={{
+            padding: "0.75rem",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+            alignItems: "center",
+          }}
         >
-          Créer le lien
-        </button>
-        {error && (
-          <span role="alert" style={{ color: "var(--accent)", fontSize: "0.85rem" }}>
-            {error}
+          <span className="text-muted" style={{ fontSize: "0.85rem" }}>
+            {selection.length === 0 && "Cliquez 2 entités pour créer un lien."}
+            {selection.length === 1 && `Sélection : ${byId.get(selection[0])?.title} → …`}
+            {selection.length === 2 &&
+              `${byId.get(selection[0])?.title} → ${byId.get(selection[1])?.title}`}
+            {pairBlocked && selection.length === 2 && " (déjà liées)"}
           </span>
-        )}
-      </div>
+          <input
+            className="input"
+            style={{ flex: "1 1 12rem", width: "auto" }}
+            placeholder="Libellé (ex. « allié de »)"
+            value={label}
+            maxLength={80}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={pairBlocked || busy}
+            onClick={() => void onCreate()}
+          >
+            Créer le lien
+          </button>
+          {error && (
+            <span role="alert" style={{ color: "var(--accent)", fontSize: "0.85rem" }}>
+              {error}
+            </span>
+          )}
+        </div>
+      )}
+      {/* Le padding-bottom du scroller n'est pas compté en embed (cf. combat-app). */}
+      <div aria-hidden className="h-8" />
     </div>
   );
 }

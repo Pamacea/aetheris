@@ -15,10 +15,12 @@ export function FieldConfigChoice({ field, index: i, patchField, campaignId }: P
     <>
       {(field.kind === "select" || field.kind === "multiSelect") && (
         <>
-          <label className="flex flex-col gap-0.5">
-            <span className="text-[0.6rem] tracking-widest text-muted uppercase">Source</span>
+          <label className="flex min-h-7 items-center justify-between gap-2">
+            <span className="shrink-0 text-[0.6rem] tracking-widest text-muted uppercase">
+              Source
+            </span>
             <select
-              className="input w-40 py-1 text-xs"
+              className="input h-7 w-40 min-w-0 px-2 py-0 text-xs"
               name={`champ-${field.id}-source`}
               value={field.source ?? "static"}
               onChange={(e) =>
@@ -82,15 +84,33 @@ export function FieldConfigChoice({ field, index: i, patchField, campaignId }: P
         </label>
       )}
       {field.kind === "tag" && (
-        <FieldInput
-          label="Catégorie cible (filtrage)"
-          value={field.targetCategory ?? ""}
-          placeholder="ex. Encyclopédie"
-          onChange={(v) =>
-            patchField(i, (f) => (f.kind === "tag" ? { ...f, targetCategory: v || undefined } : f))
-          }
-          list={`${campaignId}-tagcat`}
-        />
+        <>
+          <FieldInput
+            label="Catégorie cible (filtrage)"
+            value={field.targetCategory ?? ""}
+            placeholder="ex. Encyclopédie"
+            onChange={(v) =>
+              patchField(i, (f) =>
+                f.kind === "tag" ? { ...f, targetCategory: v || undefined } : f,
+              )
+            }
+            list={`${campaignId}-tagcat`}
+          />
+          <label className="flex items-center gap-2 pb-1 text-xs text-muted">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 accent-[var(--accent)]"
+              name={`champ-${field.id}-selection-multiple`}
+              checked={field.multiple === true}
+              onChange={(e) =>
+                patchField(i, (f) =>
+                  f.kind === "tag" ? { ...f, multiple: e.target.checked || undefined } : f,
+                )
+              }
+            />
+            Sélection multiple
+          </label>
+        </>
       )}
     </>
   );

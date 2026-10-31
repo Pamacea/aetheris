@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { withEmbed } from "@/components/campaigns/embed-mode";
-import { HistoryIcon, PencilIcon, TrashIcon } from "@/components/icons";
+import { EyeIcon, EyeOffIcon, HistoryIcon, PencilIcon, TrashIcon } from "@/components/icons";
 import { deleteWikiEntry, updateWikiEntry } from "./actions";
+import { BlocksPalette } from "./blocks-palette";
+import type { BlockPayload } from "./block-defs";
 import { ShareButton } from "./share-button";
 import type { SaveStatus } from "./autosave";
 import type { WikiActiveEntry, WikiEntryMeta } from "./types";
@@ -26,6 +28,7 @@ export function NoteHeader({
   savedAt,
   setLocalEntries,
   onHistory,
+  onInsert,
 }: {
   active: WikiActiveEntry;
   campaignId: string;
@@ -34,11 +37,15 @@ export function NoteHeader({
   savedAt: string | null;
   setLocalEntries: React.Dispatch<React.SetStateAction<WikiEntryMeta[]>>;
   onHistory: () => void;
+  /** Insère un bloc dans l'éditeur de la note (absent pour une fiche). */
+  onInsert?: (payload: BlockPayload) => void;
 }) {
   const router = useRouter();
   const [metaOpen, setMetaOpen] = useState(false);
   const [metaTitle, setMetaTitle] = useState("");
   const [metaFolder, setMetaFolder] = useState("");
+  // Re-monté par une clé sur `active.id` (wiki-app) : l'état suit la note.
+  const [gmOnly, setGmOnly] = useState(active.gmOnly);
   const [error, setError] = useState<string | null>(null);
 
   const statusLabel =
@@ -75,6 +82,20 @@ export function NoteHeader({
     router.refresh();
   }
 
+  async function handleGmOnly() {
+    const next = !gmOnly;
+    const res = await updateWikiEntry(campaignId, active.id, { gmOnly: next });
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setError(null);
+    setGmOnly(next);
+    setLocalEntries((prev) => prev.map((n) => (n.id === active.id ? { ...n, gmOnly: next } : n)));
+    // Le partage est révoqué côté serveur : on resynchronise l'en-tête.
+    router.refresh();
+  }
+
   async function handleDelete() {
     if (!window.confirm(`Supprimer « ${active.title} » ? Cette action est définitive.`)) return;
     const res = await deleteWikiEntry(campaignId, active.id);
@@ -92,8 +113,13 @@ export function NoteHeader({
     <>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-medium" title={active.title}>
-            {active.title}
+          <h1 className="flex min-w-0 items-center gap-2 text-lg font-medium" title={active.title}>
+            <span className="truncate">{active.title}</span>
+            {gmOnly && (
+              <span className="shrink-0 border border-accent/50 bg-accent/10 px-1.5 py-0.5 text-[0.55rem] tracking-widest text-accent uppercase">
+                MJ
+              </span>
+            )}
           </h1>
           <p className="text-[0.65rem] tracking-widest text-muted uppercase">{statusLabel}</p>
         </div>
@@ -103,6 +129,12 @@ export function NoteHeader({
             role="toolbar"
             aria-label="Actions de l’entrée"
           >
+            {onInsert && (
+              <>
+                <BlocksPalette className={TOOLBAR_BUTTON} onInsert={onInsert} />
+                <Separator />
+              </>
+            )}
             <button
               type="button"
               className={TOOLBAR_BUTTON}
@@ -122,6 +154,21 @@ export function NoteHeader({
             <Separator />
             <button
               type="button"
+              className={`${TOOLBAR_BUTTON} ${gmOnly ? "border-accent/60 text-accent" : ""}`}
+              aria-pressed={gmOnly}
+              title={
+                gmOnly
+                  ? "Note secrète : visible uniquement par le MJ"
+                  : "Rendre la note secrète (MJ uniquement)"
+              }
+              onClick={() => void handleGmOnly()}
+            >
+              {gmOnly ? <EyeOffIcon /> : <EyeIcon />}
+              <span className="hidden sm:inline">{gmOnly ? "Note MJ" : "Joueurs"}</span>
+            </button>
+            <Separator />
+            <button
+              type="button"
               className={TOOLBAR_BUTTON}
               title="Historique des versions"
               onClick={onHistory}
@@ -129,7 +176,9 @@ export function NoteHeader({
               <HistoryIcon />
               <span className="hidden sm:inline">Historique</span>
             </button>
-            <ShareButton campaignId={campaignId} entityId={active.id} slug={active.shareSlug} />
+            {!gmOnly && (
+              <ShareButton campaignId={campaignId} entityId={active.id} slug={active.shareSlug} />
+            )}
             <Separator />
             <button
               type="button"

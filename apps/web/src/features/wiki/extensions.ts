@@ -4,18 +4,8 @@ import { PluginKey } from "@tiptap/pm/state";
 import Suggestion from "@tiptap/suggestion";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
-import {
-  BLOCK_DEFS,
-  BLOCK_PRESETS,
-  DND_PRESETS,
-  PRESET_BLOCK_DEFS,
-  type BlockDef,
-} from "./block-defs";
-import { blockContentOf } from "./blocks-dnd";
-import { scopedContent } from "./blocks-scope";
-import { frameAttrSpecs, legacySize, parseFrameTokens } from "./blocks-frame";
+import { BLOCK_DEFS, blockContentOf, type BlockDef } from "./block-defs";
 import { SuggestionList, type SuggestionItem, type SuggestionListRef } from "./suggestion-list";
-import { MetaBlockView } from "./meta-block-view";
 import { DiceBlockView } from "./dice-block-view";
 import { DEFAULT_TABLE_ROWS, TableBlockView } from "./table-block-view";
 
@@ -82,53 +72,7 @@ export const GmSecretNode = Node.create({
   },
 });
 
-// ───────────────────── Nœud : bloc de métadonnées { label, value } ─────────────────────
-
-export const MetaBlockNode = Node.create({
-  name: "metaBlock",
-  group: "block",
-  atom: true,
-
-  addAttributes() {
-    return {
-      kind: { default: "custom", renderHTML: (attrs) => ({ "data-kind": attrs.kind }) },
-      label: { default: "", renderHTML: (attrs) => ({ "data-label": attrs.label }) },
-      value: { default: "", renderHTML: (attrs) => ({ "data-value": attrs.value }) },
-      // Cadrage (taille/w/h/x/y) : persisté en tokens de classe `blk-*`.
-      ...frameAttrSpecs,
-    };
-  },
-
-  parseHTML() {
-    return [
-      {
-        tag: "aetheris-block",
-        getAttrs: (el) => {
-          if (typeof el === "string") return false;
-          const frame = parseFrameTokens(el.getAttribute("class"));
-          return {
-            kind: el.getAttribute("data-kind") || "custom",
-            label: el.getAttribute("data-label") ?? "",
-            value: el.getAttribute("data-value") ?? "",
-            ...frame,
-            // Anciens contenus : data-size="sm|lg" lisible en l'absence de token.
-            size: frame.size ?? legacySize(el.getAttribute("data-size")),
-          };
-        },
-      },
-    ];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return ["aetheris-block", mergeAttributes(HTMLAttributes)];
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(MetaBlockView);
-  },
-});
-
-// ───────────────────── Nœud : jet de dés (bloc Amsel) ─────────────────────
+// ───────────────────── Nœud : jet de dés ─────────────────────
 
 export const DiceBlockNode = Node.create({
   name: "diceBlock",
@@ -145,7 +89,6 @@ export const DiceBlockNode = Node.create({
         default: "1d20",
         renderHTML: (attrs) => ({ "data-expr": attrs.expr }),
       },
-      ...frameAttrSpecs,
     };
   },
 
@@ -158,7 +101,6 @@ export const DiceBlockNode = Node.create({
           return {
             label: el.getAttribute("data-label") || "Jet",
             expr: el.getAttribute("data-expr") || "1d20",
-            ...parseFrameTokens(el.getAttribute("class")),
           };
         },
       },
@@ -174,7 +116,7 @@ export const DiceBlockNode = Node.create({
   },
 });
 
-// ───────────────────── Nœud : table de données (bloc Amsel) ─────────────────────
+// ───────────────────── Nœud : tableau de stats ─────────────────────
 
 export const TableBlockNode = Node.create({
   name: "tableBlock",
@@ -189,7 +131,6 @@ export const TableBlockNode = Node.create({
         default: JSON.stringify(DEFAULT_TABLE_ROWS),
         renderHTML: (attrs) => ({ "data-rows": attrs.rows }),
       },
-      ...frameAttrSpecs,
     };
   },
 
@@ -201,7 +142,6 @@ export const TableBlockNode = Node.create({
           if (typeof el === "string") return false;
           return {
             rows: el.getAttribute("data-rows") || JSON.stringify(DEFAULT_TABLE_ROWS),
-            ...parseFrameTokens(el.getAttribute("class")),
           };
         },
       },
@@ -280,11 +220,8 @@ interface SlashItem extends SuggestionItem {
   kind: "slash";
 }
 
-/** Presets de campagne : ré-exportés depuis la source unique des blocs. */
-export { BLOCK_PRESETS, DND_PRESETS };
-
-/** Commande slash d'une définition : formatage courant ou insertion du payload. */
-function slashCommand(def: BlockDef, gm: boolean) {
+/** Commande slash d'une définition : formatage courant ou insertion du bloc. */
+function slashCommand(def: BlockDef) {
   return ({ editor, range }: { editor: Editor; range: Range }) => {
     const p = def.payload;
     if (p.type === "heading") {
@@ -308,47 +245,23 @@ function slashCommand(def: BlockDef, gm: boolean) {
       editor.chain().focus().deleteRange(range).toggleBulletList().run();
       return;
     }
-    if (p.type === "orderedList") {
-      editor.chain().focus().deleteRange(range).toggleOrderedList().run();
-      return;
-    }
-    if (p.type === "horizontalRule") {
-      editor.chain().focus().deleteRange(range).setHorizontalRule().run();
-      return;
-    }
     // Contenu calculé avant deleteRange (la chaîne ne s'exécute qu'à run()).
-    const content = scopedContent(
-      editor.state,
-      blockContentOf(p),
-      gm && p.type !== "gmSecret",
-      range.from,
-    );
-    editor.chain().focus().deleteRange(range).insertContent(content).run();
+    editor.chain().focus().deleteRange(range).insertContent(blockContentOf(p)).run();
   };
 }
 
-function defToSlashItem(def: BlockDef, gm: boolean, title = def.label): SlashItem {
+function defToSlashItem(def: BlockDef): SlashItem {
   return {
     kind: "slash",
-    title,
+    title: def.label,
     hint: def.hint ?? def.description,
-    command: slashCommand(def, gm),
+    command: slashCommand(def),
   };
 }
 
 /** Liste des entrées du menu slash (pures : testables sans éditeur). */
 export function slashItems(isGM: boolean): SlashItem[] {
-  const items = BLOCK_DEFS.filter(
-    (d) => d.category === "text" || d.category === "sheet" || (d.category === "gm" && isGM),
-  ).map((d) => defToSlashItem(d, false));
-
-  for (const def of PRESET_BLOCK_DEFS) {
-    items.push(defToSlashItem(def, false));
-    if (isGM) {
-      items.push(defToSlashItem(def, true, `${def.label} (MJ seulement)`));
-    }
-  }
-  return items;
+  return BLOCK_DEFS.filter((d) => d.category !== "gm" || isGM).map(defToSlashItem);
 }
 
 /** Filtrage insensible à la casse du menu slash (title + hint). */

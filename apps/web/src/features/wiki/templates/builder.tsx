@@ -1,5 +1,7 @@
 "use client";
 
+import type { TemplatePreset } from "@aetheris/shared";
+import type { GameSystemOption } from "@/features/game-systems/systems";
 import type { WikiTemplateMeta } from "../types";
 import { useBuilderState } from "./builder-state";
 import { useFieldOps } from "./builder-ops";
@@ -13,9 +15,18 @@ import { FieldPalette } from "./builder-palette";
 interface BuilderProps {
   campaignId: string;
   initial: WikiTemplateMeta[];
+  /** Modèles seedés du système de la campagne (« Mes presets »). */
+  systemPresets?: TemplatePreset[];
+  /** Systèmes homebrew de l'utilisateur (destination d'un preset). */
+  systems?: GameSystemOption[];
 }
 
-export function TemplatesBuilder({ campaignId, initial }: BuilderProps) {
+export function TemplatesBuilder({
+  campaignId,
+  initial,
+  systemPresets = [],
+  systems = [],
+}: BuilderProps) {
   const st = useBuilderState(initial, campaignId);
   const ops = useFieldOps(st);
   const actions = useTemplateActions(st);
@@ -25,10 +36,10 @@ export function TemplatesBuilder({ campaignId, initial }: BuilderProps) {
   return (
     <div className="flex min-h-0 flex-1">
       {/* ── Panneau gauche : liste des modèles ── */}
-      <TemplateSidebar st={st} actions={actions} io={io} />
+      <TemplateSidebar st={st} actions={actions} io={io} systems={systems} />
 
       {/* ── Panneau droit : éditeur de modèle ── */}
-      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      <main className="no-scrollbar flex min-w-0 flex-1 flex-col overflow-y-auto">
         {!selected ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
             <p className="text-muted">
@@ -44,7 +55,13 @@ export function TemplatesBuilder({ campaignId, initial }: BuilderProps) {
           </div>
         ) : (
           <>
-            <BuilderHeader st={st} selected={selected} ops={ops} actions={actions} />
+            <BuilderHeader
+              st={st}
+              selected={selected}
+              ops={ops}
+              actions={actions}
+              systemPresets={systemPresets}
+            />
             {error && (
               <p className="border-b border-border bg-card px-5 py-2 text-xs text-destructive">
                 {error}
@@ -56,7 +73,7 @@ export function TemplatesBuilder({ campaignId, initial }: BuilderProps) {
               </p>
             )}
 
-            <div className="flex flex-col gap-3 px-5 py-4 md:px-10">
+            <div className="flex min-h-full flex-1 flex-col gap-3 px-5 py-4 md:px-10">
               <p className="text-[0.65rem] tracking-[0.2em] text-muted uppercase">
                 Champs ({fields.length})
               </p>

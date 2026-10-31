@@ -50,12 +50,3 @@ export function parseWikiLinkIds(html: string | null | undefined): string[] {
   }
   return [...ids];
 }
-
-/** Résolution insensible à la casse d'un titre vers un id d'entité. */
-export function resolveLinkTarget(
-  title: string,
-  entities: ReadonlyArray<{ id: string; title: string }>,
-): string | undefined {
-  const needle = title.toLocaleLowerCase("fr");
-  return entities.find((e) => e.title.toLocaleLowerCase("fr") === needle)?.id;
-}

@@ -3,12 +3,15 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { InviteCodeChip } from "@/components/campaigns/invite-code-chip";
+import { listGameSystems } from "@/features/game-systems/systems";
 import { StatusBadge } from "../novels/status-badge";
 import { CreateCampaignForm, JoinCampaignForm } from "./forms";
 
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const systems = await listGameSystems(session.user.id);
 
   const campaigns = await prisma.campaign.findMany({
     where: { members: { some: { userId: session.user.id } } },
@@ -58,7 +61,7 @@ export default async function DashboardPage() {
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <JoinCampaignForm />
-            <CreateCampaignForm />
+            <CreateCampaignForm systems={systems} />
           </div>
         </div>
 

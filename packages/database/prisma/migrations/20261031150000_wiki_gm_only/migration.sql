@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Entity" ADD COLUMN "gmOnly" BOOLEAN NOT NULL DEFAULT false;

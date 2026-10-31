@@ -12,30 +12,10 @@ interface Props {
 export function FieldConfigBasics({ field, index: i, patchField }: Props) {
   return (
     <>
-      <label className="flex flex-col gap-0.5">
-        <span className="text-[0.6rem] tracking-widest text-muted uppercase">Longueur</span>
+      <label className="flex min-h-7 items-center justify-between gap-2">
+        <span className="shrink-0 text-[0.6rem] tracking-widest text-muted uppercase">Taille</span>
         <select
-          className="input w-32 py-1 text-xs"
-          name={`champ-${field.id}-largeur`}
-          value={
-            field.width ?? (field.kind === "number" || field.kind === "counter" ? "sm" : "full")
-          }
-          onChange={(e) =>
-            patchField(i, (f) => ({
-              ...f,
-              width: e.target.value as "sm" | "md" | "full",
-            }))
-          }
-        >
-          <option value="sm">Courte</option>
-          <option value="md">Moyenne</option>
-          <option value="full">Pleine</option>
-        </select>
-      </label>
-      <label className="flex flex-col gap-0.5">
-        <span className="text-[0.6rem] tracking-widest text-muted uppercase">Taille</span>
-        <select
-          className="input w-32 py-1 text-xs"
+          className="input h-7 w-36 px-2 py-0 text-xs"
           name={`champ-${field.id}-taille`}
           value={field.size ?? "md"}
           onChange={(e) =>

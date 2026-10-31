@@ -3,6 +3,13 @@ export const NOTE_MIME = "application/x-aetheris-note";
 
 export type NoteDragPayload = { id: string; title: string };
 
+/** Démarre le drag d'une fiche/note vers un champ (lien ou ligne de liste). */
+export function noteDragStart(e: React.DragEvent, note: NoteDragPayload): void {
+  e.dataTransfer.setData(NOTE_MIME, JSON.stringify(note));
+  e.dataTransfer.setData("text/plain", note.title);
+  e.dataTransfer.effectAllowed = "link";
+}
+
 /** Payload d'une note glissée depuis la palette Lore — null si autre drag. */
 export function notePayload(e: React.DragEvent): NoteDragPayload | null {
   if (!e.dataTransfer.types.includes(NOTE_MIME)) return null;

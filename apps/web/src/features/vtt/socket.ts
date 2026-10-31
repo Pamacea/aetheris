@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
-import type { SceneState, TokenMoved } from "@aetheris/shared";
+import type { FicheCombat, SceneState, TokenMoved } from "@aetheris/shared";
 import { useCampaignSocket } from "@/lib/use-campaign-socket";
 import { saveSceneState } from "./actions";
-import type { GridSettings, TokenState, WallLine } from "./types";
+import { hydrateTokens } from "./entity-link";
+import type { GridSettings, TokenState, VttEntity, WallLine } from "./types";
 
 interface VttSocketParams {
   campaignId: string;
@@ -16,6 +17,8 @@ interface VttSocketParams {
   walls: WallLine[];
   fogOn: boolean;
   sightCells: number;
+  /** Fiches liables (hydratation des jetons reçus via `scene:state`). */
+  entities: VttEntity[];
   /** Setters d'état : appliqués en réception, sans re-émission. */
   apply: {
     setTokens: Dispatch<SetStateAction<TokenState[]>>;
@@ -43,6 +46,7 @@ export function useVttSocket({
   walls,
   fogOn,
   sightCells,
+  entities,
   apply,
 }: VttSocketParams) {
   const { socket, connected } = useCampaignSocket(campaignId);
@@ -73,22 +77,30 @@ export function useVttSocket({
     };
     const onState = (state: SceneState) => {
       applyingRemoteRef.current = true;
-      apply.setTokens(state.tokens);
+      // `scene:state` est la scène persistée brute : rejouer l'hydratation par
+      // la fiche, sinon les jetons liés reperdent nom/PV/CA à chaque commit.
+      apply.setTokens((prev) => hydrateTokens(state.tokens, entities, prev));
       apply.setWalls(state.walls);
       apply.setGrid(state.grid);
       apply.setMapUrl(state.mapUrl);
       apply.setFogOn(state.fog.on);
       apply.setSightCells(state.fog.sightCells);
     };
+    const onFiche = (p: FicheCombat) => {
+      // Pas de flag remote : le commit débouncé doit persister et rediffuser ce patch.
+      apply.setTokens((ts) => ts.map((t) => (t.noteId === p.entityId ? { ...t, ...p.patch } : t)));
+    };
     socket.on("token:moved", onMoved);
     socket.on("scene:state", onState);
+    socket.on("fiche:combat", onFiche);
     return () => {
       socket.off("token:moved", onMoved);
       socket.off("scene:state", onState);
+      socket.off("fiche:combat", onFiche);
     };
     // `apply` ne contient que des setters stables.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket]);
+  }, [socket, entities]);
 
   // Émissions : commit d'état complet débouncé (persisté + broadcast).
   // Se déclenche aussi à la connexion (= resync initial).
@@ -110,6 +122,9 @@ export function useVttSocket({
       const isFirstRun = firstRunRef.current;
       firstRunRef.current = false;
       if (isFirstRun) return; // rien n'a été édité au montage : pas d'écriture
+      // Hors-ligne, seul le MJ peut persister l'état complet (murs, brouillard,
+      // jetons) ; le joueur n'a pas de repli et attend la reconnexion.
+      if (!isGM) return;
       const offline = setTimeout(() => void saveSceneState(campaignId, state), 500);
       return () => clearTimeout(offline);
     }

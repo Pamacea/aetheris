@@ -65,6 +65,22 @@ describe("resolveBacklinks", () => {
     ]);
   });
 
+  it("résout un champ tag multiple (tableau d'ids, dédoublonné)", () => {
+    const res = resolveBacklinks({
+      active,
+      entries: [
+        entree("b", "B", null, { type: "tpl-1", data: { lie: ["x", "a", "a"] } }),
+        entree("c", "C", null, { type: "tpl-1", data: { lie: ["a"] } }),
+      ],
+      templates: [templateTag],
+      isGM: true,
+    });
+    expect(res).toEqual([
+      { id: "b", title: "B" },
+      { id: "c", title: "C" },
+    ]);
+  });
+
   it("n'expose pas les liens contenus dans un secret MJ pour un joueur", () => {
     const gmOnly = entree("s", "S", `<gm-secret>${lien("Aldric")}</gm-secret>`);
     expect(resolveBacklinks({ active, entries: [gmOnly], templates: [], isGM: true })).toEqual([

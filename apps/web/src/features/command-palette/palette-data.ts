@@ -16,7 +16,9 @@ export async function loadPaletteData(
       select: { id: true, title: true },
     }),
     prisma.novel.findMany({
-      where: { authorId: userId },
+      where: {
+        OR: [{ authorId: userId }, { collaborators: { some: { userId, role: "editor" } } }],
+      },
       orderBy: { updatedAt: "desc" },
       take: 20,
       select: { id: true, title: true },

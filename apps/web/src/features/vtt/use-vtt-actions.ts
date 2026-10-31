@@ -2,7 +2,16 @@
 
 import { useEffect } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { GridSettings, TokenState, VttApi, VttTool } from "./types";
+import { resolveMapUrl } from "./helpers";
+import type {
+  GridSettings,
+  TokenState,
+  VttApi,
+  VttTool,
+  WallLine,
+  WallSelection,
+  WallType,
+} from "./types";
 
 interface VttActionsParams {
   tool: VttTool;
@@ -10,15 +19,32 @@ interface VttActionsParams {
   apiRef: { current: VttApi | null };
   objectUrlRef: { current: string | null };
   selectedId: string | null;
+  walls: WallLine[];
+  wallSelection: WallSelection | null;
+  wallType: WallType;
   setGrid: Dispatch<SetStateAction<GridSettings>>;
   setMapUrl: Dispatch<SetStateAction<string | null>>;
+  setMapPreview: Dispatch<SetStateAction<string | null>>;
   setTokens: Dispatch<SetStateAction<TokenState[]>>;
   setSelectedId: Dispatch<SetStateAction<string | null>>;
+  setWalls: Dispatch<SetStateAction<WallLine[]>>;
+  setWallSelection: Dispatch<SetStateAction<WallSelection | null>>;
+}
+
+/** Sélecteur « champ de saisie » : les raccourcis ne doivent pas s'y appliquer. */
+function isEditable(el: Element | null): boolean {
+  return (
+    !!el &&
+    (el.tagName === "INPUT" ||
+      el.tagName === "TEXTAREA" ||
+      el instanceof HTMLSelectElement ||
+      (el as HTMLElement).isContentEditable)
+  );
 }
 
 /**
- * Handlers de la barre d'outils, plus les raccourcis clavier
- * (Suppr = retirer le token sélectionné, Entrée/Échap sur l'outil Murs).
+ * Handlers des barres d'outils + raccourcis clavier (Suppr = jeton ou
+ * sommet/mur sélectionné, Entrée/Échap sur l'outil Murs).
  * Joueurs exclus : création/suppression restent MJ (outils déjà filtrés).
  */
 export function useVttActions({
@@ -27,19 +53,47 @@ export function useVttActions({
   apiRef,
   objectUrlRef,
   selectedId,
+  walls,
+  wallSelection,
+  wallType,
   setGrid,
   setMapUrl,
+  setMapPreview,
   setTokens,
   setSelectedId,
+  setWalls,
+  setWallSelection,
 }: VttActionsParams) {
+  const revokePreview = () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = null;
+  };
+
+  /** Fichier local : APERÇU seulement — jamais commité ni diffusé (pas d'upload). */
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    revokePreview();
     const url = URL.createObjectURL(file);
     objectUrlRef.current = url;
-    setMapUrl(url);
+    setMapPreview(url);
     e.target.value = "";
+  };
+
+  /** URL distante : seule valeur persistée et synchronisée. */
+  const applyMap = (raw: string): boolean => {
+    const url = resolveMapUrl(raw);
+    if (!url) return false;
+    revokePreview();
+    setMapPreview(null);
+    setMapUrl(url);
+    return true;
+  };
+
+  const removeMap = () => {
+    revokePreview();
+    setMapPreview(null);
+    setMapUrl(null);
   };
 
   const setGridNum = (key: "size" | "offsetX" | "offsetY", raw: string) => {
@@ -64,44 +118,58 @@ export function useVttActions({
     if (key === "size") updateToken(id, { size: Math.min(512, Math.max(16, Math.round(n))) });
   };
 
-  // Suppression clavier du token sélectionné (hors champs de saisie) — MJ seul.
+  /** Supprime le sommet sélectionné (mur entier si un seul sommet resterait). */
+  const deleteWallSelection = (selection: WallSelection | null = wallSelection) => {
+    if (!selection) return;
+    const target = walls.find((w) => w.id === selection.wallId);
+    if (!target) {
+      setWallSelection(null);
+      return;
+    }
+    if (selection.vertex === null) {
+      setWalls(walls.filter((w) => w.id !== target.id));
+    } else {
+      const points = target.points.filter((_, i) => i !== selection.vertex);
+      setWalls(
+        points.length >= 2
+          ? walls.map((w) => (w.id === target.id ? { ...w, points } : w))
+          : walls.filter((w) => w.id !== target.id),
+      );
+    }
+    setWallSelection(null);
+    apiRef.current?.setWallSelection(null);
+  };
+
   useEffect(() => {
-    if (!isGM || !selectedId) return;
-    const id = selectedId;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Delete" && e.key !== "Backspace") return;
-      const ae = document.activeElement;
-      if (
-        ae &&
-        (ae.tagName === "INPUT" ||
-          ae.tagName === "TEXTAREA" ||
-          ae instanceof HTMLSelectElement ||
-          (ae as HTMLElement).isContentEditable)
-      )
+      if (isEditable(document.activeElement)) return;
+      if (e.key === "Escape") {
+        if (tool === "wall") apiRef.current?.cancelDraft();
+        if (wallSelection) {
+          setWallSelection(null);
+          apiRef.current?.setWallSelection(null);
+        }
         return;
+      }
+      if (tool === "wall" && e.key === "Enter") {
+        e.preventDefault();
+        apiRef.current?.finishDraft(wallType);
+        return;
+      }
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (wallSelection) {
+        e.preventDefault();
+        deleteWallSelection();
+        return;
+      }
+      if (!isGM || !selectedId) return;
       e.preventDefault();
-      setTokens((ts) => ts.filter((t) => t.id !== id));
+      setTokens((ts) => ts.filter((t) => t.id !== selectedId));
       setSelectedId(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isGM, selectedId, setTokens, setSelectedId]);
-
-  // Dessin de murs : Entrée valide la polyigne, Échap l'abandonne.
-  useEffect(() => {
-    if (tool !== "wall") return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        apiRef.current?.finishDraft();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        apiRef.current?.cancelDraft();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [tool, apiRef]);
+  });
 
   // Déclassement du blob URL de la carte au démontage (créé par onFileChange).
   useEffect(() => {
@@ -110,5 +178,14 @@ export function useVttActions({
     };
   }, [objectUrlRef]);
 
-  return { onFileChange, setGridNum, updateToken, deleteToken, setTokenNum };
+  return {
+    onFileChange,
+    applyMap,
+    removeMap,
+    setGridNum,
+    updateToken,
+    deleteToken,
+    setTokenNum,
+    deleteWallSelection,
+  };
 }

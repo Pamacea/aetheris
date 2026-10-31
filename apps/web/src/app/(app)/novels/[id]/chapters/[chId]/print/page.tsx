@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { JSONContent } from "@tiptap/core";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getNovelRole } from "@/features/novels/access";
+import { canReadChapter } from "@/features/novels/logic";
 import { PrintButton } from "@/components/print-button";
 import { TiptapContent } from "@/components/tiptap-content";
 
@@ -16,15 +18,15 @@ export default async function ChapterPrintPage({
 
   const novel = await prisma.novel.findUnique({
     where: { id },
-    select: { id: true, title: true, authorId: true },
+    select: { id: true, title: true, status: true },
   });
   if (!novel) notFound();
 
   const chapter = await prisma.chapter.findFirst({ where: { id: chId, novelId: id } });
   if (!chapter) notFound();
 
-  const isOwner = session?.user.id === novel.authorId;
-  if (!isOwner && chapter.status !== "published") notFound();
+  const role = await getNovelRole(id, session?.user.id);
+  if (!canReadChapter(role, novel.status, chapter.status)) notFound();
 
   return (
     <>

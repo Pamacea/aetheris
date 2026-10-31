@@ -6,7 +6,7 @@ import type { BuilderState } from "./builder-state";
 // donc appelées hors composant (la règle rules-of-hooks verrait un « use »).
 import { useFieldOps as creerOps } from "./builder-ops";
 
-type Drag = { source: "palette"; key: string } | { source: "row"; index: number } | null;
+type Drag = { key: string } | null;
 
 const champ = (id: string): TemplateField => ({ id, label: id, kind: "text" });
 const ids = (l: TemplateField[]) => l.map((f) => f.id);
@@ -17,9 +17,8 @@ function monde(initial: TemplateField[]) {
     { id: "t1", name: "Fiche", category: null, schema: { fields: initial } },
   ];
   let status = "idle";
-  let openCfg = new Set<number>();
+  let openCfg = new Set<string>();
   let drag: Drag = null;
-  let dragOver: number | null = null;
 
   const champsDe = () => (items[0].schema as { fields: TemplateField[] }).fields;
 
@@ -33,16 +32,14 @@ function monde(initial: TemplateField[]) {
       status = s;
     },
     setNotice: () => {},
-    listRef: { current: null },
+    listRef: {
+      current: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800 }) },
+    },
     drag,
     setDrag: (v: Drag) => {
       drag = v;
     },
-    dragOver,
-    setDragOver: (v: number | null) => {
-      dragOver = v;
-    },
-    setOpenCfg: (v: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    setOpenCfg: (v: Set<string> | ((prev: Set<string>) => Set<string>)) => {
       openCfg = typeof v === "function" ? v(openCfg) : v;
     },
   });
@@ -53,76 +50,66 @@ function monde(initial: TemplateField[]) {
     champs: champsDe,
     ouverts: () => openCfg,
     statut: () => status,
-    poserDrag: (d: Drag, at: number | null) => {
+    poserDrag: (d: Drag) => {
       drag = d;
-      dragOver = at;
     },
   };
 }
 
-const evt = { preventDefault: () => {}, clientY: 0 } as never;
+const evt = { preventDefault: () => {}, clientX: 700, clientY: 100 } as never;
 
 describe("useFieldOps — insertField", () => {
-  it("index négatif ramené à 0 (insertion en tête)", () => {
-    const m = monde([champ("a")]);
-    m.ops().insertField((id) => champ(id), -5);
-    expect(ids(m.champs())).toEqual(["champ2", "a"]);
-    expect(m.ouverts()).toEqual(new Set([0]));
+  it("place les nouveaux champs en cartes 2×2 côte à côte", () => {
+    const m = monde([]);
+    m.ops().insertField((id) => champ(id));
+    m.ops().insertField((id) => champ(id));
+    expect(ids(m.champs())).toEqual(["champ1", "champ2"]);
+    expect(m.champs()[0].layout).toEqual({ x: 0, y: 0, w: 2, h: 2 });
+    expect(m.champs()[1].layout).toEqual({ x: 2, y: 0, w: 2, h: 2 });
     expect(m.statut()).toBe("dirty");
   });
 
-  it("index supérieur à la taille ramené à la fin", () => {
-    const m = monde([champ("a")]);
-    m.ops().insertField((id) => champ(id), 99);
-    expect(ids(m.champs())).toEqual(["a", "champ2"]);
-    expect(m.ouverts()).toEqual(new Set([1]));
+  it("respecte un layout existant et ouvre sa config", () => {
+    const m = monde([{ id: "a", label: "a", kind: "text", layout: { x: 0, y: 0, w: 6, h: 4 } }]);
+    m.ops().insertField((id) => champ(id));
+    expect(m.champs()[1].layout).toEqual({ x: 6, y: 0, w: 2, h: 2 });
+    expect(m.ouverts()).toEqual(new Set(["champ2"]));
   });
 
   it("id libre : saute un champ de la palette déjà présent", () => {
     const m = monde([champ("champ4"), champ("x"), champ("y")]);
-    m.ops().insertField((id) => champ(id), 0);
-    expect(ids(m.champs())[0]).toBe("champ5");
+    m.ops().insertField((id) => champ(id));
+    expect(ids(m.champs())).toContain("champ5");
   });
+});
 
-  it("champ de palette : clé inconnue → rien inséré", () => {
+describe("useFieldOps — handleDrop (palette → canvas)", () => {
+  it("clé inconnue : rien inséré", () => {
     const m = monde([champ("a")]);
-    m.poserDrag({ source: "palette", key: "clave-inexistante" }, 0);
+    m.poserDrag({ key: "clave-inexistante" });
     m.ops().handleDrop(evt);
     expect(ids(m.champs())).toEqual(["a"]);
   });
 
-  it("champ de palette : clé connue → champ inséré à l'index survolé", () => {
+  it("clé connue : champ inséré à la cellule visée", () => {
     const m = monde([champ("a")]);
-    m.poserDrag({ source: "palette", key: "textarea" }, 1);
+    m.poserDrag({ key: "textarea" });
     m.ops().handleDrop(evt);
     expect(ids(m.champs())).toEqual(["a", "champ2"]);
+    // Chaque kind garde sa hauteur par défaut : un texte long naît en 6 rangées.
+    expect(m.champs()[1].layout).toEqual({
+      x: 10,
+      y: 4,
+      w: 2,
+      h: 6,
+    });
   });
-});
 
-describe("useFieldOps — moveField (réordonnement)", () => {
-  it("premier rang vers le haut : borné, ordre inchangé", () => {
+  it("sans drag en cours : aucun changement", () => {
     const m = monde([champ("a"), champ("b")]);
-    m.ops().moveField(0, -1);
+    m.ops().handleDrop(evt);
     expect(ids(m.champs())).toEqual(["a", "b"]);
     expect(m.statut()).toBe("idle");
-  });
-
-  it("dernier rang vers le bas : borné, ordre inchangé", () => {
-    const m = monde([champ("a"), champ("b")]);
-    m.ops().moveField(1, 1);
-    expect(ids(m.champs())).toEqual(["a", "b"]);
-  });
-
-  it("déplacement vers le haut : échange des deux rangs", () => {
-    const m = monde([champ("a"), champ("b"), champ("c")]);
-    m.ops().moveField(1, -1);
-    expect(ids(m.champs())).toEqual(["b", "a", "c"]);
-  });
-
-  it("déplacement vers le bas : échange des deux rangs", () => {
-    const m = monde([champ("a"), champ("b"), champ("c")]);
-    m.ops().moveField(1, 1);
-    expect(ids(m.champs())).toEqual(["a", "c", "b"]);
   });
 });
 
@@ -148,50 +135,19 @@ describe("useFieldOps — patchField / patchColumn", () => {
   });
 });
 
-describe("useFieldOps — handleDrop (glisser un rang)", () => {
-  it("rang déplacé vers le bas", () => {
-    const m = monde([champ("a"), champ("b"), champ("c")]);
-    m.poserDrag({ source: "row", index: 0 }, 3);
-    m.ops().handleDrop(evt);
-    expect(ids(m.champs())).toEqual(["b", "c", "a"]);
-  });
-
-  it("rang déplacé vers le haut", () => {
-    const m = monde([champ("a"), champ("b"), champ("c")]);
-    m.poserDrag({ source: "row", index: 2 }, 0);
-    m.ops().handleDrop(evt);
-    expect(ids(m.champs())).toEqual(["c", "a", "b"]);
-  });
-
-  it("départ = arrivée : aucun changement", () => {
-    const m = monde([champ("a"), champ("b")]);
-    m.poserDrag({ source: "row", index: 1 }, 1);
-    m.ops().handleDrop(evt);
-    expect(ids(m.champs())).toEqual(["a", "b"]);
-    expect(m.statut()).toBe("idle");
-  });
-
-  it("index de départ hors bornes : aucun changement", () => {
-    const m = monde([champ("a"), champ("b")]);
-    m.poserDrag({ source: "row", index: 7 }, 0);
-    m.ops().handleDrop(evt);
-    expect(ids(m.champs())).toEqual(["a", "b"]);
-  });
-
-  it("sans drag en cours : seul le nettoyage est fait", () => {
-    const m = monde([champ("a"), champ("b")]);
-    m.ops().handleDrop(evt);
-    expect(ids(m.champs())).toEqual(["a", "b"]);
-    expect(m.statut()).toBe("idle");
-  });
-});
-
 describe("useFieldOps — toggleCfg", () => {
-  it("ajoute puis retire un index de config ouverte", () => {
+  it("ajoute puis retire la config ouverte, par id de champ", () => {
     const m = monde([champ("a")]);
-    m.ops().toggleCfg(0);
-    expect(m.ouverts()).toEqual(new Set([0]));
-    m.ops().toggleCfg(0);
+    m.ops().toggleCfg("a");
+    expect(m.ouverts()).toEqual(new Set(["a"]));
+    m.ops().toggleCfg("a");
     expect(m.ouverts()).toEqual(new Set());
+  });
+
+  it("une insertion ne déplace pas la config ouverte", () => {
+    const m = monde([champ("a")]);
+    m.ops().toggleCfg("a");
+    m.ops().insertField((id) => champ(id));
+    expect(m.ouverts()).toEqual(new Set(["a"]));
   });
 });

@@ -1,71 +1,76 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
-import { VTT_BAR_CLS } from "./bars";
-import { resolveMapUrl } from "./helpers";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { VTT_PANEL_CLS } from "./bars";
 import type { GridSettings, GridType } from "./types";
+import { VttSelect } from "./vtt-select";
 
 interface VttGridBarProps {
   grid: GridSettings;
   setGrid: Dispatch<SetStateAction<GridSettings>>;
   setGridNum: (key: "size" | "offsetX" | "offsetY", raw: string) => void;
+  /** Carte distante : seule valeur persistée et diffusée. */
   mapUrl: string | null;
-  setMapUrl: Dispatch<SetStateAction<string | null>>;
-  objectUrlRef: { current: string | null };
+  /** Aperçu blob local (fichier choisi), jamais commité. */
+  mapPreview: string | null;
+  applyMap: (raw: string) => boolean;
+  removeMap: () => void;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-/** Barre de l'outil Grille : carte (fichier ou URL), type/size/offset de grille. */
+/**
+ * Panneau de l'outil Grille : un seul bloc carte (URL appliquée + aperçu local
+ * discret) puis type/taille/offset de grille.
+ */
 export function VttGridBar({
   grid,
   setGrid,
   setGridNum,
   mapUrl,
-  setMapUrl,
-  objectUrlRef,
+  mapPreview,
+  applyMap,
+  removeMap,
   onFileChange,
 }: VttGridBarProps) {
-  // Carte distante persistée affichée (le blob: de l'upload reste local).
-  const [urlDraft, setUrlDraft] = useState(() =>
-    mapUrl && !mapUrl.startsWith("blob:") ? mapUrl : "",
-  );
+  const urlRef = useRef<HTMLInputElement>(null);
   const [urlError, setUrlError] = useState(false);
+
   const applyUrl = (e: React.FormEvent) => {
     e.preventDefault();
-    // http(s) absolu uniquement — le reste (blob:, javascript:, relatif) est rejeté.
-    const url = resolveMapUrl(urlDraft);
-    if (!url) {
-      setUrlError(true);
-      return;
-    }
-    setUrlError(false);
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
-    setMapUrl(url);
+    // http(s) absolu uniquement — blob:, javascript: et relatif sont rejetés.
+    if (!applyMap(urlRef.current?.value ?? "")) setUrlError(true);
+    else setUrlError(false);
   };
   return (
-    <div className={VTT_BAR_CLS}>
+    <div className={VTT_PANEL_CLS}>
       <span className="tracking-widest text-muted uppercase">Carte</span>
-      <label className="btn cursor-pointer px-2 py-1 text-xs">
-        Charger…
-        <input type="file" accept="image/*" className="hidden" onChange={onFileChange} />
-      </label>
-      {/* shortcut: un fichier local devient un blob:… valable pour cette session et
-          pour le MJ seul — une URL distante persiste et s'affiche chez tous. */}
       <form onSubmit={applyUrl} className="flex items-center gap-1.5 text-muted">
-        URL
         <input
+          key={mapUrl ?? ""}
+          ref={urlRef}
           className="input w-56 py-1 text-xs"
-          value={urlDraft}
-          onChange={(e) => {
-            setUrlDraft(e.target.value);
-            setUrlError(false);
-          }}
+          defaultValue={mapUrl ?? ""}
+          onChange={() => setUrlError(false)}
           placeholder="https://…/carte.png"
           aria-label="URL de la carte"
         />
+        <label
+          className="btn cursor-pointer px-2 py-1 text-xs"
+          title="Aperçu local d'un fichier (non partagé)"
+          aria-label="Prévisualiser un fichier local"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          >
+            <path d="M3 7h6l2 2h10v9H3z" strokeLinejoin="round" />
+          </svg>
+          <input type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+        </label>
         <button type="submit" className="btn px-2 py-1 text-xs">
-          Charger
+          Appliquer la carte
         </button>
         {urlError && (
           <span role="alert" className="text-[0.65rem] text-destructive">
@@ -73,32 +78,23 @@ export function VttGridBar({
           </span>
         )}
       </form>
-      {mapUrl && (
-        <button
-          type="button"
-          className="btn px-2 py-1 text-xs text-muted"
-          onClick={() => {
-            if (objectUrlRef.current) {
-              URL.revokeObjectURL(objectUrlRef.current);
-              objectUrlRef.current = null;
-            }
-            setMapUrl(null);
-          }}
-        >
+      {(mapUrl || mapPreview) && (
+        <button type="button" className="btn px-2 py-1 text-xs text-muted" onClick={removeMap}>
           Retirer
         </button>
       )}
-      <span aria-hidden className="mx-1 h-4 w-px bg-border" />
       <span className="tracking-widest text-muted uppercase">Grille</span>
-      <select
-        className="input w-36 py-1 text-xs"
+      <VttSelect
         value={grid.type}
-        onChange={(e) => setGrid((g) => ({ ...g, type: e.target.value as GridType }))}
-      >
-        <option value="square">Carrée</option>
-        <option value="hex">Hexagonale</option>
-        <option value="none">Sans grille</option>
-      </select>
+        label="Type de grille"
+        widthCls="w-36"
+        options={[
+          { value: "square", label: "Carrée" },
+          { value: "hex", label: "Hexagonale" },
+          { value: "none", label: "Sans grille" },
+        ]}
+        onChange={(value) => setGrid((g) => ({ ...g, type: value as GridType }))}
+      />
       <label className="flex items-center gap-1.5 text-muted">
         Taille
         <input

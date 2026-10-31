@@ -39,12 +39,12 @@ export function FieldConfigNumber({ field, index: i, patchField }: Props) {
           />
           {/* shortcut: précision fixée à 0/2 par le type — réintroduire un champ
           Décimales libre si besoin */}
-          <label className="flex flex-col gap-0.5">
-            <span className="text-[0.6rem] tracking-widest text-muted uppercase">
+          <label className="flex min-h-7 items-center justify-between gap-2">
+            <span className="shrink-0 text-[0.6rem] tracking-widest text-muted uppercase">
               Type de nombre
             </span>
             <select
-              className="input w-44 py-1 text-xs"
+              className="input h-7 w-40 min-w-0 px-2 py-0 text-xs"
               name={`champ-${field.id}-type-nombre`}
               value={
                 field.decimals === 0

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { listNovelGenres } from "@/features/novels/genres";
 import { CreateNovelButton } from "./create-novel-dialog";
 import { StatusBadge } from "./status-badge";
 
@@ -15,10 +16,11 @@ export default async function NovelsPage({
 
   const { q } = await searchParams;
   const query = q?.trim() ?? "";
+  const genres = await listNovelGenres();
 
   const novels = await prisma.novel.findMany({
     where: {
-      authorId: session.user.id,
+      OR: [{ authorId: session.user.id }, { collaborators: { some: { userId: session.user.id } } }],
       ...(query ? { title: { contains: query, mode: "insensitive" as const } } : {}),
     },
     include: {
@@ -39,7 +41,7 @@ export default async function NovelsPage({
             Studio d&apos;écriture — romans, chapitres, publication.
           </p>
         </div>
-        <CreateNovelButton />
+        <CreateNovelButton genres={genres} />
       </header>
 
       <form className="flex gap-2" action="/novels" method="get">

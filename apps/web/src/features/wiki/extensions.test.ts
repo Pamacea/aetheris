@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { noteBlockKindSchema } from "@aetheris/shared";
 import { GM_BLOCK_DEFS, PALETTE_SECTIONS, SHEET_BLOCK_DEFS, TEXT_BLOCK_DEFS } from "./block-defs";
 import {
-  BLOCK_PRESETS,
   createSlashExtension,
   createWikiLinkExtension,
   filterSlashItems,
@@ -12,52 +10,27 @@ import {
 
 const BASE = slashItems(false);
 const BASE_COUNT = TEXT_BLOCK_DEFS.length + SHEET_BLOCK_DEFS.length;
-const PRESET_TOTAL = BLOCK_PRESETS.reduce((n, p) => n + p.items.length, 0);
-
-describe("BLOCK_PRESETS", () => {
-  it("tous les kinds sont valides dans le schema partagé", () => {
-    for (const pack of BLOCK_PRESETS) {
-      expect(pack.pack.length).toBeGreaterThan(0);
-      for (const item of pack.items) {
-        expect(noteBlockKindSchema.safeParse(item.kind).success, item.title).toBe(true);
-        expect(item.title.length).toBeGreaterThan(0);
-        expect(item.label.length).toBeGreaterThan(0);
-      }
-    }
-  });
-});
 
 describe("slashItems", () => {
-  it("joueur : blocs de base + presets, aucune variante MJ", () => {
-    // 8 formats de texte + 3 blocs de fiche + presets ×1.
-    expect(BASE).toHaveLength(BASE_COUNT + PRESET_TOTAL);
-    expect(BASE.some((i) => i.title.includes("MJ"))).toBe(false);
+  it("joueur : blocs de texte et JDR, aucun bloc MJ", () => {
+    expect(BASE).toHaveLength(BASE_COUNT);
+    expect(BASE.some((i) => i.title === "Bloc secret MJ")).toBe(false);
     expect(BASE.some((i) => i.title === "Titre 1")).toBe(true);
   });
 
   it("blocs automatisés : jet de dés et tableau exposés au menu slash", () => {
     expect(BASE.map((i) => i.title)).toContain("Jet de dés");
-    expect(BASE.map((i) => i.title)).toContain("Tableau");
+    expect(BASE.map((i) => i.title)).toContain("Tableau de stats");
   });
 
-  it("expose le bloc Propriétés clé-valeur", () => {
-    expect(BASE.map((i) => i.title)).toContain("Propriétés clé-valeur");
+  it("plus de blocs clé-valeur hérités", () => {
+    expect(BASE.map((i) => i.title)).not.toContain("Propriétés clé-valeur");
   });
 
-  it("le preset Texte est remplacé par le bloc Paragraphe", () => {
-    expect(BASE.map((i) => i.title)).not.toContain("Texte");
-    expect(BASE.map((i) => i.title)).toContain("Paragraphe");
-  });
-
-  it("MJ : + commande secret + variante MJ de chaque preset", () => {
+  it("MJ : ajoute le bloc secret", () => {
     const gm = slashItems(true);
-    expect(gm).toHaveLength(BASE_COUNT + GM_BLOCK_DEFS.length + PRESET_TOTAL * 2);
+    expect(gm).toHaveLength(BASE_COUNT + GM_BLOCK_DEFS.length);
     expect(gm.some((i) => i.title === "Bloc secret MJ")).toBe(true);
-    for (const pack of BLOCK_PRESETS) {
-      for (const item of pack.items) {
-        expect(gm.some((i) => i.title === `${item.title} (MJ seulement)`)).toBe(true);
-      }
-    }
   });
 });
 
@@ -69,6 +42,10 @@ describe("source unique palette / slash", () => {
         expect(slash.has(def.label), def.id).toBe(true);
       }
     }
+  });
+
+  it("trois sections : texte, JDR, MJ", () => {
+    expect(PALETTE_SECTIONS.map((s) => s.id)).toEqual(["text", "sheet", "gm"]);
   });
 });
 

@@ -10,6 +10,9 @@ export function useTemplateAutosave(
   campaignId: string,
   entityId: string,
   onStatus: (s: "saving" | "saved" | "error") => void,
+  onSaved?: () => void,
+  /** `false` = aperçu : aucune écriture ni statut. */
+  enabled = true,
 ) {
   const pending = useRef<Record<string, unknown> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -21,6 +24,7 @@ export function useTemplateAutosave(
   }, []);
 
   function scheduleSave(next: Record<string, unknown>) {
+    if (!enabled) return;
     pending.current = next;
     onStatus("saving");
     if (timer.current) clearTimeout(timer.current);
@@ -30,6 +34,7 @@ export function useTemplateAutosave(
       pending.current = null;
       const res = await saveTemplateData(campaignId, entityId, data);
       onStatus(res.ok ? "saved" : "error");
+      if (res.ok) onSaved?.();
     }, AUTOSAVE_DELAY_MS);
   }
 

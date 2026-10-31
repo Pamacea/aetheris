@@ -42,7 +42,7 @@ export function ChatLog({
   return (
     <div
       ref={logRef}
-      className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3"
+      className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3"
       aria-label="Messages"
     >
       {entries.length === 0 && (

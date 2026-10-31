@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { withEmbed } from "@/components/campaigns/embed-mode";
 import { fold } from "@/lib/text";
 import { createWikiEntry } from "./actions";
 import { useWikiAutosave } from "./autosave";
 import { BacklinksMobile, BacklinksPanel } from "./backlinks-panel";
+import type { BlockPayload } from "./block-defs";
 import { WikiEditor } from "./editor";
 import { EntriesPanel } from "./entries-panel";
 import { WikiAppHistory } from "./history";
@@ -18,12 +19,37 @@ import type { WikiAppProps } from "./types";
 export type { WikiActiveEntry, WikiEntryMeta, WikiAppProps, WikiTemplateMeta } from "./types";
 
 /** Wiki : panneau d'entrées à gauche, éditeur TipTap au centre, liens entrants à droite. */
-export function WikiApp({ campaignId, entries, active, templates, backlinks, isGM }: WikiAppProps) {
+export function WikiApp({
+  campaignId,
+  entries,
+  active,
+  templates,
+  linked,
+  backlinks,
+  isGM,
+}: WikiAppProps) {
   const router = useRouter();
   const autosave = useWikiAutosave(campaignId);
   const w = useWikiAppState(campaignId, entries, autosave);
   const { localEntries, selectEntry, setLocalEntries } = w;
   const flush = autosave.flush;
+
+  // L'éditeur publie son inserteur : la palette « + Blocs » vit dans l'en-tête.
+  // setState(fn) traiterait l'inserteur comme un updater → toujours l'envelopper.
+  const [insertBlock, setInsertBlock] = useState<((payload: BlockPayload) => void) | null>(null);
+  const registerInsert = useCallback(
+    (insert: ((payload: BlockPayload) => void) | null) => setInsertBlock(() => insert),
+    [],
+  );
+  // Fiche : la palette insère dans les « Notes complémentaires » repliées → les déplier.
+  const notesPanelRef = useRef<HTMLDetailsElement>(null);
+  const handleInsert = useCallback(
+    (payload: BlockPayload) => {
+      notesPanelRef.current?.setAttribute("open", "");
+      insertBlock?.(payload);
+    },
+    [insertBlock],
+  );
 
   // Clic sur un [[lien]] : résolu → navigation ; inconnu → création (MJ).
   const handleWikiLink = useCallback(
@@ -40,7 +66,10 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
       if (!isGM) return;
       const res = await createWikiEntry(campaignId, { title });
       if (res.ok) {
-        setLocalEntries((prev) => [...prev, { id: res.id, title, folder: null, type: "note" }]);
+        setLocalEntries((prev) => [
+          ...prev,
+          { id: res.id, title, folder: null, type: "note", gmOnly: false },
+        ]);
         router.push(withEmbed(`/campaign/${campaignId}/wiki?note=${res.id}`));
       }
     },
@@ -85,6 +114,7 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
               savedAt={autosave.savedAt}
               setLocalEntries={w.setLocalEntries}
               onHistory={() => void w.openHistory(active.id)}
+              onInsert={insertBlock ? handleInsert : undefined}
             />
 
             {/* Sous `lg`, le panneau latéral des liens entrants est masqué :
@@ -96,30 +126,57 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
               <BacklinksMobile backlinks={backlinks} selectEntry={w.selectEntry} />
             </section>
 
-            {active.template && (
-              <TemplateForm
-                key={`form-${active.id}`}
-                campaignId={campaignId}
-                entityId={active.id}
-                schemaRaw={active.template.schema}
-                initialData={active.data}
-                notes={w.localEntries}
-                templates={templates}
-                onStatus={handleFormStatus}
-                onNavigate={(id) => void selectEntry(id)}
-              />
-            )}
-
-            <div className="flex-1 overflow-y-auto px-5 py-6 md:px-10">
-              <WikiEditor
-                key={`${active.id}:${restored?.rev ?? 0}`}
-                noteId={active.id}
-                contentHtml={restored ? restored.html : active.contentHtml}
-                notes={w.localEntries.map((n) => ({ id: n.id, title: n.title }))}
-                isGM={isGM}
-                onChange={autosave.handleChange}
-                onWikiLinkClick={(t, id) => void handleWikiLink(t, id)}
-              />
+            {/* Une page est soit une fiche structurée, soit une note libre :
+                jamais les deux empilés. L'éditeur libre d'une fiche reste
+                accessible, replié, sous le formulaire. */}
+            <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-6 md:px-10">
+              <div className="mx-auto flex w-full flex-col gap-6">
+                {active.template ? (
+                  <>
+                    <TemplateForm
+                      key={`form-${active.id}`}
+                      campaignId={campaignId}
+                      entityId={active.id}
+                      schemaRaw={active.template.schema}
+                      initialData={active.data}
+                      notes={w.localEntries}
+                      linked={linked}
+                      templates={templates}
+                      customCss={active.template.customCss ?? null}
+                      onStatus={handleFormStatus}
+                      onNavigate={(id) => void selectEntry(id)}
+                    />
+                    <details ref={notesPanelRef} className="border-t border-border pt-4">
+                      <summary className="cursor-pointer text-[0.65rem] tracking-widest text-muted uppercase select-none">
+                        Notes complémentaires
+                      </summary>
+                      <div className="pt-4">
+                        <WikiEditor
+                          key={`${active.id}:${restored?.rev ?? 0}`}
+                          noteId={active.id}
+                          contentHtml={restored ? restored.html : active.contentHtml}
+                          notes={w.localEntries.map((n) => ({ id: n.id, title: n.title }))}
+                          isGM={isGM}
+                          onChange={autosave.handleChange}
+                          onWikiLinkClick={(t, id) => void handleWikiLink(t, id)}
+                          registerInsert={registerInsert}
+                        />
+                      </div>
+                    </details>
+                  </>
+                ) : (
+                  <WikiEditor
+                    key={`${active.id}:${restored?.rev ?? 0}`}
+                    noteId={active.id}
+                    contentHtml={restored ? restored.html : active.contentHtml}
+                    notes={w.localEntries.map((n) => ({ id: n.id, title: n.title }))}
+                    isGM={isGM}
+                    onChange={autosave.handleChange}
+                    onWikiLinkClick={(t, id) => void handleWikiLink(t, id)}
+                    registerInsert={registerInsert}
+                  />
+                )}
+              </div>
             </div>
           </>
         ) : (
@@ -138,7 +195,7 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
         )}
       </main>
 
-      <BacklinksPanel backlinks={backlinks} selectEntry={w.selectEntry} />
+      <BacklinksPanel active={active} backlinks={backlinks} selectEntry={w.selectEntry} />
 
       {w.history && (
         <WikiAppHistory

@@ -26,7 +26,9 @@ model User {
   apiKeys      ApiKey[]
   campaigns    CampaignMember[]
   novels       Novel[]
+  novelCollaborations NovelCollaborator[]
   gameSystems  GameSystem[]
+  entityAssignments EntityAssignee[]
 }
 
 model Session {
@@ -95,11 +97,15 @@ model ApiKey {
 model Campaign {
   id                String           @id @default(uuid())
   title             String
+  description       String?          // pitch de campagne (assistant de création)
+  visibility        String           @default("private") // private | public
   coverImage        String?          // image de couverture (URL ou data-URI)
   logo              String?          // logo de campagne (URL ou data-URI)
   theme             String           @default("pandemonium") // thème natif ou "custom"
   customThemeScript String?          // JS de thème importé par l'utilisateur
-  gameSystem        String           @default("custom") // id de preset ou "custom"
+  gameSystem        String           @default("custom") // id de preset ou "custom" (legacy)
+  gameSystemId      String?          // système choisi dans le hub (preset ou homebrew)
+  gameSystemRef     GameSystem?      @relation(fields: [gameSystemId], references: [id], onDelete: SetNull)
   customScript      String?          // JS custom injecté (bac à sable)
   customStyles      String?          // CSS custom injecté
   enabledPlugins    String[]         @default(["lore-wiki"])
@@ -136,6 +142,7 @@ model JsonTemplate {
   name       String
   category   String? // ex. « Encyclopédie » — regroupe les templates côté wiki
   schema     Json // structure des champs (validée par Zod)
+  customCss  String? // style propre au modèle, sanitisé serveur, injecté au rendu
   campaignId String
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -149,14 +156,27 @@ model Entity {
   data        Json // données saisies selon le template
   contentHtml String? // corps de la note (lore)
   folder      String? // dossier dans le panneau wiki (null = racine)
+  gmOnly      Boolean  @default(false) // note secrète : invisible des joueurs
   shareSlug   String? @unique // wiki partageable : slug public (null = non partagé)
   campaignId  String
   campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignees   EntityAssignee[]
   versions    EntityVersion[]
   linksFrom   EntityLink[] @relation("LinkFrom")
   linksTo     EntityLink[] @relation("LinkTo")
 
   @@index([campaignId])
+}
+
+/// Joueurs assignés à une fiche (0..n). Aucun assigné = lecture seule joueur.
+model EntityAssignee {
+  entityId String
+  userId   String
+  entity   Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([entityId, userId])
+  @@index([userId])
 }
 
 // Arêtes du graphe de relations (personnages, lieux, factions…)
@@ -282,33 +302,45 @@ model CampaignAmbiance {
 // ───────────────────────── Systèmes de jeu ─────────────────────────
 
 model GameSystem {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  schema      Json     @default("{}") // structure : feuilles, objets, cartes (éditable en campagne)
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(uuid())
+  name             String
+  description      String?
+  genre            String   @default("autre") // fantasy | horreur | sci-fi | narratif | autre
+  isPreset         Boolean  @default(false) // true = preset officiel (ownerId null)
+  ownerId          String? // propriétaire d'un système homebrew (null pour un preset)
+  defaultTemplates Json     @default("[]") // SystemTemplateSeed[] (nom, catégorie, TemplateSchema)
+  defaultAssets    Json     @default("[]") // SystemAsset[] (sorts, compétences, traits…)
+  defaultLore      Json     @default("[]") // SystemLoreNote[] (notes seedées à la création)
+  owner            User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  campaigns        Campaign[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  @@index([authorId])
+  @@index([ownerId])
 }
 
 // ───────────────────────── Romans (module d'écriture) ─────────────────────────
 
 model Novel {
-  id         String    @id @default(uuid())
-  title      String
-  synopsis   String?
-  status     String    @default("draft") // draft | writing | published
-  coverImage String?
-  authorId   String
-  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  chapters   Chapter[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  title         String
+  synopsis      String?
+  status        String    @default("draft") // draft | writing | published
+  coverImage    String?
+  genre         String?
+  tags          String[]  @default([])
+  shareToken    String?   @unique
+  shareMode     String? // read | review | edit — null si partage désactivé
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  chapters      Chapter[]
+  collaborators NovelCollaborator[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([authorId])
+  @@index([status, updatedAt])
+  @@index([genre])
 }
 
 model Chapter {
@@ -325,4 +357,16 @@ model Chapter {
   updatedAt   DateTime  @updatedAt
 
   @@index([novelId])
+}
+
+model NovelCollaborator {
+  novelId   String
+  userId    String
+  role      String   @default("editor") // editor uniquement aujourd'hui
+  createdAt DateTime @default(now())
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([novelId, userId])
+  @@index([userId])
 }

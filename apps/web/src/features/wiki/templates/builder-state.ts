@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { packFields } from "@aetheris/shared";
 import type { WikiTemplateMeta } from "../types";
 import { parseFields } from "./builder-field-factory";
 
@@ -21,23 +22,23 @@ export function useBuilderState(initial: WikiTemplateMeta[], campaignId: string)
   // Test d'un champ « js » depuis l'éditeur de template (scope vide).
   const [jsTest, setJsTest] = useState<JsTest>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-  const [drag, setDrag] = useState<
-    { source: "palette"; key: string } | { source: "row"; index: number } | null
-  >(null);
-  const [dragOver, setDragOver] = useState<number | null>(null);
-  // Config des champs repliée par défaut (⚙ la déplie) ; index = position.
-  // shortcut: l'ordre suit la position — réordonner peut refermer l'index d'à côté.
-  const [openCfg, setOpenCfg] = useState<Set<number>>(new Set());
+  const listRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{ key: string } | null>(null);
+  // Config des champs repliée par défaut (⚙ la déplie) ; clé = id du champ
+  // (un Set d'index se décalait à chaque insertion/suppression).
+  const [openCfg, setOpenCfg] = useState<Set<string>>(new Set());
 
   // Resync depuis le serveur après chaque server action (revalidatePath).
+  // Un brouillon local (drag/resize/saisie en cours) ne doit jamais être
+  // écrasé par une réponse serveur plus ancienne : c'est l'autosave qui
+  // republie l'état local.
   if (prev !== initial) {
     setPrev(initial);
-    setItems(initial);
+    if (status !== "dirty" && status !== "saving") setItems(initial);
   }
 
   const selected = items.find((t) => t.id === selectedId) ?? items[0] ?? null;
-  const fields = selected ? parseFields(selected) : [];
+  const fields = selected ? packFields(parseFields(selected)) : [];
 
   const categories = [
     ...new Set(items.map((t) => t.category).filter((c): c is string => !!c)),
@@ -75,8 +76,6 @@ export function useBuilderState(initial: WikiTemplateMeta[], campaignId: string)
     listRef,
     drag,
     setDrag,
-    dragOver,
-    setDragOver,
     openCfg,
     setOpenCfg,
     selected,

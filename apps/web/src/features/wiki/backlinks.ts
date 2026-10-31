@@ -25,10 +25,19 @@ function tagTargetsOf(
     source.data && typeof source.data === "object" && !Array.isArray(source.data)
       ? (source.data as Record<string, unknown>)
       : {};
-  return schema.data.fields
-    .filter((f) => f.kind === "tag")
-    .map((f) => data[f.id])
-    .filter((v): v is string => typeof v === "string" && v.length > 0);
+  return [
+    ...new Set(
+      schema.data.fields
+        .filter((f) => f.kind === "tag")
+        .flatMap((f) => {
+          const v = data[f.id];
+          if (typeof v === "string") return v.length > 0 ? [v] : [];
+          return Array.isArray(v)
+            ? v.filter((x): x is string => typeof x === "string" && x.length > 0)
+            : [];
+        }),
+    ),
+  ];
 }
 
 /**

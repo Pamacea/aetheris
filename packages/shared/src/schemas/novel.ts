@@ -6,9 +6,16 @@ export type NovelStatus = z.infer<typeof novelStatusSchema>;
 export const chapterStatusSchema = z.enum(["draft", "review", "published"]);
 export type ChapterStatus = z.infer<typeof chapterStatusSchema>;
 
+const tagsSchema = z
+  .array(z.string().trim().min(1).max(40))
+  .max(10)
+  .transform((tags) => [...new Set(tags)]);
+
 export const createNovelSchema = z.object({
   title: z.string().min(1).max(200),
   synopsis: z.string().max(5000).optional(),
+  genre: z.string().trim().max(80).nullable().optional(),
+  tags: tagsSchema.optional(),
 });
 export type CreateNovelInput = z.infer<typeof createNovelSchema>;
 
@@ -17,8 +24,17 @@ export const updateNovelSchema = z.object({
   synopsis: z.string().max(5000).nullable().optional(),
   status: novelStatusSchema.optional(),
   coverImage: z.string().nullable().optional(),
+  genre: z.string().trim().max(80).nullable().optional(),
+  tags: tagsSchema.optional(),
 });
 export type UpdateNovelInput = z.infer<typeof updateNovelSchema>;
+
+export const novelShareModeSchema = z.enum(["read", "review", "edit"]);
+export type NovelShareMode = z.infer<typeof novelShareModeSchema>;
+
+export const setNovelShareSchema = z.object({
+  mode: novelShareModeSchema.nullable(),
+});
 
 export const createChapterSchema = z.object({
   title: z.string().min(1).max(200),

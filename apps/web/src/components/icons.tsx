@@ -60,15 +60,66 @@ export function LayoutIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function DiceIcon(props: SVGProps<SVGSVGElement>) {
+export function BlocksIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
-      <circle cx="5.6" cy="5.6" r="0.8" fill="currentColor" stroke="none" />
-      <circle cx="10.4" cy="5.6" r="0.8" fill="currentColor" stroke="none" />
-      <circle cx="8" cy="8" r="0.8" fill="currentColor" stroke="none" />
-      <circle cx="5.6" cy="10.4" r="0.8" fill="currentColor" stroke="none" />
-      <circle cx="10.4" cy="10.4" r="0.8" fill="currentColor" stroke="none" />
+      <path d="M8 1.8L1.8 5v6L8 14.2 14.2 11V5L8 1.8z" />
+      <path d="M1.8 5L8 8.2 14.2 5" />
+      <path d="M8 8.2v6" />
+    </Icon>
+  );
+}
+
+/** Outils de la table de jeu (barre inférieure, icônes seules). */
+export function CursorIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M3.2 2.2l9.4 5.9-4.1.9-1.7 4.1L3.2 2.2z" />
+    </Icon>
+  );
+}
+
+export function PanIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M8 2.5v11M2.5 8h11" />
+      <path d="M6.2 4.3L8 2.5l1.8 1.8M6.2 11.7L8 13.5l1.8-1.8M4.3 6.2L2.5 8l1.8 1.8M11.7 6.2L13.5 8l-1.8 1.8" />
+    </Icon>
+  );
+}
+
+export function GridIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="2.5" y="2.5" width="11" height="11" />
+      <path d="M2.5 6.2h11M2.5 9.8h11M6.2 2.5v11M9.8 2.5v11" />
+    </Icon>
+  );
+}
+
+export function TokenIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="8" cy="5.4" r="2.2" />
+      <path d="M3.6 13.5c0-2.6 2-4.3 4.4-4.3s4.4 1.7 4.4 4.3" />
+    </Icon>
+  );
+}
+
+export function WallIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="2.5" y="5" width="11" height="6" />
+      <path d="M7 5v3M10 8v3M5 8v3M2.5 8h2.5M7 8h3M12 5v3" />
+    </Icon>
+  );
+}
+
+export function FogIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4.4 10.8h7a2.4 2.4 0 000-4.8 3.4 3.4 0 00-6.4-.7 2.7 2.7 0 00-.6 5.5z" />
+      <path d="M3.5 13h9" />
     </Icon>
   );
 }
@@ -85,6 +136,25 @@ export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
       <path d="M6 3.5L10.5 8 6 12.5" />
+    </Icon>
+  );
+}
+
+export function MenuIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+    </Icon>
+  );
+}
+
+export function PaletteIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M8 1.8a6.2 6.2 0 000 12.4c1.2 0 1.8-.9 1.8-1.8 0-1.1-.8-1.7-1.8-1.7h-.4c-1 0-1.5-.6-1.5-1.4 0-1 .7-1.6 1.8-1.6h1.4a3.7 3.7 0 003.7-3.7c0-1.3-2.2-2.2-5-2.2z" />
+      <circle cx="5.2" cy="6.2" r=".7" />
+      <circle cx="7.4" cy="4.4" r=".7" />
+      <circle cx="10" cy="5.1" r=".7" />
     </Icon>
   );
 }
@@ -140,6 +210,45 @@ export function CopyIcon(props: SVGProps<SVGSVGElement>) {
     <Icon {...props}>
       <rect x="5.5" y="5.5" width="8" height="8" />
       <path d="M10.5 5.5v-3h-8v8h3" />
+    </Icon>
+  );
+}
+
+export function SwordIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M13 2.5L7.5 8 8 9.5 6.5 11 5 9.5 3.5 11 5 12.5 3 14.5" />
+      <path d="M8.5 6.5l1.5 1.5" />
+    </Icon>
+  );
+}
+
+export function SkullIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M8 1.8c-3 0-5 2.2-5 5 0 1.7.8 3 2 3.8V13h6v-2.4c1.2-.8 2-2.1 2-3.8 0-2.8-2-5-5-5z" />
+      <circle cx="6.2" cy="7" r="1" fill="currentColor" stroke="none" />
+      <circle cx="9.8" cy="7" r="1" fill="currentColor" stroke="none" />
+      <path d="M6.8 10.5v2M9.2 10.5v2" />
+    </Icon>
+  );
+}
+
+export function RocketIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M9 2.5c2.4.6 4 2.2 4.5 4.6l-5.4 5.4-3.1-3.1L9 2.5z" />
+      <path d="M5 9.4L2.5 12M6.6 11l-1.2 2.5M3.5 7.9L6 6.7" />
+      <circle cx="10" cy="6" r="1" />
+    </Icon>
+  );
+}
+
+export function FeatherIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M13 3c-4 0-7 3-7 7v3l3-3c4 0 4-4 4-7z" />
+      <path d="M3 13.5L9 7.5" />
     </Icon>
   );
 }

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { JSONContent } from "@tiptap/core";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getNovelRole } from "@/features/novels/access";
+import { canReadNovel } from "@/features/novels/logic";
 import { PrintButton } from "@/components/print-button";
 import { TiptapContent } from "@/components/tiptap-content";
 
@@ -19,10 +21,13 @@ export default async function NovelPrintPage({ params }: { params: Promise<{ id:
   });
   if (!novel) notFound();
 
-  const isOwner = session?.user.id === novel.authorId;
-  const chapters = isOwner
-    ? novel.chapters
-    : novel.chapters.filter((chapter) => chapter.status === "published");
+  const role = await getNovelRole(id, session?.user.id);
+  if (!canReadNovel(role, novel.status)) notFound();
+
+  const chapters =
+    role === null
+      ? novel.chapters.filter((chapter) => chapter.status === "published")
+      : novel.chapters;
 
   return (
     <>

@@ -4,11 +4,12 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GameModal } from "@/components/game-modal";
 import { createNovel, updateNovel } from "@/features/novels/actions";
+import { parseTags } from "@/features/novels/logic";
 import { readCoverFile } from "@/features/novels/cover-image";
 import { CreateNovelDialogFields } from "./create-novel-dialog-fields";
 import { IconCross } from "./icons";
 
-export function CreateNovelButton() {
+export function CreateNovelButton({ genres }: { genres: string[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -38,12 +39,20 @@ export function CreateNovelButton() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const title = String(new FormData(form).get("title") ?? "").trim();
-    const synopsis = String(new FormData(form).get("synopsis") ?? "").trim();
+    const data = new FormData(form);
+    const title = String(data.get("title") ?? "").trim();
+    const synopsis = String(data.get("synopsis") ?? "").trim();
+    const genre = String(data.get("genre") ?? "").trim();
+    const tags = parseTags(String(data.get("tags") ?? ""));
 
     setError(null);
     startTransition(async () => {
-      const created = await createNovel({ title, synopsis: synopsis || undefined });
+      const created = await createNovel({
+        title,
+        synopsis: synopsis || undefined,
+        genre: genre || null,
+        tags,
+      });
       if (!created.ok) {
         setError(created.error);
         return;
@@ -87,6 +96,7 @@ export function CreateNovelButton() {
             </header>
 
             <CreateNovelDialogFields
+              genres={genres}
               cover={cover}
               coverInputRef={coverInputRef}
               onCoverPick={handleCover}

@@ -42,6 +42,12 @@ export function Nav() {
           </a>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/library"
+            className="text-sm text-muted transition-colors hover:text-foreground"
+          >
+            Bibliothèque
+          </Link>
           <DonationButton
             label="DON"
             className="btn hidden text-muted hover:text-foreground sm:inline-flex"

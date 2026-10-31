@@ -9,6 +9,23 @@ import type { JSONContent } from "@tiptap/core";
 
 type Mark = NonNullable<JSONContent["marks"]>[number];
 
+/** Allowlist d'URL pour les liens rendus publiquement (contenu auteur non fiable). */
+export function safeHref(href: unknown): string | null {
+  if (typeof href !== "string") return null;
+  const value = href.trim();
+  if (!value) return null;
+  // Relatif (ancre, chemin, requête) : pas de schéma.
+  if (/^[/#?]/.test(value)) return value;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" || url.protocol === "mailto:"
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function alignStyle(attrs?: JSONContent["attrs"]): CSSProperties | undefined {
   return attrs?.textAlign ? { textAlign: attrs.textAlign } : undefined;
 }
@@ -25,12 +42,15 @@ function applyMark(node: ReactNode, mark: Mark, key: number): ReactNode {
       return <u key={key}>{node}</u>;
     case "code":
       return <code key={key}>{node}</code>;
-    case "link":
+    case "link": {
+      const href = safeHref(mark.attrs?.href);
+      if (!href) return node;
       return (
-        <a key={key} href={mark.attrs?.href} target="_blank" rel="noopener noreferrer">
+        <a key={key} href={href} target="_blank" rel="noopener noreferrer">
           {node}
         </a>
       );
+    }
     case "highlight":
       return (
         <mark

@@ -1,6 +1,15 @@
 import type { Container } from "pixi.js";
 import { commitTokens, hitTokenAt } from "./apply";
-import { redrawDraft, snapPoint, worldPoint } from "./draw";
+import {
+  hitWallSegment,
+  nearestVertex,
+  redrawDraft,
+  redrawWalls,
+  snapPoint,
+  snapWallPoint,
+  worldPoint,
+} from "./draw";
+import { scheduleFog } from "./fog";
 import { newSceneToken } from "./helpers";
 import type { VttBridge, VttSceneCtx } from "./types";
 
@@ -21,8 +30,17 @@ export function attachPointers(ctx: VttSceneCtx, bridge: VttBridge) {
     toX?: number;
     toY?: number;
   } | null = null;
+  /** Sommet de mur en cours de déplacement. */
+  let draggingWall: { wallId: string; index: number } | null = null;
   /** Dernier token:move émis (throttle ~60 ms pendant le drag). */
   let lastMoveEmit = 0;
+
+  /** Sélection de mur/sommet partagée React ↔ Pixi (surbrillance immédiate). */
+  const selectWall = (sel: VttSceneCtx["wallSelection"]) => {
+    ctx.wallSelection = sel;
+    bridge.setWallSelection(sel);
+    redrawWalls(ctx.wallGfx, ctx.wallStates, ctx.isGM, sel);
+  };
 
   const onDown = (e: PointerEvent) => {
     const tool = bridge.toolRef.current;
@@ -35,11 +53,27 @@ export function attachPointers(ctx: VttSceneCtx, bridge: VttBridge) {
       canvas.setPointerCapture(e.pointerId);
       return;
     }
-    // Outil « Murs » : chaque clic ajoute un sommet snappé à la polyigne.
+    // Outil « Murs » : tracé continu (sommet snappé à chaque clic), ou
+    // sélection d'un sommet/mur existant quand aucun tracé n'est en cours.
     if (e.button === 0 && tool === "wall") {
       e.preventDefault();
       const w = worldPoint(canvas, ctx.world, e);
-      const p = snapPoint(ctx.gridSettings, w.x, w.y);
+      const scale = ctx.world.scale.x || 1;
+      if (ctx.draft.length === 0) {
+        const vertex = nearestVertex(ctx.wallStates, w.x, w.y, 12 / scale);
+        if (vertex) {
+          selectWall({ wallId: vertex.wallId, vertex: vertex.index });
+          draggingWall = { wallId: vertex.wallId, index: vertex.index };
+          canvas.setPointerCapture(e.pointerId);
+          return;
+        }
+        const segment = hitWallSegment(ctx.wallStates, w.x, w.y, 10 / scale);
+        if (segment) {
+          selectWall({ wallId: segment.wallId, vertex: null });
+          return;
+        }
+      }
+      const p = snapWallPoint(ctx.gridSettings, ctx.wallStates, w.x, w.y);
       ctx.draft.push(p);
       ctx.draftCursor = p;
       bridge.setDraftCount(ctx.draft.length);
@@ -52,9 +86,13 @@ export function attachPointers(ctx: VttSceneCtx, bridge: VttBridge) {
     const hit = hitTokenAt(ctx.tokenStates, w.x, w.y);
     if (hit) {
       e.preventDefault();
-      dragging = { id: hit.id, dx: w.x - hit.x, dy: w.y - hit.y };
+      // Un joueur ne peut déplacer que ses jetons (le serveur re-vérifie).
+      const canDrag = bridge.isGM || hit.ownerId === bridge.userId;
+      if (canDrag) {
+        dragging = { id: hit.id, dx: w.x - hit.x, dy: w.y - hit.y };
+        canvas.setPointerCapture(e.pointerId);
+      }
       commitTokens(ctx, bridge, ctx.tokenStates, hit.id);
-      canvas.setPointerCapture(e.pointerId);
       return;
     }
     if (tool === "select") {
@@ -84,9 +122,28 @@ export function attachPointers(ctx: VttSceneCtx, bridge: VttBridge) {
       lastY = e.clientY;
       return;
     }
+    if (draggingWall) {
+      const { wallId, index } = draggingWall;
+      const w = worldPoint(canvas, ctx.world, e);
+      // Sommets de CE mur exclus du snap (sinon le sommet se colle à lui-même).
+      const others = ctx.wallStates.map((wall) =>
+        wall.id === wallId ? { ...wall, points: wall.points.filter((_, i) => i !== index) } : wall,
+      );
+      const p = snapWallPoint(ctx.gridSettings, others, w.x, w.y);
+      const next = ctx.wallStates.map((wall) =>
+        wall.id === wallId
+          ? { ...wall, points: wall.points.map((pt, i) => (i === index ? p : pt)) }
+          : wall,
+      );
+      ctx.wallStates = next;
+      bridge.setWalls(next);
+      redrawWalls(ctx.wallGfx, next, ctx.isGM, ctx.wallSelection);
+      scheduleFog(ctx);
+      return;
+    }
     if (ctx.draft.length > 0 && bridge.toolRef.current === "wall") {
       const w = worldPoint(canvas, ctx.world, e);
-      ctx.draftCursor = snapPoint(ctx.gridSettings, w.x, w.y);
+      ctx.draftCursor = snapWallPoint(ctx.gridSettings, ctx.wallStates, w.x, w.y);
       redrawDraft(ctx.draftGfx, ctx.draft, ctx.draftCursor);
       return;
     }
@@ -119,6 +176,10 @@ export function attachPointers(ctx: VttSceneCtx, bridge: VttBridge) {
     }
     if (panning) {
       panning = false;
+      return;
+    }
+    if (draggingWall) {
+      draggingWall = null;
       return;
     }
     if (!dragging) return;

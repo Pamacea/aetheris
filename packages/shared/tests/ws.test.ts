@@ -43,6 +43,77 @@ test("un état de scène valide passe", () => {
   assert.equal(sceneStateSchema.safeParse(etat()).success, true);
 });
 
+test("murs : l'ancien tableau de points est migré en mur plein à id stable", () => {
+  const a = sceneStateSchema.parse(etat());
+  const b = sceneStateSchema.parse(etat());
+  assert.equal(a.walls[0].type, "wall");
+  assert.equal(a.walls[0].id, b.walls[0].id);
+  assert.deepEqual(a.walls[0].points, [
+    { x: 0, y: 0 },
+    { x: 10, y: 0 },
+  ]);
+});
+
+test("murs : styles acceptés, type inconnu refusé", () => {
+  const mur = {
+    id: "w1",
+    type: "secret",
+    points: [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ],
+  };
+  const ok = sceneStateSchema.safeParse(etat({ walls: [mur] }));
+  assert.equal(ok.success, true);
+  if (ok.success) assert.equal(ok.data.walls[0].type, "secret");
+  for (const type of ["wall", "stone", "cave", "wood", "window"]) {
+    const r = sceneStateSchema.safeParse(etat({ walls: [{ ...mur, type }] }));
+    assert.equal(r.success, true);
+    if (r.success) assert.equal(r.data.walls[0].type, type);
+  }
+  assert.equal(
+    sceneStateSchema.safeParse(etat({ walls: [{ ...mur, type: "porte" }] })).success,
+    false,
+  );
+  assert.equal(
+    sceneStateSchema.safeParse(etat({ walls: [{ ...mur, points: [] }] })).success,
+    false,
+  );
+});
+
+test("mapUrl : http(s) conservé, tout le reste normalisé en null", () => {
+  const ok = sceneStateSchema.parse(etat({ mapUrl: "https://exemple.fr/carte.png" }));
+  assert.equal(ok.mapUrl, "https://exemple.fr/carte.png");
+  for (const bad of [
+    "blob:https://exemple.fr/123",
+    "javascript:alert(1)",
+    "/local/carte.png",
+    "carte.png",
+  ]) {
+    const r = sceneStateSchema.safeParse(etat({ mapUrl: bad }));
+    assert.equal(r.success, true);
+    if (r.success) assert.equal(r.data.mapUrl, null);
+  }
+});
+
+test("jeton : vision par défaut (portée globale) et champs bornés", () => {
+  const d = sceneStateSchema.parse(etat());
+  assert.deepEqual(d.tokens[0].sight, { enabled: true, rangeCells: null, type: "normal" });
+  assert.equal(d.tokens[0].noteId, null);
+  assert.equal(
+    sceneStateSchema.safeParse(
+      etat({ tokens: [{ ...jeton, sight: { enabled: false, rangeCells: 0, type: "cone" } }] }),
+    ).success,
+    false,
+  );
+  assert.equal(
+    sceneStateSchema.safeParse(
+      etat({ tokens: [{ ...jeton, sight: { enabled: false, rangeCells: 3, type: "cone" } }] }),
+    ).success,
+    true,
+  );
+});
+
 test("theatreNotes absent : défaut [] (payloads antérieurs valides)", () => {
   const r = sceneStateSchema.safeParse(etat({ theatreNotes: undefined }));
   assert.equal(r.success, true);

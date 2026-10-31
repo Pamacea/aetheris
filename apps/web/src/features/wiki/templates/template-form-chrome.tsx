@@ -1,5 +1,13 @@
-import type { TemplateField } from "@aetheris/shared";
+import { fieldWidthSpan, type TemplateField } from "@aetheris/shared";
 import type { DiceRollDisplay, DiceRollError } from "@/lib/use-dice-roll";
+
+const WIDTH_SPAN_CLASS: Record<3 | 4 | 6 | 9 | 12, string> = {
+  3: "col-span-1 min-w-0 sm:col-span-3",
+  4: "col-span-1 min-w-0 sm:col-span-4",
+  6: "col-span-1 min-w-0 sm:col-span-6",
+  9: "col-span-1 min-w-0 sm:col-span-9",
+  12: "col-span-1 min-w-0 sm:col-span-12",
+};
 
 export type FieldDice = {
   roll: (expression: string, scope: Record<string, unknown>, fieldId: string) => void;
@@ -24,29 +32,26 @@ export function fieldChrome(
   numericScope: Record<string, number>,
 ): FieldChrome {
   const { roll, last, error } = dice;
-  // Longueur/taille configurables (⚙ builder) ; nombre/compteur courts
+  // Largeur sur la grille 12 colonnes (⚙ builder) ; nombre/compteur courts
   // par défaut (démarche « champs plus petits »).
-  // shortcut: clamp via w-[min()] — les classes max-w-* sont interdites (PARRY).
-  const widthCls =
-    field.width === "full"
-      ? ""
-      : field.width === "md"
-        ? "w-[min(100%,18rem)]"
-        : field.width === "sm" || field.kind === "number" || field.kind === "counter"
-          ? "w-[min(100%,11rem)]"
-          : "";
+  const widthCls = WIDTH_SPAN_CLASS[fieldWidthSpan(field.width, field.kind)];
   const sizeCls = field.size === "sm" ? "input-sm" : "";
   const label = (
-    <span className="text-[0.65rem] tracking-widest text-muted uppercase">
+    <span
+      className="min-w-0 shrink-0 truncate text-[0.65rem] tracking-widest text-muted uppercase"
+      title={field.label}
+    >
       {field.label}
-      {field.kind === "formula" || field.kind === "number" ? (
-        <span className="ml-1 normal-case">
-          ({field.kind === "formula" ? "calcul" : field.unit || "nombre"})
-        </span>
+      {field.kind === "formula" ? (
+        <span className="ml-1 normal-case">(calcul)</span>
+      ) : field.kind === "number" && field.unit ? (
+        <span className="ml-1 normal-case">({field.unit})</span>
       ) : null}
     </span>
   );
-  const help = field.help ? <span className="text-[0.65rem] text-muted">{field.help}</span> : null;
+  const help = field.help ? (
+    <span className="shrink-0 text-[0.65rem] text-muted">{field.help}</span>
+  ) : null;
 
   // Champ « dé » : expression de jet optionnelle (number/counter/formula).
   const rollExpr =
@@ -54,11 +59,11 @@ export function fieldChrome(
       ? field.roll
       : null;
   const labelRow = rollExpr ? (
-    <span className="flex items-center justify-between gap-2">
+    <span className="flex shrink-0 items-center justify-between gap-2">
       {label}
       <button
         type="button"
-        className="btn px-1.5 py-0.5 text-xs"
+        className="btn shrink-0 px-1.5 py-0.5 text-xs"
         aria-label={`Lancer ${field.label}`}
         title={rollExpr}
         onClick={() => roll(rollExpr, numericScope, field.id)}

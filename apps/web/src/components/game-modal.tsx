@@ -112,7 +112,7 @@ export function GameModal({
         <div
           ref={panelRef}
           tabIndex={-1}
-          className="panel relative flex max-h-[90vh] w-[min(90vw,60rem)] flex-col overflow-y-auto p-6 outline-none"
+          className="panel no-scrollbar relative flex max-h-[90vh] w-[min(90vw,60rem)] flex-col overflow-y-auto p-6 outline-none"
         >
           <header className="mb-4 flex items-start justify-between gap-4">
             <h2 className="text-xl tracking-wide">

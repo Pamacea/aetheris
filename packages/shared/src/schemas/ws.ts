@@ -57,6 +57,17 @@ export const sceneActivateRequestSchema = z.object({
 });
 export type SceneActivateRequest = z.infer<typeof sceneActivateRequestSchema>;
 
+/** Vision d'un jeton. `rangeCells: null` → portée globale de la scène
+ *  (`fog.sightCells`). `cone` = cône de 90° centré sur `rot`. */
+export const tokenSightSchema = z.object({
+  enabled: z.boolean().default(true),
+  rangeCells: z.number().min(1).max(100).nullable().default(null),
+  type: z.enum(["normal", "darkvision", "cone"]).default("normal"),
+});
+export type TokenSight = z.infer<typeof tokenSightSchema>;
+
+const DEFAULT_SIGHT: TokenSight = { enabled: true, rangeCells: null, type: "normal" };
+
 export const sceneTokenSchema = z.object({
   id: z.string().min(1).max(64),
   x: z.number(),
@@ -67,16 +78,64 @@ export const sceneTokenSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   hp: z.number().nullable(),
   hpMax: z.number().nullable(),
-  noteId: z.string().min(1).max(64).nullable().optional(),
+  noteId: z.string().min(1).max(64).nullable().default(null),
   // .default(null) : les payloads antérieurs (sans les champs) restent valides.
   ac: z.number().int().min(0).max(99).nullable().default(null),
   /** Membre de la campagne propriétaire du jeton (PV/CA) — null = MJ seul. */
   ownerId: z.string().min(1).max(64).nullable().default(null),
+  // .default(...) : les scènes antérieures voient avec la portée globale.
+  sight: tokenSightSchema.default(DEFAULT_SIGHT),
 });
 export type SceneToken = z.infer<typeof sceneTokenSchema>;
 
-export const wallLineSchema = z.array(z.object({ x: z.number(), y: z.number() }));
-export type WallLine = z.infer<typeof wallLineSchema>;
+/** Style de mur : tous bloquent le déplacement. `window` ne bloque pas la
+ *  vision ; `secret` bloque la vision des joueurs et n'est rendu qu'au MJ.
+ *  `stone`/`cave`/`wood` sont des variantes visuelles de `wall`. */
+export const wallTypeSchema = z.enum(["wall", "stone", "cave", "wood", "secret", "window"]);
+export type WallType = z.infer<typeof wallTypeSchema>;
+
+export const wallPointSchema = z.object({ x: z.number(), y: z.number() });
+
+/** Identifiant déterministe d'un ancien mur migré : le même tableau de points
+ *  donne le même id à chaque parse, sinon la comparaison avant/après commit
+ *  des joueurs échouerait à chaque écriture. */
+function legacyWallId(points: unknown): string {
+  const body = JSON.stringify(points);
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < body.length; i++) {
+    hash ^= body.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `legacy-${(hash >>> 0).toString(36)}`;
+}
+
+export const wallSchema = z.object({
+  id: z.string().min(1).max(64),
+  type: wallTypeSchema.default("wall"),
+  points: z.array(wallPointSchema).min(1).max(2048),
+});
+export type Wall = z.infer<typeof wallSchema>;
+
+/**
+ * Rétrocompatibilité : l'ancien format était un tableau de points (mur plein).
+ * `z.preprocess` migre avant validation — aucune scène persistée à réécrire.
+ */
+export const wallLineSchema = z.preprocess(
+  (raw) => (Array.isArray(raw) ? { id: legacyWallId(raw), type: "wall", points: raw } : raw),
+  wallSchema,
+);
+export type WallLine = Wall;
+
+/** URL de carte : http(s) absolu uniquement. Toute autre valeur (`blob:`
+ *  d'un aperçu local, `javascript:`, relative) est normalisée en null — un
+ *  fichier local ne doit jamais être persisté ni diffusé. */
+export const mapUrlSchema = z
+  .string()
+  .max(2048)
+  .refine((u) => u.startsWith("http://") || u.startsWith("https://"), "URL http(s) attendue")
+  .nullable()
+  .catch(null);
+export type MapUrl = z.infer<typeof mapUrlSchema>;
 
 export const gridSettingsSchema = z.object({
   type: z.enum(["square", "hex", "none"]),
@@ -91,7 +150,7 @@ export const sceneStateSchema = z.object({
   tokens: z.array(sceneTokenSchema).max(500),
   walls: z.array(wallLineSchema).max(500),
   grid: gridSettingsSchema,
-  mapUrl: z.string().max(2048).nullable(),
+  mapUrl: mapUrlSchema,
   fog: z.object({
     on: z.boolean(),
     sightCells: z.number().min(1).max(100),
@@ -110,6 +169,32 @@ export const sceneCommitSchema = z.object({
   state: sceneStateSchema,
 });
 export type SceneCommit = z.infer<typeof sceneCommitSchema>;
+
+// ── Fiches ↔ jetons ──────────────────────────────────────────────────
+/** C→S : la fiche liée vient d'être enregistrée ; le serveur relit Entity + template et diffuse. */
+export const ficheSyncRequestSchema = z.object({
+  campaignId: z.uuid(),
+  entityId: z.uuid(),
+});
+export type FicheSyncRequest = z.infer<typeof ficheSyncRequestSchema>;
+
+/** S→C : valeurs de la fiche, clés résolues côté serveur. `patch` ne contient
+ *  que les valeurs présentes (une valeur absente n'écrase ni jeton ni fiche). */
+export const ficheCombatSchema = z.object({
+  entityId: z.string().min(1).max(64),
+  keys: z.object({
+    hp: z.string().nullable(),
+    hpMax: z.string().nullable(),
+    ac: z.string().nullable(),
+  }),
+  patch: z.object({
+    name: z.string().min(1).max(120).optional(),
+    hp: z.number().nullable().optional(),
+    hpMax: z.number().nullable().optional(),
+    ac: z.number().int().min(0).max(99).nullable().optional(),
+  }),
+});
+export type FicheCombat = z.infer<typeof ficheCombatSchema>;
 
 // ── Dés ──────────────────────────────────────────────────────────────
 /** C→S : le serveur tire les dés (seed serveur → anti-cheat). */
@@ -151,6 +236,7 @@ export interface ServerToClientEvents {
   "token:moved": (payload: TokenMoved) => void;
   "scene:state": (payload: SceneState) => void;
   "scene:change": (payload: SceneChange) => void;
+  "fiche:combat": (payload: FicheCombat) => void;
   "dice:rolled": (payload: DiceRoll) => void;
   "chat:message": (payload: ChatMessage) => void;
   /** Relais générique des plugins (Phase 8) dans la room campagne. */
@@ -164,6 +250,7 @@ export interface ClientToServerEvents {
   "token:move": (payload: TokenMoveRequest) => void;
   "scene:commit": (payload: SceneCommit) => Promise<{ ok: true }>;
   "scene:activate": (payload: SceneActivateRequest) => void;
+  "fiche:sync": (payload: FicheSyncRequest) => void;
   "dice:roll": (payload: DiceRollRequest) => void;
   "chat:send": (payload: ChatSend) => Promise<{ ok: true }>;
   "plugin:event": (payload: PluginEventRequest) => void;

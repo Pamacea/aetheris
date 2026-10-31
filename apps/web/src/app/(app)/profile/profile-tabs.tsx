@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
 import { USER_THEME_EVENT, USER_THEME_STORAGE_KEY } from "@/components/user-theme";
@@ -108,6 +108,13 @@ export function ProfileTabs({ name, email, authAccounts, apiKeys }: ProfileTabsP
   const router = useRouter();
   const baseId = useId();
   const toast = useToast();
+
+  // La page défile avec le document : masquer la scrollbar du document, pas d'un conteneur.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("no-scrollbar");
+    return () => root.classList.remove("no-scrollbar");
+  }, []);
 
   return (
     <div className="flex flex-col gap-8">

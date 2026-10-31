@@ -8,8 +8,8 @@ import { VttDesktop } from "@/components/campaigns/vtt-desktop";
 export default async function VttPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { member } = await requireCampaignPage(id, "vtt");
-  const { messages, initialScene, members } = await loadVttPageData(id);
   const isGM = member.role === "GM";
+  const { messages, initialScene, members, entities } = await loadVttPageData(id, isGM);
 
   return (
     <VttDesktop campaignId={id}>
@@ -19,6 +19,7 @@ export default async function VttPage({ params }: { params: Promise<{ id: string
           campaignId={id}
           userId={member.userId}
           members={members}
+          entities={entities}
           initialScene={initialScene}
         />
       </TriPanel>

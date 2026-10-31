@@ -18,12 +18,17 @@ import {
   chatSendSchema,
   choicesUpdateSchema,
   diceRollRequestSchema,
+  entityTokenPatch,
+  ficheSyncRequestSchema,
   parseRollExpression,
+  resolveCombatKeys,
+  templateSchemaSchema,
   executeRoll,
   randomSeed,
   substituteMacros,
   DiceError,
   sceneCommitSchema,
+  sceneStateSchema,
   sceneActivateRequestSchema,
   pluginEventRequestSchema,
   tokenMoveRequestSchema,
@@ -77,7 +82,10 @@ const ambiancePlaylistsChangedSchema = z.object({
  * l'adhésion à la room est vérifiée contre CampaignMember.
  */
 @WebSocketGateway({
-  cors: { origin: process.env.WEB_ORIGIN ?? "http://localhost:3001", credentials: true },
+  cors: {
+    origin: process.env.WEB_ORIGIN ?? "http://localhost:3001",
+    credentials: true,
+  },
 })
 export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnModuleDestroy {
   @WebSocketServer()
@@ -126,7 +134,7 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
         });
         const valid = new Map(rows.map((r) => [r.campaignId, r.role]));
         const at = Date.now();
-        for (const id of [...data.campaigns]) {
+        for (const id of data.campaigns) {
           const role = valid.get(id);
           if (role === undefined) {
             await socket.leave(`campaign:${id}`);
@@ -221,6 +229,19 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
   }
 
   /**
+   * Rejoint la room à la demande : un client peut émettre juste après un
+   * reconnect, avant que `campaign:join` ne soit traité (course). L'adhésion
+   * DB de `requireMember` reste la seule autorité.
+   */
+  private async ensureJoined(socket: Socket, campaignId: string): Promise<void> {
+    const data = socket.data as SocketData;
+    if (data.campaigns?.includes(campaignId)) return;
+    await this.requireMember(socket, campaignId);
+    await socket.join(`campaign:${campaignId}`);
+    data.campaigns = [...new Set([...(data.campaigns ?? []), campaignId])];
+  }
+
+  /**
    * Quota `max` événements/s par socket : au-delà l'événement est ignoré
    * (warn serveur, pas d'exception — un client qui spamme ne doit pas
    * déclencher de montée d'exception à chaque frame).
@@ -259,7 +280,9 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     data.campaigns = [...new Set([...(data.campaigns ?? []), campaignId])];
 
     this.events.emit("campaign.joined", { campaignId, userId: data.userId });
-    void this.plugins?.dispatchHook("campaign:joined", campaignId, { userId: data.userId });
+    void this.plugins?.dispatchHook("campaign:joined", campaignId, {
+      userId: data.userId,
+    });
     socket.to(room).emit("presence:joined", {
       userId: data.userId,
       name: data.userName ?? "Anonyme",
@@ -276,9 +299,7 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const { campaignId, content } = parseWs(chatSendSchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     if (!this.allowEvent(socket, "chat:send", 5)) return undefined;
     await this.requireMember(socket, campaignId);
 
@@ -318,9 +339,7 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const { campaignId } = parseWs(choicesUpdateSchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     if (!this.allowEvent(socket, "choices:update", 5)) return undefined;
     await this.requireMember(socket, campaignId);
 
@@ -342,9 +361,7 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const { campaignId, state } = parseWs(ambianceStateRelaySchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     if (!this.allowEvent(socket, "ambiance:state", 5)) return undefined;
     await this.requireMember(socket, campaignId, { gmOnly: true });
 
@@ -362,9 +379,7 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const { campaignId } = parseWs(ambiancePlaylistsChangedSchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     if (!this.allowEvent(socket, "ambiance:playlists-changed", 5)) return undefined;
     await this.requireMember(socket, campaignId);
 
@@ -378,13 +393,25 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const { campaignId, tokenId, x, y, rot } = parseWs(tokenMoveRequestSchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     // Drag : quota élevé (frames de souris), puis ignoré sans exception.
     if (!this.allowEvent(socket, "token:move", 30)) return;
     // Adhésion revérifiée en DB (cache 30 s) : le drag reste léger.
-    await this.requireMember(socket, campaignId);
+    const member = await this.requireMember(socket, campaignId);
+
+    // Un joueur ne déplace que SES jetons ; le MJ déplace tout.
+    if (member.role !== "GM") {
+      const prev = await this.prisma.vttScene.findUnique({
+        where: { campaignId },
+        select: { state: true },
+      });
+      const parsed = prev ? sceneStateSchema.safeParse(prev.state) : null;
+      const token = parsed?.success ? parsed.data.tokens.find((t) => t.id === tokenId) : undefined;
+      if (!token || token.ownerId !== data.userId) {
+        throw new WsException("Jeton non déplaçable");
+      }
+    }
+
     socket.to(`campaign:${campaignId}`).emit("token:moved", { tokenId, x, y, rot });
   }
 
@@ -398,11 +425,12 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const { campaignId, pluginId, type, payload } = parseWs(pluginEventRequestSchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     if (!this.allowEvent(socket, "plugin:event", 10)) return;
-    await this.requireMember(socket, campaignId);
+    const member = await this.requireMember(socket, campaignId);
+    // Relais MJ-only : les plugins actuels (combat) sont pilotés par le MJ.
+    // Ouvrir un type au joueur = valider explicitement ce type ici.
+    if (member.role !== "GM") throw new WsException("Réservé aux MJ");
 
     const campaign = await this.prisma.campaign.findUnique({
       where: { id: campaignId },
@@ -429,35 +457,27 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const { campaignId, state } = parseWs(sceneCommitSchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     if (!this.allowEvent(socket, "scene:commit", 10)) return undefined;
     const member = await this.requireMember(socket, campaignId);
 
-    // Commit = state complet : un joueur ne peut toucher qu'aux champs
-    // (PV/CA/propriétaire) des jetons dont il est propriétaire.
+    // Commit = state complet : on relit l'état persisté (normalisé par le
+    // schéma, donc compatible avec les anciens murs en tableau de points).
+    const prev = await this.prisma.vttScene.findUnique({
+      where: { campaignId },
+      select: { state: true },
+    });
+    const parsedPrev = prev ? sceneStateSchema.safeParse(prev.state) : null;
+    const before = parsedPrev?.success ? parsedPrev.data : null;
+
     if (member.role !== "GM") {
-      const prev = await this.prisma.vttScene.findUnique({
-        where: { campaignId },
-        select: { state: true },
-      });
-      const prevTokens = new Map<string, Record<string, unknown>>(
-        ((prev?.state as { tokens?: Record<string, unknown>[] } | null)?.tokens ?? []).map((t) => [
-          String(t.id),
-          t,
-        ]),
-      );
-      for (const t of state.tokens ?? []) {
-        const old = prevTokens.get(String(t.id));
-        if (!old) throw new WsException("Création de jeton réservée au MJ");
-        const touched =
-          t.hp !== old.hp || t.hpMax !== old.hpMax || t.ac !== old.ac || t.ownerId !== old.ownerId;
-        if (touched && old.ownerId !== data.userId) {
-          throw new WsException("Jeton non modifiable");
-        }
-      }
+      if (!before) throw new WsException("Scène non modifiable");
+      this.assertPlayerCommit(before, state, data.userId);
+      // Les notes de théâtre ne sont pas exposées au client joueur : on
+      // conserve celles du MJ au lieu de les écraser avec son tableau vide.
+      state.theatreNotes = before.theatreNotes;
     }
+    await this.assertNoteIds(campaignId, before, state);
 
     this.scheduleScenePersist(campaignId, state);
     socket.to(`campaign:${campaignId}`).emit("scene:state", state);
@@ -494,22 +514,68 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     });
   }
 
+  /**
+   * Fiche enregistrée (autosave wiki ou PV/CA du jeton) : le serveur relit la
+   * fiche et diffuse un patch minimal (nom/PV/PV max/CA) aux AUTRES clients de
+   * la room — l'émetteur est exclu, sa frappe en cours pouvant être plus
+   * récente que la sauvegarde. Aucune écriture de scène ici : les clients VTT
+   * appliquent le patch et leur commit d'état habituel persiste — pas de course
+   * avec `scene:commit`.
+   */
+  @SubscribeMessage("fiche:sync")
+  async ficheSync(@MessageBody() raw: unknown, @ConnectedSocket() socket: Socket): Promise<void> {
+    const { campaignId, entityId } = parseWs(ficheSyncRequestSchema, raw);
+    const data = await this.requireAuth(socket);
+    if (!data.userId) throw new WsException("Non authentifié");
+    await this.ensureJoined(socket, campaignId);
+    if (!this.allowEvent(socket, "fiche:sync", 10)) return;
+    const member = await this.requireMember(socket, campaignId);
+
+    const entity = await this.prisma.entity.findFirst({
+      where: { id: entityId, campaignId },
+      select: { id: true, title: true, type: true, data: true, gmOnly: true },
+    });
+    if (!entity) return; // supprimée entre-temps : rien à diffuser
+    // Fiche secrète : seule la session MJ peut déclencher sa diffusion.
+    if (entity.gmOnly && member.role !== "GM") throw new WsException("Réservé aux MJ");
+
+    const template = await this.prisma.jsonTemplate.findFirst({
+      where: { id: entity.type, campaignId },
+      select: { schema: true },
+    });
+    const parsedTemplate = template ? templateSchemaSchema.safeParse(template.schema) : null;
+    const schema = parsedTemplate?.success ? parsedTemplate.data : null;
+
+    const rawData = entity.data;
+    const entityLike = {
+      title: entity.title,
+      data:
+        rawData && typeof rawData === "object" && !Array.isArray(rawData)
+          ? (rawData as Record<string, unknown>)
+          : {},
+    };
+
+    socket.to(`campaign:${campaignId}`).emit("fiche:combat", {
+      entityId,
+      keys: resolveCombatKeys(entityLike, schema),
+      patch: entityTokenPatch(entityLike, schema),
+    });
+  }
+
   /** Jet de dés : le serveur tire (seed crypto) puis broadcast le résultat. */
   @SubscribeMessage("dice:roll")
   async diceRoll(@MessageBody() raw: unknown, @ConnectedSocket() socket: Socket): Promise<void> {
     const { campaignId, expression } = parseWs(diceRollRequestSchema, raw);
     const data = await this.requireAuth(socket);
     if (!data.userId) throw new WsException("Non authentifié");
-    if (!data.campaigns?.includes(campaignId)) {
-      throw new WsException("Room non rejointe");
-    }
+    await this.ensureJoined(socket, campaignId);
     // Jet coûteux (crypto seed + macros) : 5/s par socket, puis ignoré.
     if (!this.allowEvent(socket, "dice:roll", 5)) return;
-    await this.requireMember(socket, campaignId);
+    const member = await this.requireMember(socket, campaignId);
 
     let payload: DiceRoll;
     try {
-      const resolved = await this.resolveMacros(campaignId, expression);
+      const resolved = await this.resolveMacros(campaignId, expression, member.role === "GM");
       const parsed = parseRollExpression(resolved);
       const seed = randomSeed();
       const outcome = executeRoll(parsed, seed);
@@ -530,10 +596,15 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
   }
 
   /** Résout `@macro` depuis les Entity (data numérique) de la campagne. */
-  private async resolveMacros(campaignId: string, expression: string): Promise<string> {
+  private async resolveMacros(
+    campaignId: string,
+    expression: string,
+    isGM: boolean,
+  ): Promise<string> {
     if (!expression.includes("@")) return expression;
     const entities = await this.prisma.entity.findMany({
-      where: { campaignId },
+      // Une note MJ ne doit pas fuiter ses valeurs dans le total d'un joueur.
+      where: { campaignId, ...(isGM ? {} : { gmOnly: false }) },
       select: { data: true },
     });
     const stats: Record<string, number> = {};
@@ -545,6 +616,66 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
       }
     }
     return substituteMacros(expression, stats);
+  }
+
+  /**
+   * Commit complet d'un joueur : la scène (murs/grille/carte/brouillard) est
+   * intouchable, et seuls PV/CA + vision de SES jetons peuvent changer.
+   * Un jeton absent de l'état persisté = tentative de création.
+   */
+  private assertPlayerCommit(before: SceneState, next: SceneState, userId: string): void {
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    if (
+      !same(before.walls, next.walls) ||
+      !same(before.grid, next.grid) ||
+      before.mapUrl !== next.mapUrl ||
+      !same(before.fog, next.fog)
+    ) {
+      throw new WsException("Scène non modifiable");
+    }
+    if (next.tokens.length !== before.tokens.length) {
+      throw new WsException("Ajout ou suppression de jeton réservé au MJ");
+    }
+    const prior = new Map(before.tokens.map((t) => [t.id, t]));
+    for (const token of next.tokens) {
+      const old = prior.get(token.id);
+      if (!old) throw new WsException("Création de jeton réservée au MJ");
+      if (same(token, old)) continue; // commit complet : jeton inchangé
+      if (old.ownerId !== userId) throw new WsException("Jeton non modifiable");
+      const ownFieldsOnly =
+        token.x === old.x &&
+        token.y === old.y &&
+        token.rot === old.rot &&
+        token.name === old.name &&
+        token.color === old.color &&
+        token.size === old.size &&
+        token.noteId === old.noteId &&
+        token.ownerId === old.ownerId;
+      if (!ownFieldsOnly) throw new WsException("Champs du jeton non modifiables");
+    }
+  }
+
+  /** `noteId` doit référencer une Entity de la campagne (vérifié en DB pour
+   *  le MJ et les joueurs, uniquement quand la valeur change). */
+  private async assertNoteIds(
+    campaignId: string,
+    before: SceneState | null,
+    next: SceneState,
+  ): Promise<void> {
+    const prior = new Map((before?.tokens ?? []).map((t) => [t.id, t.noteId]));
+    const ids = [
+      ...new Set(
+        next.tokens
+          .filter((t) => t.noteId !== null && prior.get(t.id) !== t.noteId)
+          .map((t) => t.noteId as string),
+      ),
+    ];
+    if (ids.length === 0) return;
+    const found = await this.prisma.entity.findMany({
+      where: { campaignId, id: { in: ids } },
+      select: { id: true },
+    });
+    if (found.length !== ids.length) throw new WsException("Fiche liée introuvable");
   }
 
   /** Debounce 500 ms : une seule écriture par rafale de drag. */

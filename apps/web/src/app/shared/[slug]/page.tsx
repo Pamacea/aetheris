@@ -16,9 +16,11 @@ export default async function SharedWikiPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const entry = await prisma.entity.findUnique({
     where: { shareSlug: slug },
-    select: { title: true, contentHtml: true },
+    select: { title: true, contentHtml: true, gmOnly: true },
   });
-  if (!entry) notFound();
+  // Ceinture et bretelles : une note MJ n'a pas de slug, mais un ancien lien
+  // ne doit jamais la rendre publique.
+  if (!entry || entry.gmOnly) notFound();
 
   const html = blocksToReadableHtml(sanitizeWikiHtml(stripGmSecrets(entry.contentHtml)));
 

@@ -1,11 +1,8 @@
 "use client";
 
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
-import { BlockDragHandle } from "./block-handle";
-import { BlockResizeEdges } from "./block-resize";
 import { deleteBlock } from "./blocks-scope";
 import { BlockScopeToggle } from "./blocks-scope-toggle";
-import { frameOf, frameStyle, isFloating, sizeTextCls } from "./blocks-frame";
 import { parseRows } from "./readable";
 
 /** Matrice par défaut d'un nouveau bloc tableau (partagée avec l'extension). */
@@ -15,15 +12,12 @@ export const DEFAULT_TABLE_ROWS: string[][] = [
 ];
 
 /**
- * Vue React d'un « tableau de données » simple : lignes/colonnes
- * d'inputs, structure stockée en JSON dans `data-rows` (jamais dans le
- * DOM ProseMirror — le bloc est atomique). Dimension à la souris par les
- * bordures, portée = petit bouton d'état MJ / ALL — édition MJ seulement.
+ * Vue d'un « tableau de stats » : lignes/colonnes d'inputs, structure
+ * stockée en JSON dans `data-rows` (le bloc est atomique). Bloc dans le
+ * flux : aucune position absolue, aucune poignée.
  */
 export function TableBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const editable = editor.isEditable;
-  const frame = frameOf(node.attrs);
-  const sizeCls = sizeTextCls(frame.size);
   const stored = parseRows(String(node.attrs.rows ?? ""));
   const rows = stored.length > 0 ? stored : DEFAULT_TABLE_ROWS;
   const cols = Math.max(1, ...rows.map((r) => r.length));
@@ -53,12 +47,7 @@ export function TableBlockView({ node, updateAttributes, editor, getPos }: NodeV
   }
 
   return (
-    <NodeViewWrapper
-      as="div"
-      contentEditable={false}
-      style={frameStyle(frame)}
-      className="my-2 group relative"
-    >
+    <NodeViewWrapper as="div" contentEditable={false} className="my-2">
       <table className="w-full" style={{ borderCollapse: "collapse" }}>
         <tbody>
           {grid.map((row, ri) => (
@@ -70,7 +59,7 @@ export function TableBlockView({ node, updateAttributes, editor, getPos }: NodeV
                   style={{ width: `${100 / cols}%` }}
                 >
                   <input
-                    className={`input w-full border-0 px-1.5 py-0.5 ${sizeCls}`}
+                    className="input w-full border-0 px-1.5 py-0.5 text-xs"
                     aria-label={`Cellule ligne ${ri + 1} colonne ${ci + 1}`}
                     value={cell}
                     disabled={!editable}
@@ -84,7 +73,6 @@ export function TableBlockView({ node, updateAttributes, editor, getPos }: NodeV
       </table>
       {editable && (
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          <BlockDragHandle editor={editor} updateAttributes={updateAttributes} frame={frame} />
           <button type="button" className="btn px-1.5 py-0.5 text-xs" onClick={addRow}>
             + Ligne
           </button>
@@ -108,16 +96,6 @@ export function TableBlockView({ node, updateAttributes, editor, getPos }: NodeV
             − Colonne
           </button>
           <BlockScopeToggle editor={editor} getPos={getPos} className="ml-1" />
-          {isFloating(frame) && (
-            <button
-              type="button"
-              className="btn px-1.5 py-0.5 text-xs"
-              title="Remettre le tableau dans le flux du texte"
-              onClick={() => updateAttributes({ x: null, y: null })}
-            >
-              Flux
-            </button>
-          )}
           <button
             type="button"
             className="btn px-1.5 py-0.5 text-xs"
@@ -128,9 +106,6 @@ export function TableBlockView({ node, updateAttributes, editor, getPos }: NodeV
             ×
           </button>
         </div>
-      )}
-      {editable && (
-        <BlockResizeEdges editor={editor} frame={frame} updateAttributes={updateAttributes} />
       )}
     </NodeViewWrapper>
   );

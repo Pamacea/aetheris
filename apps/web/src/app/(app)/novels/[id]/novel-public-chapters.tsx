@@ -9,23 +9,20 @@ interface PublicChapter {
 }
 
 /**
- * Bras non-owner de la page roman : accès refusé, attente de publication
- * ou lecture publique des chapitres publiés uniquement.
+ * Bras non-owner de la page roman : lecture publique des chapitres publiés.
  */
 export function NovelPublicChapters({
   novel,
   visible,
-  hasPublicContent,
+  chapterHref,
 }: {
   novel: { id: string; title: string };
   visible: PublicChapter[];
-  hasPublicContent: boolean;
+  chapterHref?: (chapterId: string) => string;
 }) {
-  return !hasPublicContent ? (
-    <section className="panel px-4 py-10 text-center text-sm text-muted">
-      Ce roman n&apos;est pas encore publié.
-    </section>
-  ) : visible.length === 0 ? (
+  const href = chapterHref ?? ((chapterId: string) => `/novels/${novel.id}/chapters/${chapterId}`);
+
+  return visible.length === 0 ? (
     <section className="panel px-4 py-10 text-center text-sm text-muted">
       Aucun chapitre publié pour le moment.
     </section>
@@ -40,7 +37,7 @@ export function NovelPublicChapters({
         {visible.map((c, i) => (
           <li key={c.id} className="border-b border-border">
             <Link
-              href={`/novels/${novel.id}/chapters/${c.id}`}
+              href={href(c.id)}
               className="flex items-center justify-between gap-3 px-2 py-3 transition hover:bg-card-hover"
             >
               <span className="flex min-w-0 items-center gap-3">

@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { GridSettings, TokenState, VttApi, VttSettings, VttTool, WallLine } from "./types";
+import type {
+  GridSettings,
+  TokenState,
+  VttApi,
+  VttSettings,
+  VttTool,
+  WallLine,
+  WallSelection,
+} from "./types";
 
 interface VttSyncParams {
   tool: VttTool;
@@ -11,6 +19,7 @@ interface VttSyncParams {
   tokens: TokenState[];
   selectedId: string | null;
   walls: WallLine[];
+  wallSelection: WallSelection | null;
   fogOn: boolean;
   sightCells: number;
 }
@@ -27,6 +36,7 @@ export function useVttApiSync({
   tokens,
   selectedId,
   walls,
+  wallSelection,
   fogOn,
   sightCells,
 }: VttSyncParams) {
@@ -67,6 +77,10 @@ export function useVttApiSync({
   useEffect(() => {
     apiRef.current?.setWalls(walls);
   }, [walls, apiRef]);
+
+  useEffect(() => {
+    apiRef.current?.setWallSelection(wallSelection);
+  }, [wallSelection, apiRef]);
 
   useEffect(() => {
     apiRef.current?.setFog(fogOn, sightCells);

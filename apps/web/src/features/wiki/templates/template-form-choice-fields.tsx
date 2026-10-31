@@ -1,49 +1,35 @@
+import { LinkedNoteSelect } from "./template-form-basic-fields";
 import type { FieldProps } from "./template-form-field";
 
 /** Choix multiples : select (statique / notes / libre) et cases à cocher. */
 
 export function SelectField({ field, value, chrome, rt }: FieldProps<"select">) {
   const selected = field.options.find((o) => o.value === value);
-  const isWiki = field.source === "wiki";
   // Source notes : options = titres de la campagne (id stocké, comme tag).
-  const candidates = isWiki
-    ? rt.notes.filter((n) => !field.targetCategory || rt.categoryOf(n) === field.targetCategory)
-    : [];
+  const candidates =
+    field.source === "wiki"
+      ? rt.notes.filter((n) => !field.targetCategory || rt.categoryOf(n) === field.targetCategory)
+      : [];
+  // Lien vers une fiche : même boîte fixe que le champ « tag ».
+  if (field.source === "wiki") {
+    return (
+      <LinkedNoteSelect
+        field={field}
+        value={typeof value === "string" ? value : null}
+        chrome={chrome}
+        rt={rt}
+        candidates={candidates}
+      />
+    );
+  }
   return (
-    <label className={`flex flex-col gap-1 ${chrome.widthCls}`}>
+    <label className={`flex h-full min-h-0 flex-col gap-1 ${chrome.widthCls}`}>
       {chrome.label}
-      <span
-        className="flex items-center gap-2"
-        onDragOver={isWiki ? rt.noteOver : undefined}
-        onDrop={
-          isWiki
-            ? (e) => {
-                const n = rt.notePayload(e);
-                if (!n || !candidates.some((c) => c.id === n.id)) return;
-                e.preventDefault();
-                rt.setValue(field.id, n.id);
-              }
-            : undefined
-        }
-      >
-        {isWiki ? (
-          <select
-            className={`input ${chrome.sizeCls}`}
-            name={field.id}
-            value={typeof value === "string" ? value : ""}
-            onChange={(e) => rt.setValue(field.id, e.target.value === "" ? null : e.target.value)}
-          >
-            <option value="">—</option>
-            {candidates.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.title}
-              </option>
-            ))}
-          </select>
-        ) : field.free ? (
+      <span className="flex flex-1 items-center gap-2">
+        {field.free ? (
           // Champ libre : combobox native (valeur arbitraire + suggestions).
           <input
-            className={`input ${chrome.sizeCls}`}
+            className={`input h-full min-w-0 flex-1 ${chrome.sizeCls}`}
             name={field.id}
             list={`opts-${field.id}`}
             value={typeof value === "string" ? value : ""}
@@ -51,7 +37,7 @@ export function SelectField({ field, value, chrome, rt }: FieldProps<"select">) 
           />
         ) : (
           <select
-            className={`input ${chrome.sizeCls}`}
+            className={`input h-full min-w-0 flex-1 ${chrome.sizeCls}`}
             name={field.id}
             value={typeof value === "string" ? value : ""}
             onChange={(e) => rt.setValue(field.id, e.target.value === "" ? null : e.target.value)}
@@ -101,9 +87,9 @@ export function MultiSelectField({ field, value, chrome, rt }: FieldProps<"multi
     .filter((v) => !opts.some((o) => o.value === v))
     .map((v) => ({ value: v, label: v, color: undefined }));
   return (
-    <div className={`flex flex-col gap-1 ${chrome.widthCls}`}>
+    <div className={`flex h-full min-h-0 flex-col gap-1 ${chrome.widthCls}`}>
       {chrome.label}
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-wrap content-start gap-x-4 gap-y-1 overflow-auto">
         {[...opts, ...extras].map((o) => (
           <label key={o.value} className="flex items-center gap-1.5 text-sm">
             <input

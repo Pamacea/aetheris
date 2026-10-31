@@ -70,7 +70,14 @@ describe("resolveMapUrl", () => {
 describe("newSceneToken", () => {
   it("jeton neuf sans PV/CA ni propriétaire", () => {
     const t = newSceneToken(grid, { x: 10, y: 20 }, "Gobelin", 0);
-    expect(t).toMatchObject({ hp: null, hpMax: null, ac: null, ownerId: null });
+    expect(t).toMatchObject({
+      hp: null,
+      hpMax: null,
+      ac: null,
+      ownerId: null,
+      noteId: null,
+      sight: { enabled: true, rangeCells: null, type: "normal" },
+    });
   });
 });
 
@@ -87,10 +94,12 @@ describe("sceneTokenSchema (rétrocompatibilité)", () => {
     hpMax: 12,
   };
 
-  it("payload d'avant ac/ownerId : champs à null par défaut", () => {
+  it("payload d'avant ac/ownerId/noteId/sight : valeurs par défaut", () => {
     const parsed = sceneTokenSchema.parse(ancien);
     expect(parsed.ac).toBeNull();
     expect(parsed.ownerId).toBeNull();
+    expect(parsed.noteId).toBeNull();
+    expect(parsed.sight).toEqual({ enabled: true, rangeCells: null, type: "normal" });
   });
 
   it("ac/ownerId valides passent, ac hors bornes rejeté", () => {

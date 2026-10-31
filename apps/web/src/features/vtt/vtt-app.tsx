@@ -8,7 +8,7 @@ import { useVttSocket } from "./socket";
 import { useVttState } from "./state";
 import { useVttApiSync } from "./sync";
 import { VttStage } from "./stage";
-import { VttToolbars } from "./toolbars";
+import { VttToolPanels, VttToolbars } from "./toolbars";
 import type { VttApi, VttAppProps } from "./types";
 
 export type { VttTool, GridType, GridSettings, TokenState, WallLine } from "./types";
@@ -18,7 +18,14 @@ export type { VttTool, GridType, GridSettings, TokenState, WallLine } from "./ty
  * (`scene:state` / `scene:commit`), barres d'outils et canvas PixiJS.
  * Le rendu Pixi vit dans `scene.ts` (liaison via `VttBridge`).
  */
-export function VttApp({ isGM, campaignId, userId, members, initialScene = null }: VttAppProps) {
+export function VttApp({
+  isGM,
+  campaignId,
+  userId,
+  members,
+  entities = [],
+  initialScene = null,
+}: VttAppProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<VttApi | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -34,6 +41,7 @@ export function VttApp({ isGM, campaignId, userId, members, initialScene = null 
     walls: st.walls,
     fogOn: st.fogOn,
     sightCells: st.sightCells,
+    entities,
     apply: {
       setTokens: st.setTokens,
       setWalls: st.setWalls,
@@ -48,24 +56,41 @@ export function VttApp({ isGM, campaignId, userId, members, initialScene = null 
     tool: st.tool,
     apiRef,
     grid: st.grid,
-    mapUrl: st.mapUrl,
+    // L'aperçu fichier est purement local ; seul `mapUrl` distant est commité.
+    mapUrl: st.mapPreview ?? st.mapUrl,
     tokens: st.tokens,
     selectedId: st.selectedId,
     walls: st.walls,
+    wallSelection: st.wallSelection,
     fogOn: st.fogOn,
     sightCells: st.sightCells,
   });
 
-  const { onFileChange, setGridNum, updateToken, deleteToken, setTokenNum } = useVttActions({
+  const {
+    onFileChange,
+    applyMap,
+    removeMap,
+    setGridNum,
+    updateToken,
+    deleteToken,
+    setTokenNum,
+    deleteWallSelection,
+  } = useVttActions({
     tool: st.tool,
     isGM,
     apiRef,
     objectUrlRef,
     selectedId: st.selectedId,
+    walls: st.walls,
+    wallSelection: st.wallSelection,
+    wallType: st.wallType,
     setGrid: st.setGrid,
     setMapUrl: st.setMapUrl,
+    setMapPreview: st.setMapPreview,
     setTokens: st.setTokens,
     setSelectedId: st.setSelectedId,
+    setWalls: st.setWalls,
+    setWallSelection: st.setWallSelection,
   });
 
   const bridge = useVttBridge({
@@ -74,11 +99,13 @@ export function VttApp({ isGM, campaignId, userId, members, initialScene = null 
     wsRef,
     settingsRef,
     isGM,
+    userId,
     setTokens: st.setTokens,
     setSelectedId: st.setSelectedId,
     setWalls: st.setWalls,
     setDraftCount: st.setDraftCount,
     setZoom: st.setZoom,
+    setWallSelection: st.setWallSelection,
   });
 
   useEffect(() => {
@@ -92,17 +119,27 @@ export function VttApp({ isGM, campaignId, userId, members, initialScene = null 
       <VttToolbars
         st={st}
         isGM={isGM}
-        objectUrlRef={objectUrlRef}
-        onFileChange={onFileChange}
-        setGridNum={setGridNum}
         updateToken={updateToken}
         setTokenNum={setTokenNum}
         deleteToken={deleteToken}
-        apiRef={apiRef}
+        campaignId={campaignId}
         userId={userId}
         members={members}
+        entities={entities}
       />
-      <VttStage tool={st.tool} containerRef={containerRef} />
+      <div className="relative flex min-h-0 flex-1">
+        <VttStage tool={st.tool} containerRef={containerRef} />
+        {/* Options de l'outil actif, flottantes au-dessus de la carte. */}
+        <VttToolPanels
+          st={st}
+          onFileChange={onFileChange}
+          applyMap={applyMap}
+          removeMap={removeMap}
+          setGridNum={setGridNum}
+          deleteWallSelection={deleteWallSelection}
+          apiRef={apiRef}
+        />
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { CAMPAIGN_MODULES as MODULES, OPEN_MODULE_EVENT } from "./campaigns/camp
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Tableau de bord" },
+  { href: "/library", label: "Bibliothèque" },
   { href: "/novels", label: "Studio d'écriture" },
   { href: "/profile", label: "Profil" },
 ] as const;

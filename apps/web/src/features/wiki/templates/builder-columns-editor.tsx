@@ -4,7 +4,7 @@ import { FieldInput } from "./builder-field-input";
 import { OptionsEditor } from "./builder-options-editor";
 
 interface Props {
-  field: Extract<TemplateField, { kind: "list" }>;
+  field: Extract<TemplateField, { kind: "list" | "ability" | "inventory" }>;
   index: number;
   patchField: FieldOps["patchField"];
   patchColumn: FieldOps["patchColumn"];
@@ -23,7 +23,7 @@ export function ColumnsEditor({ field, index: i, patchField, patchColumn, campai
           disabled={field.columns.length >= 12}
           onClick={() =>
             patchField(i, (f) =>
-              f.kind === "list"
+              f.kind === "list" || f.kind === "ability" || f.kind === "inventory"
                 ? {
                     ...f,
                     columns: [
@@ -73,6 +73,8 @@ export function ColumnsEditor({ field, index: i, patchField, patchColumn, campai
                 <option value="number">Nombre</option>
                 <option value="select">Liste</option>
                 <option value="tag">Lien wiki</option>
+                <option value="toggle">Case à cocher</option>
+                <option value="formula">Formule</option>
               </select>
             </label>
             <button
@@ -81,7 +83,9 @@ export function ColumnsEditor({ field, index: i, patchField, patchColumn, campai
               disabled={field.columns.length <= 1}
               onClick={() =>
                 patchField(i, (f) =>
-                  f.kind === "list" ? { ...f, columns: f.columns.filter((_, j) => j !== ci) } : f,
+                  f.kind === "list" || f.kind === "ability" || f.kind === "inventory"
+                    ? { ...f, columns: f.columns.filter((_, j) => j !== ci) }
+                    : f,
                 )
               }
             >

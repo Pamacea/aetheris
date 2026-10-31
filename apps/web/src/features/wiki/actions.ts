@@ -32,7 +32,7 @@ async function ownedEntity(campaignId: string, entityId: string) {
   if (!UUID_RE.test(entityId)) return null;
   return prisma.entity.findFirst({
     where: { id: entityId, campaignId },
-    select: { id: true, contentHtml: true, shareSlug: true },
+    select: { id: true, contentHtml: true, shareSlug: true, gmOnly: true },
   });
 }
 
@@ -87,7 +87,7 @@ export async function createWikiEntry(
 export async function updateWikiEntry(
   campaignId: string,
   entityId: string,
-  input: { title?: string; folder?: string | null },
+  input: { title?: string; folder?: string | null; gmOnly?: boolean },
 ): Promise<WikiActionResult> {
   const member = await requireCampaignMember(campaignId);
   if (!member) return invalid("Accès refusé.");
@@ -95,7 +95,11 @@ export async function updateWikiEntry(
 
   const parsed = updateWikiNoteSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error.issues[0]?.message ?? "Entrée invalide.");
-  if (parsed.data.title === undefined && parsed.data.folder === undefined) {
+  if (
+    parsed.data.title === undefined &&
+    parsed.data.folder === undefined &&
+    parsed.data.gmOnly === undefined
+  ) {
     return invalid("Rien à modifier.");
   }
 
@@ -107,6 +111,9 @@ export async function updateWikiEntry(
     data: {
       ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
       ...(parsed.data.folder !== undefined ? { folder: parsed.data.folder } : {}),
+      ...(parsed.data.gmOnly !== undefined ? { gmOnly: parsed.data.gmOnly } : {}),
+      // Une note devenue secrète ne doit plus être joignable par son slug.
+      ...(parsed.data.gmOnly === true ? { shareSlug: null } : {}),
     },
   });
 
@@ -211,6 +218,8 @@ export async function setWikiShare(
     return { ok: true, slug: null };
   }
 
+  // Une note MJ ne sort jamais du wiki, même via un ancien slug.
+  if (owned.gmOnly) return { ok: false, error: "Désactivez le mode MJ avant de partager." };
   if (owned.shareSlug) return { ok: true, slug: owned.shareSlug };
 
   for (let attempt = 0; attempt < 3; attempt++) {

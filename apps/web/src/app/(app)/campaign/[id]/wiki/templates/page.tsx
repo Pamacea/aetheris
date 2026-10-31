@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeftIcon, EyeIcon, EyeOffIcon, LayoutIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
 import { redirectModuleToDesktop, requireCampaignPage } from "@/features/campaigns/require-member";
+import { presetsFromTemplates } from "@/features/game-systems/system-logic";
 import { TemplatesBuilder } from "@/features/wiki/templates/builder";
 import type { WikiTemplateMeta } from "@/features/wiki/types";
 
@@ -23,7 +24,7 @@ export default async function TemplatesPage({
   const raw = isGM
     ? await prisma.jsonTemplate.findMany({
         where: { campaignId: id },
-        select: { id: true, name: true, category: true, schema: true },
+        select: { id: true, name: true, category: true, schema: true, customCss: true },
         orderBy: { name: "asc" },
       })
     : [];
@@ -32,7 +33,29 @@ export default async function TemplatesPage({
     name: t.name,
     category: t.category,
     schema: t.schema,
+    customCss: t.customCss,
   }));
+
+  // « Mes presets » = modèles seedés du système de la campagne ; la destination
+  // d'un nouveau preset est un système homebrew de l'utilisateur.
+  const campaign = await prisma.campaign.findUnique({
+    where: { id },
+    select: { gameSystemId: true },
+  });
+  const linkedSystem = campaign?.gameSystemId
+    ? await prisma.gameSystem.findUnique({
+        where: { id: campaign.gameSystemId },
+        select: { defaultTemplates: true },
+      })
+    : null;
+  const systemPresets = presetsFromTemplates(linkedSystem?.defaultTemplates);
+  const ownSystems = isGM
+    ? await prisma.gameSystem.findMany({
+        where: { ownerId: member.userId, isPreset: false },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, description: true, genre: true, isPreset: true },
+      })
+    : [];
 
   return (
     // 3.75rem top bar (modules fusionnés) ; pas de fil d'ariane (refonte wiki).
@@ -60,7 +83,12 @@ export default async function TemplatesPage({
         </div>
       </div>
       {isGM ? (
-        <TemplatesBuilder campaignId={id} initial={templates} />
+        <TemplatesBuilder
+          campaignId={id}
+          initial={templates}
+          systemPresets={systemPresets}
+          systems={ownSystems}
+        />
       ) : (
         <div className="flex flex-1 items-center justify-center p-10 text-center">
           <p className="text-sm text-muted">La gestion des modèles est réservée aux MJ.</p>

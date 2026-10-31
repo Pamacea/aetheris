@@ -14,11 +14,13 @@ export function useVttBridge(parts: VttBridge): VttBridge {
     wsRef,
     settingsRef,
     isGM,
+    userId,
     setTokens,
     setSelectedId,
     setWalls,
     setDraftCount,
     setZoom,
+    setWallSelection,
   } = parts;
   return useMemo(
     () => ({
@@ -27,11 +29,13 @@ export function useVttBridge(parts: VttBridge): VttBridge {
       wsRef,
       settingsRef,
       isGM,
+      userId,
       setTokens,
       setSelectedId,
       setWalls,
       setDraftCount,
       setZoom,
+      setWallSelection,
     }),
     [
       apiRef,
@@ -39,11 +43,13 @@ export function useVttBridge(parts: VttBridge): VttBridge {
       wsRef,
       settingsRef,
       isGM,
+      userId,
       setTokens,
       setSelectedId,
       setWalls,
       setDraftCount,
       setZoom,
+      setWallSelection,
     ],
   );
 }

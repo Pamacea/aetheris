@@ -145,3 +145,73 @@ describe("buildFormulaScope", () => {
     expect(scope.inv_poids).toBe(0);
   });
 });
+
+describe("buildFormulaScope — modificateurs passifs", () => {
+  const modifierCols = [
+    { id: "stat", type: "text" },
+    { id: "mod", type: "number" },
+    { id: "mod_type", type: "select" },
+  ];
+
+  it("inventaire : seuls les objets équipés modifient la stat, avant les formules", () => {
+    const scope = buildFormulaScope(
+      {
+        fields: [
+          { id: "force", kind: "number" },
+          {
+            id: "equipement",
+            kind: "inventory",
+            columns: [{ id: "equipe", type: "toggle" }, ...modifierCols],
+          },
+          { id: "attaque", kind: "formula", expr: "force*2" },
+        ],
+      },
+      {
+        force: 10,
+        equipement: [
+          { equipe: true, stat: "force", mod: 2 },
+          { equipe: false, stat: "force", mod: 100 },
+          { equipe: true, stat: "force", mod: 50, mod_type: "percent" },
+        ],
+      },
+    );
+    expect(scope.force).toBe(18); // (10 + 2) × 1,5
+    expect(scope.attaque).toBe(36);
+  });
+
+  it("sort passif : lignes non actives appliquées, lignes actives ignorées", () => {
+    const scope = buildFormulaScope(
+      {
+        fields: [
+          { id: "force", kind: "number" },
+          {
+            id: "sorts",
+            kind: "ability",
+            columns: [{ id: "actif", type: "toggle" }, ...modifierCols],
+          },
+        ],
+      },
+      {
+        force: 10,
+        sorts: [
+          { actif: false, stat: "force", mod: 3 },
+          { actif: true, stat: "force", mod: 99 },
+        ],
+      },
+    );
+    expect(scope.force).toBe(13);
+  });
+
+  it("sans colonne active conventionnelle, aucun modificateur appliqué", () => {
+    const scope = buildFormulaScope(
+      {
+        fields: [
+          { id: "force", kind: "number" },
+          { id: "inv", kind: "inventory", columns: modifierCols },
+        ],
+      },
+      { force: 10, inv: [{ stat: "force", mod: 5 }] },
+    );
+    expect(scope.force).toBe(10);
+  });
+});

@@ -11,8 +11,8 @@ export function cssColor(name: string, fallback: number, minLum = 0): number {
   return resolveColor(raw, fallback, minLum);
 }
 
-/** Identifiant de token (UUID natif, repli string si absent). */
-export function newTokenId(): string {
+/** Identifiant local (jeton ou mur) : UUID natif, repli string si absent. */
+export function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -27,7 +27,7 @@ export function newSceneToken(
 ): TokenState {
   const base = g.type !== "none" ? g.size : 64;
   return {
-    id: newTokenId(),
+    id: newId(),
     x: p.x,
     y: p.y,
     size: Math.max(24, Math.round(base * 0.9)),
@@ -38,6 +38,8 @@ export function newSceneToken(
     hpMax: null,
     ac: null,
     ownerId: null,
+    noteId: null,
+    sight: { enabled: true, rangeCells: null, type: "normal" },
   };
 }
 

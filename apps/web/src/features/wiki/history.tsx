@@ -19,7 +19,7 @@ export function WikiAppHistory({
           Aucune version enregistrée (une version est créée toutes les 5 minutes d’édition).
         </p>
       ) : (
-        <ul className="flex max-h-[60vh] flex-col gap-1 overflow-y-auto">
+        <ul className="no-scrollbar flex max-h-[60vh] flex-col gap-1 overflow-y-auto">
           {history.map((v) => (
             <li
               key={v.id}

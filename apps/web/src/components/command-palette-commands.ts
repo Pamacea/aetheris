@@ -58,6 +58,13 @@ export function buildCommands(
       run: () => router.push("/novels"),
     },
     {
+      id: "library",
+      label: "Bibliothèque",
+      hint: "Navigation",
+      keywords: "bibliothèque library romans publiés lecture",
+      run: () => router.push("/library"),
+    },
+    {
       id: "profile",
       label: "Profil",
       hint: "Navigation",

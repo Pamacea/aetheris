@@ -11,6 +11,7 @@ import {
 } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
+import { canEditEntity } from "@/features/fiches/access";
 
 type TemplateActionResult = { ok: true; id: string } | { ok: false; error: string };
 
@@ -21,6 +22,8 @@ function invalid(error: string): { ok: false; error: string } {
 function revalidateWiki(campaignId: string): void {
   revalidatePath(`/campaign/${campaignId}/wiki`);
   revalidatePath(`/campaign/${campaignId}/wiki/templates`);
+  // Le CSS et le schéma des modèles changent le rendu des fiches.
+  revalidatePath(`/campaign/${campaignId}/fiches`);
 }
 
 /** Les mutations de templates sont réservées aux MJ (les joueurs remplissent les fiches). */
@@ -59,13 +62,29 @@ export async function createTemplate(
 export async function updateTemplate(
   campaignId: string,
   templateId: string,
-  input: { name?: string; category?: string | null; schema?: unknown },
+  input: {
+    name?: string;
+    category?: string | null;
+    schema?: unknown;
+    customCss?: string | null;
+  },
 ): Promise<TemplateActionResult> {
   if (!(await requireGm(campaignId))) return invalid("Réservé aux MJ.");
 
   const parsed = updateTemplateSchema.safeParse(input);
   if (!parsed.success) {
     return invalid(parsed.error.issues[0]?.message ?? "Entrée invalide.");
+  }
+
+  // CSS de modèle : sanitisé à l'écriture, comme le CSS des fiches.
+  let customCss: string | null | undefined;
+  if (parsed.data.customCss !== undefined) {
+    if (!parsed.data.customCss?.trim()) customCss = null;
+    else {
+      const r = sanitizeCss(parsed.data.customCss);
+      if (!r.ok) return invalid(r.error);
+      customCss = r.css;
+    }
   }
 
   const owned = await prisma.jsonTemplate.findFirst({
@@ -80,6 +99,7 @@ export async function updateTemplate(
       ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
       ...(parsed.data.category !== undefined ? { category: parsed.data.category } : {}),
       ...(parsed.data.schema !== undefined ? { schema: parsed.data.schema as object } : {}),
+      ...(customCss !== undefined ? { customCss } : {}),
     },
   });
 
@@ -122,7 +142,12 @@ export async function importTemplates(
   }
 
   const root = payload as {
-    templates?: { name?: unknown; category?: unknown; schema?: unknown }[];
+    templates?: {
+      name?: unknown;
+      category?: unknown;
+      schema?: unknown;
+      customCss?: unknown;
+    }[];
   };
   if (!root || !Array.isArray(root.templates)) {
     return { ok: false, error: "Format de fichier invalide." };
@@ -141,6 +166,10 @@ export async function importTemplates(
     const schema = templateSchemaSchema.safeParse(t?.schema);
     if (!meta.success || !schema.success) continue; // entrée ignorée
 
+    const cssRaw = typeof t?.customCss === "string" ? t.customCss.trim() : "";
+    const cssRes = cssRaw ? sanitizeCss(cssRaw) : null;
+    const customCss = cssRes?.ok ? cssRes.css : null;
+
     const existing = await prisma.jsonTemplate.findFirst({
       where: {
         campaignId,
@@ -154,6 +183,7 @@ export async function importTemplates(
         data: {
           category: meta.data.category ?? null,
           schema: schema.data as object,
+          ...(cssRes?.ok ? { customCss } : {}),
         },
       });
       overwritten++;
@@ -163,6 +193,7 @@ export async function importTemplates(
           name: meta.data.name,
           category: meta.data.category ?? null,
           schema: schema.data as object,
+          customCss,
           campaignId,
         },
       });
@@ -189,9 +220,21 @@ export async function saveTemplateData(
 
   const entity = await prisma.entity.findFirst({
     where: { id: entityId, campaignId },
-    select: { id: true, type: true, data: true },
+    select: {
+      id: true,
+      type: true,
+      data: true,
+      gmOnly: true,
+      assignees: { select: { userId: true } },
+    },
   });
   if (!entity) return invalid("Fiche introuvable.");
+  const assigneeIds = entity.assignees.map((a) => a.userId);
+  if (!canEditEntity({ role: member.role, assigneeIds, gmOnly: entity.gmOnly }, member.userId)) {
+    return invalid(
+      entity.gmOnly ? "Réservé aux MJ." : "Cette fiche n’est pas assignée à votre joueur.",
+    );
+  }
   if (entity.type === "note") return invalid("Note libre sans template.");
 
   const template = await prisma.jsonTemplate.findFirst({

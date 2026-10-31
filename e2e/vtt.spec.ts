@@ -121,11 +121,11 @@ test("carte : URL distante http(s) acceptée, autre scheme refusé", async ({ pa
   const error = page.getByText("URL http(s) invalide");
 
   await url.fill("javascript:alert(1)");
-  await page.getByRole("button", { name: "Charger", exact: true }).click();
+  await page.getByRole("button", { name: "Appliquer la carte", exact: true }).click();
   await expect(error).toBeVisible();
 
   await url.fill("https://exemple.fr/carte.png");
-  await page.getByRole("button", { name: "Charger", exact: true }).click();
+  await page.getByRole("button", { name: "Appliquer la carte", exact: true }).click();
   await expect(error).toBeHidden();
 
   // URL distante persistée dans la scène : revue à l'ouverture suivante.

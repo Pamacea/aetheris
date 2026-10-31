@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CollapsibleSidePanel, usePersistedCollapse } from "@/components/collapsible-side-panel";
 import { createWikiEntry } from "./actions";
-import { TemplateQuickCreate } from "./templates/template-quick-create";
+import { noteDragStart } from "./templates/note-drop";
 import { fold } from "@/lib/text";
 import type { WikiActiveEntry, WikiEntryMeta, WikiTemplateMeta } from "./types";
 
@@ -148,24 +148,9 @@ export function EntriesPanel({
             </button>
           </form>
         )}
-        {isGM && (
-          <div className="border-t border-border pt-2">
-            <p className="mb-1 text-[0.6rem] tracking-widest text-muted uppercase">
-              Créer depuis un modèle
-            </p>
-            <TemplateQuickCreate
-              campaignId={campaignId}
-              templates={templates}
-              onCreated={(id) => {
-                setNewOpen(false);
-                void selectEntry(id);
-              }}
-            />
-          </div>
-        )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-2">
+      <nav className="no-scrollbar flex-1 overflow-y-auto p-2">
         {grouped.size === 0 && (
           <p className="p-3 text-xs text-muted">{query ? "Aucun résultat." : "Aucune entrée."}</p>
         )}
@@ -179,14 +164,22 @@ export function EntriesPanel({
                 <li key={n.id}>
                   <button
                     type="button"
+                    draggable
+                    onDragStart={(e) => noteDragStart(e, { id: n.id, title: n.title })}
+                    title="Glisser dans une fiche"
                     onClick={() => void selectEntry(n.id)}
-                    className={`block w-full truncate px-2 py-1.5 text-left text-sm hover:bg-card-hover ${
+                    className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-card-hover ${
                       active?.id === n.id
                         ? "border-l-2 border-accent bg-card-hover text-foreground"
                         : "border-l-2 border-transparent text-muted"
                     }`}
                   >
-                    {n.title}
+                    <span className="min-w-0 flex-1 truncate">{n.title}</span>
+                    {n.gmOnly && (
+                      <span className="shrink-0 text-[0.55rem] tracking-widest text-accent uppercase">
+                        MJ
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}

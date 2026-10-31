@@ -71,7 +71,8 @@ export function ShareButton({
         onClick={() => setOpen(true)}
       >
         <ShareIcon />
-        <span className="hidden sm:inline">Partager</span>
+        {/* Libellé d'état : la modale reste le point d'entrée unique. */}
+        <span className="hidden sm:inline">{current ? "Partagé" : "Partager"}</span>
       </button>
 
       <GameModal open={open} onClose={() => setOpen(false)} label="Partager l’entrée">

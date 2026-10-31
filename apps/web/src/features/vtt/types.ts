@@ -1,7 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { Application, Container, Graphics, Sprite } from "pixi.js";
-import type { SceneState } from "@aetheris/shared";
+import type { SceneState, SceneToken, TemplateSchema, Wall, WallType } from "@aetheris/shared";
 import type { CampaignSocket } from "@/lib/ws";
+
+export type { WallType };
 
 /**
  * Table de jeu — canvas PixiJS v8.
@@ -27,21 +29,8 @@ export interface GridSettings {
   offsetY: number;
 }
 
-/** Token de scène. Position = centre, en coords monde. */
-export interface TokenState {
-  id: string;
-  x: number;
-  y: number;
-  size: number; // diamètre en px monde
-  rot: number; // degrés
-  name: string;
-  color: string; // #rrggbb
-  hp: number | null;
-  hpMax: number | null;
-  ac: number | null;
-  /** Membre propriétaire du jeton (id utilisateur) — null = MJ seul. */
-  ownerId: string | null;
-}
+/** Token de scène (forme partagée avec le serveur). Position = centre monde. */
+export type TokenState = SceneToken;
 
 /** Membre de campagne affiché dans le sélecteur de propriétaire (MJ). */
 export interface VttMember {
@@ -49,8 +38,25 @@ export interface VttMember {
   name: string;
 }
 
-/** Tracé de mur : polyigne de sommets snappés (bloque la ligne de vue). */
-export type WallLine = { x: number; y: number }[];
+/** Fiche wiki sélectionnable pour lier un token (gmOnly déjà filtré serveur). */
+export interface VttEntity {
+  id: string;
+  title: string;
+  type: string;
+  data: Record<string, unknown>;
+  /** Schéma du template : clés custom (PV/CA) et champs de sorts (colonnes). */
+  schema?: TemplateSchema | null;
+}
+
+/** Mur typé : polyigne de sommets snappés (forme partagée avec le serveur). */
+export type WallLine = Wall;
+
+/** Mur ou sommet sélectionné (édition du tracé). */
+export interface WallSelection {
+  wallId: string;
+  /** Index du sommet sélectionné, null = le mur entier. */
+  vertex: number | null;
+}
 
 /** Points du brouillard / murs. */
 export interface VttPoint {
@@ -63,8 +69,9 @@ export interface VttApi {
   setMap: (url: string | null) => void;
   setTokens: (list: TokenState[], selectedId: string | null) => void;
   setWalls: (list: WallLine[]) => void;
+  setWallSelection: (sel: WallSelection | null) => void;
   setFog: (on: boolean, sightCells: number) => void;
-  finishDraft: () => void;
+  finishDraft: (type: WallType) => void;
   cancelDraft: () => void;
 }
 
@@ -114,10 +121,13 @@ export interface VttSceneCtx {
   tokenStates: TokenState[];
   selectedToken: string | null;
   wallStates: WallLine[];
+  wallSelection: WallSelection | null;
   fogEnabled: boolean;
   sightCells: number;
   /** Le MJ voit tout : le voile n'est dessiné que pour les joueurs. */
   isGM: boolean;
+  /** Utilisateur courant : seuls SES jetons révèlent la carte. */
+  viewerId: string;
   draft: VttPoint[];
   draftCursor: VttPoint | null;
   fogPending: boolean;
@@ -135,9 +145,11 @@ export interface VttBridge {
   wsRef: { current: { socket: CampaignSocket; campaignId: string } | null };
   settingsRef: { current: VttSettings };
   isGM: boolean;
+  userId: string;
   setTokens: Dispatch<SetStateAction<TokenState[]>>;
   setSelectedId: Dispatch<SetStateAction<string | null>>;
   setWalls: Dispatch<SetStateAction<WallLine[]>>;
+  setWallSelection: Dispatch<SetStateAction<WallSelection | null>>;
   setDraftCount: Dispatch<SetStateAction<number>>;
   setZoom: Dispatch<SetStateAction<number>>;
 }
@@ -149,6 +161,8 @@ export interface VttAppProps {
   userId: string;
   /** Membres de la campagne (sélecteur de propriétaire, côté MJ). */
   members: VttMember[];
+  /** Fiches wiki liables (sélecteur « Fiche liée »). */
+  entities?: VttEntity[];
   /** État persisté — null = scène neuve. */
   initialScene?: SceneState | null;
 }

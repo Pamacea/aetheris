@@ -4,9 +4,19 @@ import { useState } from "react";
 import { CollapsibleSidePanel, usePersistedCollapse } from "@/components/collapsible-side-panel";
 import { GameModal } from "@/components/game-modal";
 import { LinkIcon } from "@/components/icons";
+import type { WikiActiveEntry } from "./types";
 
 type Backlink = { id: string; title: string };
 type SelectEntry = (id: string) => void;
+
+/** Mots du corps (balises retirées) — aperçu de la fiche, pas une mesure exacte. */
+function wordCount(html: string): number {
+  const text = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .trim();
+  return text ? text.split(/\s+/).length : 0;
+}
 
 function BacklinksList({
   backlinks,
@@ -35,11 +45,13 @@ function BacklinksList({
   );
 }
 
-/** Panneau « Liens entrants » : les entrées qui référencent l'entrée active. */
+/** Panneau droit : métadonnées de l'entrée active + entrées qui la référencent. */
 export function BacklinksPanel({
+  active,
   backlinks,
   selectEntry,
 }: {
+  active: WikiActiveEntry | null;
   backlinks: Backlink[];
   selectEntry: (id: string) => Promise<void>;
 }) {
@@ -47,14 +59,45 @@ export function BacklinksPanel({
   return (
     <CollapsibleSidePanel
       id="panel-backlinks"
-      label={`Liens entrants (${backlinks.length})`}
+      label="Détails & liens"
       side="right"
       collapsed={collapsed}
       onToggle={toggleCollapsed}
       width="w-72"
       className="hidden lg:flex"
     >
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="no-scrollbar flex-1 overflow-y-auto p-3">
+        {active && (
+          <section
+            aria-label="Métadonnées de l’entrée"
+            className="mb-4 border-b border-border pb-3"
+          >
+            <p className="mb-2 text-[0.6rem] tracking-widest text-muted uppercase">Métadonnées</p>
+            <dl className="flex flex-col gap-1.5 text-xs">
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Type</dt>
+                <dd className="truncate text-right">{active.template?.name ?? "Note libre"}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Dossier</dt>
+                <dd className="truncate text-right">{active.folder ?? "Racine"}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Visibilité</dt>
+                <dd className={`text-right ${active.gmOnly ? "text-accent" : ""}`}>
+                  {active.gmOnly ? "MJ uniquement" : "Joueurs"}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Longueur</dt>
+                <dd className="text-right">{wordCount(active.contentHtml)} mots</dd>
+              </div>
+            </dl>
+          </section>
+        )}
+        <p className="mb-2 text-[0.6rem] tracking-widest text-muted uppercase">
+          Liens entrants ({backlinks.length})
+        </p>
         <BacklinksList backlinks={backlinks} selectEntry={(id) => void selectEntry(id)} />
       </div>
     </CollapsibleSidePanel>
@@ -84,7 +127,7 @@ export function BacklinksMobile({
         Liens entrants ({backlinks.length})
       </button>
       <GameModal open={open} onClose={() => setOpen(false)} label="Liens entrants">
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="no-scrollbar max-h-[60vh] overflow-y-auto">
           <BacklinksList
             backlinks={backlinks}
             selectEntry={(id) => {

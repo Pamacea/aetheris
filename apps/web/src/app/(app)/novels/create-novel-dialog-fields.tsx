@@ -1,6 +1,7 @@
 import { IconCross } from "./icons";
 
 interface CreateNovelDialogFieldsProps {
+  genres: string[];
   cover: string | null;
   coverInputRef: { current: HTMLInputElement | null };
   onCoverPick: (file: File | undefined) => void;
@@ -12,6 +13,7 @@ interface CreateNovelDialogFieldsProps {
  * (aperçu + fichier caché).
  */
 export function CreateNovelDialogFields({
+  genres,
   cover,
   coverInputRef,
   onCoverPick,
@@ -41,6 +43,25 @@ export function CreateNovelDialogFields({
           className="input resize-y"
         />
       </label>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[0.7rem] tracking-[0.2em] text-muted uppercase">Genre</span>
+          <select name="genre" defaultValue="" className="input">
+            <option value="">— Aucun —</option>
+            {genres.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[0.7rem] tracking-[0.2em] text-muted uppercase">Tags</span>
+          <input name="tags" maxLength={440} placeholder="tag, tag, …" className="input" />
+        </label>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <span className="text-[0.7rem] tracking-[0.2em] text-muted uppercase">Couverture</span>

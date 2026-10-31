@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_COVER_CHARS,
+  NOVEL_GENRES,
+  canReadChapter,
+  canReadNovel,
   chapterStatusPatch,
   countDocWords,
   isPlainObject,
   isValidCoverImage,
+  mergeGenres,
   moveItem,
+  parseTags,
   toPlainDoc,
 } from "./logic";
 
@@ -120,5 +125,61 @@ describe("isValidCoverImage (frontière de confiance)", () => {
     expect(isValidCoverImage("data:text/html;base64,PHNjcmlwdD4=")).toBe(false);
     expect(isValidCoverImage("javascript:alert(1)")).toBe(false);
     expect(isValidCoverImage(`https://example.org/${"a".repeat(3_000)}`)).toBe(false);
+  });
+});
+
+describe("mergeGenres (liste des genres)", () => {
+  it("garde la liste connue puis ajoute les genres inconnus, sans doublon", () => {
+    const out = mergeGenres([null, "Fantasy", "narratif", "narratif"]);
+    expect(out.slice(0, NOVEL_GENRES.length)).toEqual([...NOVEL_GENRES]);
+    expect(out.slice(NOVEL_GENRES.length)).toEqual(["narratif"]);
+  });
+});
+
+describe("parseTags (saisie CSV des tags)", () => {
+  it("nettoie, dédoublonne et ignore les vides", () => {
+    expect(parseTags("a, b ,a,, c")).toEqual(["a", "b", "c"]);
+  });
+
+  it("ignore un tag de 41 caractères", () => {
+    expect(parseTags(`${"a".repeat(41)}, ok`)).toEqual(["ok"]);
+    expect(parseTags("a".repeat(40))).toEqual(["a".repeat(40)]);
+  });
+
+  it("plafonne à 10 tags", () => {
+    const input = Array.from({ length: 15 }, (_, i) => `tag${i}`).join(",");
+    expect(parseTags(input)).toHaveLength(10);
+  });
+
+  it("renvoie un tableau vide sans contenu utile", () => {
+    expect(parseTags("")).toEqual([]);
+    expect(parseTags("  , ,")).toEqual([]);
+  });
+});
+
+describe("canReadNovel (autorisations de lecture)", () => {
+  it("autorise les membres quel que soit le statut", () => {
+    expect(canReadNovel("author", "draft")).toBe(true);
+    expect(canReadNovel("editor", "draft")).toBe(true);
+  });
+
+  it("autorise l'anonyme sur un roman publié uniquement", () => {
+    expect(canReadNovel(null, "published")).toBe(true);
+    expect(canReadNovel(null, "draft")).toBe(false);
+    expect(canReadNovel(null, "writing")).toBe(false);
+  });
+});
+
+describe("canReadChapter (autorisations de lecture)", () => {
+  it("autorise les membres quel que soit le statut du chapitre", () => {
+    expect(canReadChapter("editor", "draft", "draft")).toBe(true);
+  });
+
+  it("n'autorise l'anonyme que sur un chapitre publié d'un roman publié", () => {
+    expect(canReadChapter(null, "published", "published")).toBe(true);
+    expect(canReadChapter(null, "published", "review")).toBe(false);
+    expect(canReadChapter(null, "published", "draft")).toBe(false);
+    expect(canReadChapter(null, "draft", "published")).toBe(false);
+    expect(canReadChapter(null, "writing", "published")).toBe(false);
   });
 });

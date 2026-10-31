@@ -1,27 +1,24 @@
 "use client";
 
 import type * as React from "react";
-import type { ListColumn, TemplateField } from "@aetheris/shared";
+import {
+  fieldLayout,
+  GRID_COLS,
+  GRID_GAP_PX,
+  packFields,
+  type ListColumn,
+  type TemplateField,
+} from "@aetheris/shared";
 import type { WikiTemplateMeta } from "../types";
 import { PALETTE_ITEMS } from "./builder-palette-data";
 import type { BuilderState } from "./builder-state";
+import { ROW_STRIDE, findFreeSpot, xFromDrag, yFromDrag } from "./builder-layout";
 
 export type FieldOps = ReturnType<typeof useFieldOps>;
 
 export function useFieldOps(st: BuilderState) {
-  const {
-    fields,
-    selected,
-    setItems,
-    setStatus,
-    setNotice,
-    listRef,
-    drag,
-    setDrag,
-    dragOver,
-    setDragOver,
-    setOpenCfg,
-  } = st;
+  const { fields, selected, setItems, setStatus, setNotice, listRef, drag, setDrag, setOpenCfg } =
+    st;
 
   function patchSelected(fn: (t: WikiTemplateMeta) => WikiTemplateMeta) {
     if (!selected) return;
@@ -40,18 +37,10 @@ export function useFieldOps(st: BuilderState) {
 
   function patchColumn(fieldIdx: number, colIdx: number, fn: (c: ListColumn) => ListColumn) {
     patchField(fieldIdx, (f) =>
-      f.kind === "list"
+      f.kind === "list" || f.kind === "ability" || f.kind === "inventory"
         ? { ...f, columns: f.columns.map((c, j) => (j === colIdx ? fn(c) : c)) }
         : f,
     );
-  }
-
-  function moveField(index: number, dir: -1 | 1) {
-    const target = index + dir;
-    if (target < 0 || target >= fields.length) return;
-    const next = [...fields];
-    [next[index], next[target]] = [next[target], next[index]];
-    setFields(next);
   }
 
   function nextFieldId() {
@@ -65,66 +54,46 @@ export function useFieldOps(st: BuilderState) {
     return id;
   }
 
-  function insertField(make: (id: string) => TemplateField, at: number) {
-    const next = [...fields];
-    const idx = Math.max(0, Math.min(at, next.length));
-    next.splice(idx, 0, make(nextFieldId()));
-    setFields(next);
-    // Champ neuf : config dépliée automatiquement.
-    setOpenCfg((prev) => new Set([...prev, idx]));
+  function insertField(make: (id: string) => TemplateField, spot?: { x: number; y: number }) {
+    const field = make(nextFieldId());
+    // Taille par défaut du kind (10 rangées pour une liste, 6 pour un texte
+    // long, 2×2 sinon) : une liste ajoutée garde ses lignes visibles.
+    const { w, h } = fieldLayout(field);
+    const at = findFreeSpot(fields, spot?.x ?? 0, spot?.y ?? 0, w, h);
+    const next = [...fields, { ...field, layout: { ...at, w, h } }];
+    setFields(packFields(next));
+    // Un panneau déjà ouvert le reste ; sinon on déplie le champ neuf.
+    setOpenCfg((prev) => (prev.size > 0 ? prev : new Set([field.id])));
   }
 
-  function toggleCfg(index: number) {
-    setOpenCfg((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  }
-
-  /** Index d'insertion : au-dessus ou en dessous du rang survolé (point médian). */
-  function computeInsertIndex(clientY: number) {
-    const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-field-row]");
-    if (!rows || rows.length === 0) return 0;
-    for (let i = 0; i < rows.length; i++) {
-      const rect = rows[i].getBoundingClientRect();
-      if (clientY < rect.top + rect.height / 2) return i;
-    }
-    return rows.length;
+  function toggleCfg(id: string) {
+    setOpenCfg((prev) => (prev.has(id) ? new Set() : new Set([id])));
   }
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
-    e.dataTransfer.dropEffect = drag?.source === "row" ? "move" : "copy";
-    setDragOver(computeInsertIndex(e.clientY));
+    e.dataTransfer.dropEffect = "copy";
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-    const at = dragOver ?? computeInsertIndex(e.clientY);
     const d = drag;
     setDrag(null);
-    setDragOver(null);
     if (!d) return;
-    if (d.source === "palette") {
-      const item = PALETTE_ITEMS.find((it) => it.key === d.key);
-      if (item) insertField(item.make, at);
-      return;
-    }
-    const from = d.index;
-    if (from < 0 || from >= fields.length) return;
-    const target = from < at ? at - 1 : at;
-    if (target === from) return;
-    const next = [...fields];
-    const [moved] = next.splice(from, 1);
-    next.splice(target, 0, moved);
-    setFields(next);
+    const item = PALETTE_ITEMS.find((it) => it.key === d.key);
+    const canvas = listRef.current;
+    if (!item || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const colW = Math.max(1, (rect.width - (GRID_COLS - 1) * GRID_GAP_PX) / GRID_COLS);
+    const colStride = colW + GRID_GAP_PX;
+    const { w, h } = fieldLayout(item.make("x"));
+    const x = xFromDrag(0, e.clientX - rect.left, colStride, w);
+    const y = yFromDrag(0, e.clientY - rect.top, ROW_STRIDE, h);
+    insertField(item.make, findFreeSpot(fields, x, y, w, h));
   }
 
   function handleDragEnd() {
     setDrag(null);
-    setDragOver(null);
   }
 
   return {
@@ -132,7 +101,6 @@ export function useFieldOps(st: BuilderState) {
     setFields,
     patchField,
     patchColumn,
-    moveField,
     insertField,
     toggleCfg,
     handleDragOver,

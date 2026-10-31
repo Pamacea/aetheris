@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { CycleStatus } from "@/components/cycle-status";
 import { updateNovel } from "@/features/novels/actions";
 
@@ -19,11 +19,14 @@ export function NovelMeta({
   title,
   synopsis,
   status,
+  actions,
 }: {
   novelId: string;
   title: string;
   synopsis: string | null;
   status: string;
+  /** Actions supplémentaires alignées avec statut/export (ex. partage). */
+  actions?: ReactNode;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -83,6 +86,7 @@ export function NovelMeta({
         >
           Export
         </Link>
+        {actions}
       </div>
 
       {editingSynopsis ? (
