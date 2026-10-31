@@ -9,7 +9,11 @@ export default async function VttPage({ params }: { params: Promise<{ id: string
   const { id } = await params;
   const { member } = await requireCampaignPage(id, "vtt");
   const isGM = member.role === "GM";
-  const { messages, initialScene, members, entities } = await loadVttPageData(id, isGM);
+  const { messages, initialScene, members, entities } = await loadVttPageData(
+    id,
+    member.role,
+    member.userId,
+  );
 
   return (
     <VttDesktop campaignId={id}>

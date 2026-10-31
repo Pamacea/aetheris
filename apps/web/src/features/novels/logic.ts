@@ -141,6 +141,18 @@ export function parseTags(input: string): string[] {
 /** Rôle d'un utilisateur sur un roman : auteur ou collaborateur éditeur. */
 export type NovelRole = "author" | "editor";
 
+/** Capacités d'un lien de partage de roman. */
+export type NovelShareMode = "read" | "review" | "edit";
+
+/**
+ * Un token déjà distribué ne change jamais de capacité : il n'est réutilisé
+ * que si le mode est inchangé. Toute transition (read → review, read → edit,
+ * review → edit…) génère un nouveau token et révoque l'ancien lien.
+ */
+export function canReuseShareToken(currentMode: string | null, nextMode: NovelShareMode): boolean {
+  return currentMode === nextMode;
+}
+
 /** Lecture d'un roman : tout membre, ou n'importe qui si le roman est publié. */
 export function canReadNovel(role: NovelRole | null, novelStatus: string): boolean {
   return role !== null || novelStatus === "published";

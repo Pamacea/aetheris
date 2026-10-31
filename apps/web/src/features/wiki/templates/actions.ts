@@ -11,6 +11,7 @@ import {
 } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
+import { canViewModule } from "@/lib/grants";
 import { canEditEntity } from "@/features/fiches/access";
 
 type TemplateActionResult = { ok: true; id: string } | { ok: false; error: string };
@@ -229,6 +230,12 @@ export async function saveTemplateData(
     },
   });
   if (!entity) return invalid("Fiche introuvable.");
+  // Module concerné : une entité portée par un template est une fiche (module
+  // `fiches`), une note libre relève du wiki. Le MJ passe toujours.
+  const moduleId = entity.type === "note" ? "wiki" : "fiches";
+  if (!canViewModule(member.permissions, moduleId, member.role)) {
+    return invalid(moduleId === "fiches" ? "Module Fiches désactivé." : "Module Wiki désactivé.");
+  }
   const assigneeIds = entity.assignees.map((a) => a.userId);
   if (!canEditEntity({ role: member.role, assigneeIds, gmOnly: entity.gmOnly }, member.userId)) {
     return invalid(

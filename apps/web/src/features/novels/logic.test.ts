@@ -4,6 +4,7 @@ import {
   NOVEL_GENRES,
   canReadChapter,
   canReadNovel,
+  canReuseShareToken,
   chapterStatusPatch,
   countDocWords,
   isPlainObject,
@@ -154,6 +155,27 @@ describe("parseTags (saisie CSV des tags)", () => {
   it("renvoie un tableau vide sans contenu utile", () => {
     expect(parseTags("")).toEqual([]);
     expect(parseTags("  , ,")).toEqual([]);
+  });
+});
+
+describe("canReuseShareToken (rotation des liens de partage)", () => {
+  it("garde le token quand le mode ne change pas", () => {
+    expect(canReuseShareToken("read", "read")).toBe(true);
+    expect(canReuseShareToken("review", "review")).toBe(true);
+    expect(canReuseShareToken("edit", "edit")).toBe(true);
+  });
+
+  it("tourne le token à chaque changement de mode", () => {
+    expect(canReuseShareToken("read", "review")).toBe(false);
+    expect(canReuseShareToken("read", "edit")).toBe(false);
+    expect(canReuseShareToken("review", "edit")).toBe(false);
+    expect(canReuseShareToken("edit", "review")).toBe(false);
+  });
+
+  it("ne réutilise pas un mode absent", () => {
+    expect(canReuseShareToken(null, "read")).toBe(false);
+    expect(canReuseShareToken(null, "review")).toBe(false);
+    expect(canReuseShareToken(null, "edit")).toBe(false);
   });
 });
 

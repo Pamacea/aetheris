@@ -1,21 +1,26 @@
 import {
+  sceneStateForViewer,
   sceneStateSchema,
   templateSchemaSchema,
+  type CampaignRole,
   type ChatMessage,
   type SceneState,
   type TemplateSchema,
 } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
+import { visibleEntityWhere } from "@/features/fiches/access";
 import { hydrateTokens } from "./entity-link";
 import type { VttEntity, VttMember } from "./types";
 
 /**
  * Historique de chat + état persisté + membres + fiches liables
- * (Server Component). Les fiches `gmOnly` ne sont jamais envoyées à un joueur.
+ * (Server Component). Un joueur ne reçoit jamais une fiche `gmOnly` ni une
+ * fiche assignée à un autre joueur.
  */
 export async function loadVttPageData(
   campaignId: string,
-  isGM = false,
+  role: CampaignRole,
+  userId: string,
 ): Promise<{
   messages: ChatMessage[];
   initialScene: SceneState | null;
@@ -35,7 +40,7 @@ export async function loadVttPageData(
       select: { userId: true, user: { select: { name: true } } },
     }),
     prisma.entity.findMany({
-      where: { campaignId, ...(isGM ? {} : { gmOnly: false }) },
+      where: { campaignId, ...visibleEntityWhere(role, userId) },
       orderBy: { title: "asc" },
       take: 500,
       select: { id: true, title: true, type: true, data: true },
@@ -80,10 +85,17 @@ export async function loadVttPageData(
   // Ligne absente ou ancien format → scène neuve (jamais de crash au rendu).
   const parsed = sceneStateSchema.safeParse(sceneRow?.state);
   let initialScene: SceneState | null = parsed.success ? parsed.data : null;
-  // Hydratation initiale : la fiche liée est la source du nom/PV/PV max/CA.
-  // Le même helper rejoue l'hydratation sur `scene:state` (socket) ; les
-  // sauvegardes de fiche arrivent ensuite par `fiche:sync` → `fiche:combat`.
+  // Même filtrage que le broadcast socket : un joueur ne reçoit jamais les
+  // murs secrets, les notes de théâtre ni les jetons hors de sa vision.
   if (initialScene) {
+    initialScene = sceneStateForViewer(initialScene, {
+      isGM: role === "GM",
+      userId,
+      tokenOwners: new Map(initialScene.tokens.map((t) => [t.id, t.ownerId] as const)),
+    });
+    // Hydratation initiale : la fiche liée est la source du nom/PV/PV max/CA.
+    // Le même helper rejoue l'hydratation sur `scene:state` (socket) ; les
+    // sauvegardes de fiche arrivent ensuite par `fiche:sync` → `fiche:combat`.
     initialScene = { ...initialScene, tokens: hydrateTokens(initialScene.tokens, entities) };
   }
 

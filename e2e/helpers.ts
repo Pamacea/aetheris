@@ -35,7 +35,14 @@ export async function login(page: Page, email: string) {
 export async function createCampaign(page: Page, title: string) {
   await page.getByRole("button", { name: "+ Nouvelle campagne" }).click();
   await page.getByPlaceholder("Titre de la campagne…").fill(title);
-  await page.getByRole("button", { name: "Créer", exact: true }).click();
+  // Assistant en deux étapes : identité puis système de jeu (sélection obligatoire).
+  await page.getByRole("button", { name: "Suivant", exact: true }).click();
+  await page
+    .getByRole("radiogroup", { name: "Systèmes de jeu" })
+    .getByRole("radio")
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Créer la campagne" }).click();
   await expect(page).toHaveURL(/\/campaign\/[^/]+\/vtt/);
   // Plus de hub : on attend un élément stable du bureau de la table.
   await expect(page.getByRole("navigation", { name: "Dock des modules" })).toBeVisible();

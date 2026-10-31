@@ -14,7 +14,13 @@ import {
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getNovelRole } from "./access";
-import { chapterStatusPatch, countDocWords, isPlainObject, isValidCoverImage } from "./logic";
+import {
+  canReuseShareToken,
+  chapterStatusPatch,
+  countDocWords,
+  isPlainObject,
+  isValidCoverImage,
+} from "./logic";
 
 export type NovelActionResult = { ok: true; id: string } | { ok: false; error: string };
 
@@ -306,8 +312,9 @@ export async function setNovelShare(
     await prisma.novelCollaborator.deleteMany({ where: { novelId } });
   }
 
-  // Un token de lecture déjà distribué ne doit jamais devenir une invitation à écrire.
-  if (novel.shareToken && (nextMode !== "edit" || novel.shareMode === "edit")) {
+  // Un token distribué ne change jamais de capacité : tout changement de mode
+  // (read → review, read → edit…) le remplace, donc révoque l'ancien lien.
+  if (novel.shareToken && canReuseShareToken(novel.shareMode, nextMode)) {
     await prisma.novel.update({ where: { id: novelId }, data: { shareMode: nextMode } });
     revalidatePath(`/shared/novel/${novel.shareToken}`, "layout");
     revalidatePath(`/novels/${novelId}`);

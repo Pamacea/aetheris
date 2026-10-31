@@ -8,10 +8,12 @@ import {
   saveWikiNoteSchema,
   templateSchemaSchema,
   updateWikiNoteSchema,
+  type CampaignRole,
 } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
 import { sanitizeWikiHtml } from "@/lib/sanitize-wiki";
+import { visibleEntityWhere } from "@/features/fiches/access";
 
 export type WikiActionResult = { ok: true; id: string } | { ok: false; error: string };
 export type WikiShareResult = { ok: true; slug: string | null } | { ok: false; error: string };
@@ -27,11 +29,24 @@ function invalid(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
 
-/** Ownership : l'id doit être un uuid ET appartenir à la campagne. */
-async function ownedEntity(campaignId: string, entityId: string) {
+/**
+ * Ownership : l'id doit être un uuid ET appartenir à la campagne. `viewer`
+ * applique en plus la visibilité d'entité (MJ tout ; joueur non-MJ sans
+ * assigné ou assigné à lui) : une entité invisible est indistinguable d'une
+ * entité inexistante.
+ */
+async function ownedEntity(
+  campaignId: string,
+  entityId: string,
+  viewer?: { role: CampaignRole; userId: string },
+) {
   if (!UUID_RE.test(entityId)) return null;
   return prisma.entity.findFirst({
-    where: { id: entityId, campaignId },
+    where: {
+      id: entityId,
+      campaignId,
+      ...(viewer ? visibleEntityWhere(viewer.role, viewer.userId) : {}),
+    },
     select: { id: true, contentHtml: true, shareSlug: true, gmOnly: true },
   });
 }
@@ -245,7 +260,7 @@ export async function listWikiVersions(
 > {
   const member = await requireCampaignMember(campaignId);
   if (!member) return { ok: false, error: "Accès refusé." };
-  if (!(await ownedEntity(campaignId, entityId)))
+  if (!(await ownedEntity(campaignId, entityId, member)))
     return { ok: false, error: "Entrée introuvable." };
 
   const versions = await prisma.entityVersion.findMany({

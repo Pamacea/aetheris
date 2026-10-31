@@ -42,4 +42,12 @@ describe("visibleEntityWhere", () => {
       OR: [{ assignees: { none: {} } }, { assignees: { some: { userId: "u1" } } }],
     });
   });
+
+  it("se compose avec le filtre de campagne sans perdre la clause assignés", () => {
+    expect({ campaignId: "c1", ...visibleEntityWhere("PLAYER", "u1") }).toEqual({
+      campaignId: "c1",
+      gmOnly: false,
+      OR: [{ assignees: { none: {} } }, { assignees: { some: { userId: "u1" } } }],
+    });
+  });
 });

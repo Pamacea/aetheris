@@ -20,8 +20,11 @@ import {
   diceRollRequestSchema,
   entityTokenPatch,
   ficheSyncRequestSchema,
+  isTokenVisible,
   parseRollExpression,
   resolveCombatKeys,
+  sceneStateForViewer,
+  wallSegs,
   templateSchemaSchema,
   executeRoll,
   randomSeed,
@@ -35,6 +38,7 @@ import {
   type ChatMessage,
   type DiceRoll,
   type SceneState,
+  type TokenMoved,
 } from "@aetheris/shared";
 import { PrismaService } from "../database/prisma.service.js";
 import { parseSessionToken } from "../auth/session.js";
@@ -56,6 +60,10 @@ interface SocketData {
 const MEMBER_TTL_MS = 30_000;
 /** Fenêtre glissante du rate-limit par socket. */
 const RATE_WINDOW_MS = 1_000;
+
+/** Rooms : campagne (tous) et MJ (seule room qui reçoit l'état complet). */
+const campaignRoom = (campaignId: string) => `campaign:${campaignId}`;
+const gmRoom = (campaignId: string) => `${campaignRoom(campaignId)}:gm`;
 
 function parseWs<T>(schema: ZodType<T>, raw: unknown): T {
   const result = schema.safeParse(raw);
@@ -137,12 +145,16 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
         for (const id of data.campaigns) {
           const role = valid.get(id);
           if (role === undefined) {
-            await socket.leave(`campaign:${id}`);
+            await socket.leave(campaignRoom(id));
+            await socket.leave(gmRoom(id));
             data.memberships?.delete(id);
             this.logger.log(`room ${id} quittée (membre révoqué ${data.userId})`);
           } else {
             // Le sweep sert aussi de re-lookup : TTL d'adhésion rafraîchi.
             data.memberships?.set(id, { role, at });
+            // Promotion/rétrogradation : la room MJ suit le rôle réel.
+            if (role === "GM") await socket.join(gmRoom(id));
+            else await socket.leave(gmRoom(id));
           }
         }
         data.campaigns = data.campaigns.filter((id) => valid.has(id));
@@ -236,8 +248,9 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
   private async ensureJoined(socket: Socket, campaignId: string): Promise<void> {
     const data = socket.data as SocketData;
     if (data.campaigns?.includes(campaignId)) return;
-    await this.requireMember(socket, campaignId);
-    await socket.join(`campaign:${campaignId}`);
+    const member = await this.requireMember(socket, campaignId);
+    await socket.join(campaignRoom(campaignId));
+    if (member.role === "GM") await socket.join(gmRoom(campaignId));
     data.campaigns = [...new Set([...(data.campaigns ?? []), campaignId])];
   }
 
@@ -273,10 +286,11 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     if (!this.allowEvent(socket, "campaign:join", 3)) return undefined;
 
     // Adhésion DB (et non simple uuid fourni par le client).
-    await this.requireMember(socket, campaignId);
+    const member = await this.requireMember(socket, campaignId);
 
-    const room = `campaign:${campaignId}`;
+    const room = campaignRoom(campaignId);
     await socket.join(room);
+    if (member.role === "GM") await socket.join(gmRoom(campaignId));
     data.campaigns = [...new Set([...(data.campaigns ?? []), campaignId])];
 
     this.events.emit("campaign.joined", { campaignId, userId: data.userId });
@@ -399,20 +413,65 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     // Adhésion revérifiée en DB (cache 30 s) : le drag reste léger.
     const member = await this.requireMember(socket, campaignId);
 
+    const prev = await this.prisma.vttScene.findUnique({
+      where: { campaignId },
+      select: { state: true },
+    });
+    const parsed = prev ? sceneStateSchema.safeParse(prev.state) : null;
+    const scene = parsed?.success ? parsed.data : null;
+
     // Un joueur ne déplace que SES jetons ; le MJ déplace tout.
     if (member.role !== "GM") {
-      const prev = await this.prisma.vttScene.findUnique({
-        where: { campaignId },
-        select: { state: true },
-      });
-      const parsed = prev ? sceneStateSchema.safeParse(prev.state) : null;
-      const token = parsed?.success ? parsed.data.tokens.find((t) => t.id === tokenId) : undefined;
+      const token = scene?.tokens.find((t) => t.id === tokenId);
       if (!token || token.ownerId !== data.userId) {
         throw new WsException("Jeton non déplaçable");
       }
     }
 
-    socket.to(`campaign:${campaignId}`).emit("token:moved", { tokenId, x, y, rot });
+    await this.broadcastTokenMoved(campaignId, socket.id, scene, {
+      tokenId,
+      x,
+      y,
+      ...(rot === undefined ? {} : { rot }),
+    });
+  }
+
+  /**
+   * `token:moved` ne part plus à toute la room : le MJ reçoit tout, un joueur
+   * uniquement les jetons que sa vision couvre (même règle que son client).
+   * shortcut: visibilité calculée sur la scène persistée (débounce 500 ms) →
+   * un drag suivant une création de jeton attend le commit pour les joueurs.
+   */
+  private async broadcastTokenMoved(
+    campaignId: string,
+    senderId: string,
+    scene: SceneState | null,
+    payload: TokenMoved,
+  ): Promise<void> {
+    this.server.to(gmRoom(campaignId)).emit("token:moved", payload);
+    if (!scene) return;
+    const segs = wallSegs(scene.walls);
+    const moved = scene.tokens.find((t) => t.id === payload.tokenId);
+    if (!moved) return;
+    const target = {
+      ...moved,
+      x: payload.x,
+      y: payload.y,
+      rot: payload.rot ?? moved.rot,
+    };
+    const sockets = await this.server.in(campaignRoom(campaignId)).fetchSockets();
+    for (const client of sockets) {
+      if (client.id === senderId || client.rooms.has(gmRoom(campaignId))) continue;
+      const userId = (client.data as SocketData).userId;
+      if (!userId) continue;
+      const viewers = scene.tokens.filter((t) => t.ownerId === userId);
+      if (
+        !scene.fog.on ||
+        isTokenVisible(target, viewers, segs, scene.grid.size, scene.fog.sightCells)
+      ) {
+        client.emit("token:moved", payload);
+      }
+    }
   }
 
   /**
@@ -472,6 +531,34 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
 
     if (member.role !== "GM") {
       if (!before) throw new WsException("Scène non modifiable");
+      // Le client joueur ne reçoit que l'état filtré (murs secrets retirés,
+      // jetons hors vision absents) : on restitue l'état persisté avant la
+      // comparaison, sinon tout commit joueur serait refusé.
+      const prior = new Map(before.tokens.map((t) => [t.id, t]));
+      if (state.tokens.some((t) => !prior.has(t.id))) {
+        throw new WsException("Création de jeton réservée au MJ");
+      }
+      const submitted = new Map(state.tokens.map((t) => [t.id, t]));
+      // Un jeton visible pour le joueur ne peut pas disparaître de son commit ;
+      // les jetons invisibles (filtrés) sont restitués depuis l'état persisté.
+      const beforeView = sceneStateForViewer(before, {
+        isGM: false,
+        userId: data.userId,
+        tokenOwners: new Map(before.tokens.map((t) => [t.id, t.ownerId] as const)),
+      });
+      if (beforeView.tokens.some((t) => !submitted.has(t.id))) {
+        throw new WsException("Suppression de jeton réservée au MJ");
+      }
+      state.tokens = before.tokens.map((t) => submitted.get(t.id) ?? t);
+      // Murs : le joueur ne peut pas les modifier. On compare sa vue filtrée
+      // (sans secrets) puis on restaure les murs persistés, secrets compris.
+      if (
+        JSON.stringify(state.walls.filter((w) => w.type !== "secret")) !==
+        JSON.stringify(beforeView.walls)
+      ) {
+        throw new WsException("Scène non modifiable");
+      }
+      state.walls = before.walls;
       this.assertPlayerCommit(before, state, data.userId);
       // Les notes de théâtre ne sont pas exposées au client joueur : on
       // conserve celles du MJ au lieu de les écraser avec son tableau vide.
@@ -480,8 +567,28 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     await this.assertNoteIds(campaignId, before, state);
 
     this.scheduleScenePersist(campaignId, state);
-    socket.to(`campaign:${campaignId}`).emit("scene:state", state);
+    await this.broadcastSceneState(campaignId, socket.id, state);
     return { ok: true };
+  }
+
+  /**
+   * `scene:state` : complet pour la room MJ, filtré par socket pour les
+   * joueurs (murs secrets, notes de théâtre, jetons hors vision).
+   */
+  private async broadcastSceneState(
+    campaignId: string,
+    senderId: string,
+    state: SceneState,
+  ): Promise<void> {
+    this.server.to(gmRoom(campaignId)).emit("scene:state", state);
+    const tokenOwners = new Map(state.tokens.map((t) => [t.id, t.ownerId] as const));
+    const sockets = await this.server.in(campaignRoom(campaignId)).fetchSockets();
+    for (const client of sockets) {
+      if (client.id === senderId || client.rooms.has(gmRoom(campaignId))) continue;
+      const userId = (client.data as SocketData).userId;
+      if (!userId) continue;
+      client.emit("scene:state", sceneStateForViewer(state, { isGM: false, userId, tokenOwners }));
+    }
   }
 
   /**
@@ -533,11 +640,33 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
 
     const entity = await this.prisma.entity.findFirst({
       where: { id: entityId, campaignId },
-      select: { id: true, title: true, type: true, data: true, gmOnly: true },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        data: true,
+        gmOnly: true,
+        assignees: { select: { userId: true } },
+      },
     });
     if (!entity) return; // supprimée entre-temps : rien à diffuser
-    // Fiche secrète : seule la session MJ peut déclencher sa diffusion.
-    if (entity.gmOnly && member.role !== "GM") throw new WsException("Réservé aux MJ");
+    if (member.role !== "GM") {
+      // Fiche secrète : seule la session MJ peut déclencher sa diffusion.
+      if (entity.gmOnly) throw new WsException("Réservé aux MJ");
+      // Joueur : assigné à la fiche, ou propriétaire d'un jeton lié.
+      const assigned = entity.assignees.some((a) => a.userId === data.userId);
+      if (!assigned) {
+        const scene = await this.prisma.vttScene.findUnique({
+          where: { campaignId },
+          select: { state: true },
+        });
+        const parsed = scene ? sceneStateSchema.safeParse(scene.state) : null;
+        const ownsToken =
+          parsed?.success &&
+          parsed.data.tokens.some((t) => t.noteId === entityId && t.ownerId === data.userId);
+        if (!ownsToken) throw new WsException("Fiche non accessible");
+      }
+    }
 
     const template = await this.prisma.jsonTemplate.findFirst({
       where: { id: entity.type, campaignId },
@@ -555,11 +684,46 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
           : {},
     };
 
-    socket.to(`campaign:${campaignId}`).emit("fiche:combat", {
+    const payload = {
       entityId,
       keys: resolveCombatKeys(entityLike, schema),
       patch: entityTokenPatch(entityLike, schema),
+    };
+    // Fiche secrète : room MJ uniquement.
+    if (entity.gmOnly) {
+      socket.to(gmRoom(campaignId)).emit("fiche:combat", payload);
+      return;
+    }
+    // Sans assigné : visible par tous les joueurs (règle visibleEntityWhere).
+    if (entity.assignees.length === 0) {
+      socket.to(campaignRoom(campaignId)).emit("fiche:combat", payload);
+      return;
+    }
+    // Assignée : MJ + assignés + propriétaires d'un jeton lié.
+    socket.to(gmRoom(campaignId)).emit("fiche:combat", payload);
+    const recipients = new Set(entity.assignees.map((a) => a.userId));
+    // shortcut: scène persistée (débounce 500 ms) → un lien jeton tout juste
+    // créé n'est ciblé qu'après le prochain commit.
+    const scene = await this.prisma.vttScene.findUnique({
+      where: { campaignId },
+      select: { state: true },
     });
+    const parsedScene = scene ? sceneStateSchema.safeParse(scene.state) : null;
+    if (parsedScene?.success) {
+      for (const token of parsedScene.data.tokens) {
+        if (token.noteId === entityId && token.ownerId) {
+          recipients.add(token.ownerId);
+        }
+      }
+    }
+    const sockets = await this.server.in(campaignRoom(campaignId)).fetchSockets();
+    for (const client of sockets) {
+      if (client.id === socket.id || client.rooms.has(gmRoom(campaignId))) continue;
+      const userId = (client.data as SocketData).userId;
+      if (userId && recipients.has(userId)) {
+        client.emit("fiche:combat", payload);
+      }
+    }
   }
 
   /** Jet de dés : le serveur tire (seed crypto) puis broadcast le résultat. */

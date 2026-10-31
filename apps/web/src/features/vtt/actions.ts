@@ -5,6 +5,7 @@ import { z } from "zod";
 import { sceneStateSchema, templateSchemaSchema, type SceneState } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
+import { canViewModule } from "@/lib/grants";
 import { combatEntityData } from "./entity-link";
 
 export type SaveSceneResult = { ok: true } | { ok: false; error: string };
@@ -59,6 +60,11 @@ export async function saveTokenCombat(
 ): Promise<CombatResult> {
   const member = await requireCampaignMember(campaignId);
   if (!member) return { ok: false, error: "Accès refusé." };
+  // Grant de vue de la Table : même un jeton possédé ne s'édite pas sans accès
+  // au module. canViewModule laisse toujours passer le MJ.
+  if (!canViewModule(member.permissions, "vtt", member.role)) {
+    return { ok: false, error: "Module Table désactivé." };
+  }
 
   const parsed = combatSchema.safeParse(combat);
   if (!parsed.success) return { ok: false, error: "Valeurs de combat invalides." };

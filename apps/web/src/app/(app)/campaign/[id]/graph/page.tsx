@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redirectModuleToDesktop, requireCampaignPage } from "@/features/campaigns/require-member";
+import { visibleEntityWhere } from "@/features/fiches/access";
 import { GraphClient } from "@/features/graph/GraphClient";
 
 export default async function GraphPage({
@@ -16,16 +17,16 @@ export default async function GraphPage({
 
   const [entities, links] = await Promise.all([
     prisma.entity.findMany({
-      // Une note MJ n'apparaît pas dans le graphe d'un joueur.
-      where: { campaignId: id, ...(isGM ? {} : { gmOnly: false }) },
+      // Une note MJ ou une fiche d'un autre joueur n'apparaît pas dans le graphe.
+      where: { campaignId: id, ...visibleEntityWhere(member.role, member.userId) },
       select: { id: true, title: true, type: true },
       orderBy: { title: "asc" },
     }),
     prisma.entityLink.findMany({
       // Un lien dont une extrémité est une note MJ fuiterait son libellé.
       where: {
-        fromEntity: { campaignId: id, ...(isGM ? {} : { gmOnly: false }) },
-        toEntity: { campaignId: id, ...(isGM ? {} : { gmOnly: false }) },
+        fromEntity: { campaignId: id, ...visibleEntityWhere(member.role, member.userId) },
+        toEntity: { campaignId: id, ...visibleEntityWhere(member.role, member.userId) },
       },
       select: { id: true, label: true, fromEntityId: true, toEntityId: true },
     }),

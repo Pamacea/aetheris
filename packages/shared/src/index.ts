@@ -20,5 +20,6 @@ export * from "./schemas/wiki.js";
 export * from "./schemas/ws.js";
 export * from "./dice.js";
 export * from "./entity-combat.js";
+export * from "./scene-visibility.js";
 export * from "./formula.js";
 export * from "./spell-formula.js";

@@ -1,5 +1,6 @@
 import { WsException } from "@nestjs/websockets";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import type { SceneState } from "@aetheris/shared";
 import type { Socket } from "socket.io";
 import { CampaignGateway } from "./campaign.gateway.js";
 import type { PrismaService } from "../database/prisma.service.js";
@@ -21,9 +22,12 @@ function setup(opts: {
     type: string;
     data: unknown;
     gmOnly: boolean;
+    assignees?: { userId: string }[];
   } | null;
   /** `jsonTemplate.schema` du template de la fiche. */
   templateSchema?: unknown;
+  /** Autres sockets de la room (filtrage par socket). */
+  remotes?: { id: string; userId?: string; rooms?: string[] }[];
 }) {
   const emissions: { room: string; event: string; payload: unknown }[] = [];
   let persisted = 0;
@@ -40,7 +44,9 @@ function setup(opts: {
       },
     },
     entity: {
-      findFirst: async () => opts.entity ?? null,
+      // Prisma renvoie toujours le tableau (vide si non assignée).
+      findFirst: async () =>
+        opts.entity ? { ...opts.entity, assignees: opts.entity.assignees ?? [] } : null,
       findMany: async ({ where }: { where: { id: { in: string[] } } }) =>
         where.id.in.filter((id) => (opts.entities ?? []).includes(id)).map((id) => ({ id })),
     },
@@ -54,7 +60,20 @@ function setup(opts: {
       emissions.push({ room, event, payload });
     },
   });
-  (gateway as unknown as { server: unknown }).server = { to: emit };
+  const remoteSockets = (opts.remotes ?? []).map((r) => ({
+    id: r.id,
+    data: { userId: r.userId },
+    rooms: new Set(r.rooms ?? []),
+    emit: (event: string, payload: unknown) => {
+      emissions.push({ room: `socket:${r.id}`, event, payload });
+    },
+  }));
+  (gateway as unknown as { server: unknown }).server = {
+    to: emit,
+    in: (room: string) => ({
+      fetchSockets: async () => remoteSockets.filter((r) => r.rooms.has(room)),
+    }),
+  };
   const joined: string[] = [];
   const socket = {
     data: {
@@ -67,7 +86,14 @@ function setup(opts: {
       joined.push(room);
     },
   } as unknown as Socket;
-  return { gateway, emissions, socket, joined, persisted: () => persisted };
+  return {
+    gateway,
+    emissions,
+    socket,
+    joined,
+    remoteSockets,
+    persisted: () => persisted,
+  };
 }
 
 const CAMPAIGN = "11111111-1111-4111-8111-111111111111";
@@ -230,7 +256,7 @@ describe("CampaignGateway.tokenMove (propriété du jeton)", () => {
     await gateway.tokenMove(move, socket);
     expect(emissions).toEqual([
       {
-        room: `campaign:${CAMPAIGN}`,
+        room: `campaign:${CAMPAIGN}:gm`,
         event: "token:moved",
         payload: { tokenId: "t1", x: 5, y: 6 },
       },
@@ -246,6 +272,25 @@ describe("CampaignGateway.tokenMove (propriété du jeton)", () => {
     });
     await gateway.tokenMove(move, socket);
     expect(emissions.filter((e) => e.event === "token:moved")).toHaveLength(1);
+  });
+
+  it("ne diffuse un déplacement qu’aux joueurs qui voient le jeton", async () => {
+    const { gateway, socket, emissions } = setup({
+      member: { role: "GM" },
+      scene: { id: "s1" },
+      state: scene({
+        tokens: [token({ ownerId: null }), token({ id: "t2", ownerId: "user-3" })],
+      }),
+      campaigns: [CAMPAIGN],
+      remotes: [
+        { id: "r3", userId: "user-3", rooms: [`campaign:${CAMPAIGN}`] },
+        { id: "r4", userId: "user-4", rooms: [`campaign:${CAMPAIGN}`] },
+      ],
+    });
+    await gateway.tokenMove(move, socket);
+    const rooms = emissions.map((e) => e.room);
+    expect(rooms).toContain("socket:r3");
+    expect(rooms).not.toContain("socket:r4");
   });
 });
 
@@ -379,6 +424,46 @@ describe("CampaignGateway.sceneCommit (sécurité joueur)", () => {
     gateway.onModuleDestroy();
   });
 
+  it("diffuse l’état filtré aux joueurs et l’état complet à la room MJ", async () => {
+    const walls = [
+      {
+        id: "w1",
+        type: "secret",
+        points: [
+          { x: 0, y: -1_000 },
+          { x: 10, y: -1_000 },
+        ],
+      },
+    ];
+    const { gateway, socket, emissions } = setup({
+      member: { role: "PLAYER" },
+      scene: { id: "s1" },
+      state: scene({ walls }),
+      campaigns: [CAMPAIGN],
+      remotes: [{ id: "r2", userId: "user-2", rooms: [`campaign:${CAMPAIGN}`] }],
+    });
+    await gateway.sceneCommit(
+      {
+        campaignId: CAMPAIGN,
+        // Commit d'un client filtré : les murs secrets sont absents.
+        state: scene({ walls: [], tokens: [token({ ownerId: "user-1", hp: 4 })] }),
+      },
+      socket,
+    );
+    const full = emissions.find(
+      (e) => e.room === `campaign:${CAMPAIGN}:gm` && e.event === "scene:state",
+    )?.payload as SceneState | undefined;
+    const filtered = emissions.find((e) => e.room === "socket:r2" && e.event === "scene:state")
+      ?.payload as SceneState | undefined;
+    // Le commit joueur (même avec les murs complets) restitue les secrets ;
+    // l'état filtré n'en expose ni l'existence ni la géométrie.
+    expect(full?.walls[0]?.type).toBe("secret");
+    expect(filtered?.walls).toEqual([]);
+    expect(filtered?.theatreNotes).toEqual([]);
+    expect(filtered?.tokens).toEqual([]);
+    gateway.onModuleDestroy();
+  });
+
   it("autorise le MJ à créer un jeton et modifier la scène", async () => {
     const { gateway, socket, emissions } = setup({
       member: { role: "GM" },
@@ -494,6 +579,103 @@ describe("CampaignGateway.ficheSync", () => {
     expect(emissions).toEqual([]);
   });
 
+  it("refuse un joueur ni assigné ni propriétaire d'un jeton lié", async () => {
+    const { gateway, emissions, socket } = setup({
+      member: { role: "PLAYER" },
+      scene: null,
+      entity: { ...entity, assignees: [{ userId: "user-2" }] },
+      templateSchema,
+      campaigns: [CAMPAIGN],
+    });
+    await expect(
+      gateway.ficheSync({ campaignId: CAMPAIGN, entityId }, socket),
+    ).rejects.toBeInstanceOf(WsException);
+    expect(emissions).toEqual([]);
+  });
+
+  it("autorise un joueur assigné à la fiche", async () => {
+    const { gateway, emissions, socket } = setup({
+      member: { role: "PLAYER" },
+      scene: null,
+      entity: { ...entity, assignees: [{ userId: "user-1" }] },
+      templateSchema,
+      campaigns: [CAMPAIGN],
+    });
+    await gateway.ficheSync({ campaignId: CAMPAIGN, entityId }, socket);
+    expect(emissions).toHaveLength(1);
+  });
+
+  it("ne diffuse une fiche secrète qu'à la room MJ", async () => {
+    const { gateway, emissions, socket } = setup({
+      member: { role: "GM" },
+      scene: null,
+      entity: { ...entity, gmOnly: true },
+      templateSchema,
+      campaigns: [CAMPAIGN],
+      remotes: [{ id: "player-1", userId: "user-2", rooms: [`campaign:${CAMPAIGN}`] }],
+    });
+    await gateway.ficheSync({ campaignId: CAMPAIGN, entityId }, socket);
+    const broadcasts = emissions.filter((e) => e.event === "fiche:combat");
+    expect(broadcasts).toHaveLength(1);
+    expect(broadcasts[0]?.room).toBe(`campaign:${CAMPAIGN}:gm`);
+    expect(emissions.some((e) => e.room === "socket:player-1")).toBe(false);
+  });
+
+  it("cible MJ, assignés et propriétaires de jeton lié", async () => {
+    const { gateway, emissions, socket } = setup({
+      member: { role: "GM" },
+      scene: { id: "s1" },
+      state: scene({
+        tokens: [
+          token({ ownerId: "owner", noteId: entityId }),
+          token({ id: "t2", ownerId: "outsider" }),
+        ],
+      }),
+      entity: { ...entity, assignees: [{ userId: "assignee" }] },
+      templateSchema,
+      campaigns: [CAMPAIGN],
+      remotes: [
+        { id: "assignee", userId: "assignee", rooms: [`campaign:${CAMPAIGN}`] },
+        { id: "owner", userId: "owner", rooms: [`campaign:${CAMPAIGN}`] },
+        {
+          id: "outsider",
+          userId: "outsider",
+          rooms: [`campaign:${CAMPAIGN}`],
+        },
+        {
+          id: "gm-2",
+          userId: "gm-2",
+          rooms: [`campaign:${CAMPAIGN}`, `campaign:${CAMPAIGN}:gm`],
+        },
+      ],
+    });
+    await gateway.ficheSync({ campaignId: CAMPAIGN, entityId }, socket);
+    expect(
+      emissions.some((e) => e.room === `campaign:${CAMPAIGN}:gm` && e.event === "fiche:combat"),
+    ).toBe(true);
+    expect(
+      emissions
+        .filter((e) => e.event === "fiche:combat" && e.room.startsWith("socket:"))
+        .map((e) => e.room)
+        .sort(),
+    ).toEqual(["socket:assignee", "socket:owner"]);
+  });
+
+  it("autorise le propriétaire d'un jeton lié, même non assigné", async () => {
+    const { gateway, emissions, socket } = setup({
+      member: { role: "PLAYER" },
+      scene: { id: "s1" },
+      state: scene({
+        tokens: [token({ ownerId: "user-1", noteId: entityId })],
+      }),
+      entity: { ...entity, assignees: [] },
+      templateSchema,
+      campaigns: [CAMPAIGN],
+    });
+    await gateway.ficheSync({ campaignId: CAMPAIGN, entityId }, socket);
+    expect(emissions).toHaveLength(1);
+  });
+
   it("rejoint la room à la demande si l’événement précède campaign:join", async () => {
     const { gateway, emissions, socket, joined } = setup({
       member: { role: "GM" },
@@ -503,7 +685,7 @@ describe("CampaignGateway.ficheSync", () => {
       campaigns: [],
     });
     await gateway.ficheSync({ campaignId: CAMPAIGN, entityId }, socket);
-    expect(joined).toEqual([`campaign:${CAMPAIGN}`]);
+    expect(joined).toEqual([`campaign:${CAMPAIGN}`, `campaign:${CAMPAIGN}:gm`]);
     expect(emissions).toHaveLength(1);
   });
 

@@ -3,6 +3,7 @@ import { EyeIcon, EyeOffIcon, LayoutIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
 import { stripGmSecrets } from "@/lib/wiki";
 import { redirectModuleToDesktop, requireCampaignPage } from "@/features/campaigns/require-member";
+import { visibleEntityWhere } from "@/features/fiches/access";
 import { resolveBacklinks } from "@/features/wiki/backlinks";
 import { WikiApp } from "@/features/wiki/wiki-app";
 import {
@@ -36,8 +37,9 @@ export default async function WikiPage({
 
   const [entities, rawTemplates] = await Promise.all([
     prisma.entity.findMany({
-      // Une note MJ n'existe pas pour un joueur : ni liste, ni accès par id.
-      where: { campaignId: id, ...(isGM ? {} : { gmOnly: false }) },
+      // Une note MJ ou une fiche assignée à un autre joueur n'existe pas pour
+      // un joueur : ni liste, ni accès par id.
+      where: { campaignId: id, ...visibleEntityWhere(member.role, member.userId) },
       select: {
         id: true,
         title: true,
