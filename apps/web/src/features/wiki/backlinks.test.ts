@@ -13,6 +13,9 @@ const entree = (id: string, title: string, contentHtml: string | null, extra = {
 
 /** Lien wiki tel qu'il est persisté : `<a data-wiki-link="Titre">`. */
 const lien = (titre: string) => `<p><a data-wiki-link="${titre}">${titre}</a></p>`;
+/** Lien récent : id stable + ancien titre (cible renommée). */
+const lienId = (titre: string, id: string) =>
+  `<p><a data-wiki-link="${titre}" data-wiki-link-id="${id}">${titre}</a></p>`;
 
 const templateTag: WikiTemplateMeta = {
   id: "tpl-1",
@@ -28,6 +31,16 @@ describe("resolveBacklinks", () => {
     const res = resolveBacklinks({
       active,
       entries: [entree("b", "B", lien("aldric")), entree("c", "C", "<p>Non</p>")],
+      templates: [],
+      isGM: true,
+    });
+    expect(res).toEqual([{ id: "b", title: "B" }]);
+  });
+
+  it("résout par id même si le titre affiché a changé (renommage)", () => {
+    const res = resolveBacklinks({
+      active,
+      entries: [entree("b", "B", lienId("Aldric le Sage", "a"))],
       templates: [],
       isGM: true,
     });

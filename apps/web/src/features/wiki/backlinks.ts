@@ -1,5 +1,5 @@
 import { templateSchemaSchema } from "@aetheris/shared";
-import { parseWikiLinks, stripGmSecrets } from "@/lib/wiki";
+import { parseWikiLinkIds, parseWikiLinks, stripGmSecrets } from "@/lib/wiki";
 import type { WikiTemplateMeta } from "./types";
 
 /** Ligne d'entrée nécessaire au calcul des liens entrants. */
@@ -52,9 +52,13 @@ export function resolveBacklinks({
   const visibleHtml = (html: string | null): string => (isGM ? (html ?? "") : stripGmSecrets(html));
   const needle = active.title.toLocaleLowerCase("fr");
 
-  const htmlSources = entries.filter((e) =>
-    parseWikiLinks(visibleHtml(e.contentHtml)).some((t) => t.toLocaleLowerCase("fr") === needle),
-  );
+  const htmlSources = entries.filter((e) => {
+    const html = visibleHtml(e.contentHtml);
+    // L'id (liens récents) est O(1) et résiste au renommage ; le titre reste
+    // le repli des contenus antérieurs.
+    if (parseWikiLinkIds(html).includes(active.id)) return true;
+    return parseWikiLinks(html).some((t) => t.toLocaleLowerCase("fr") === needle);
+  });
   const tagSources = entries.filter((e) => tagTargetsOf(e, templateById).includes(active.id));
 
   const seen = new Set<string>();

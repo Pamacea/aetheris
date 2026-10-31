@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createCampaign, moduleLink, register, uniqueEmail } from "./helpers";
+import { createCampaign, openModule, register, uniqueEmail } from "./helpers";
 
 /** Réglages : contrat de la page (infos + thème + invitation) et modules. */
 test.beforeEach(async ({ page }) => {
   await register(page, uniqueEmail("set"), "MJ Réglages");
   await createCampaign(page, `Campagne Réglages ${Date.now()}`);
-  await moduleLink(page, "Réglages").click();
+  await openModule(page, "settings");
   await expect(page).toHaveURL(/\/settings/);
 });
 

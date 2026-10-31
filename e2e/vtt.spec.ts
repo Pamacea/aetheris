@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createCampaign, inviteCode, moduleLink, register, uniqueEmail } from "./helpers";
+import {
+  campaignBasePath,
+  createCampaign,
+  inviteCode,
+  openModule,
+  register,
+  uniqueEmail,
+} from "./helpers";
 
 /** Dette v1.0 : jetons (propriétaire, PV/CA) + saisie d'URL de carte distante. */
 test.beforeEach(async ({ page }) => {
@@ -9,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 
 test("jeton : PV/CA et propriétaire édités par le MJ, persistés", async ({ page }) => {
   // URL directe : même caméra de départ pour les spots ci-dessous.
-  await page.goto(`${new URL(page.url()).pathname}/vtt`);
+  await page.goto(`${campaignBasePath(page)}/vtt`);
   await expect(page).toHaveURL(/\/vtt/);
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible({ timeout: 30_000 });
@@ -49,20 +56,24 @@ test("jeton : PV/CA et propriétaire édités par le MJ, persistés", async ({ p
 });
 
 test("joueur : PV éditables sur son jeton, jamais les autres champs", async ({ page, browser }) => {
+  const base = campaignBasePath(page);
+  await page.goto(`${base}/settings?embed=1`);
   const invite = ((await inviteCode(page).textContent()) ?? "").trim();
   expect(invite).not.toBe("");
 
   const ctx = await browser.newContext();
   const player = await ctx.newPage();
   await register(player, uniqueEmail("vtt-j"), "Joueur VTT");
-  await player.getByPlaceholder("Code d'invitation…").fill(invite);
   await player.getByRole("button", { name: "Rejoindre" }).click();
-  await expect(player).toHaveURL(/\/campaign\//);
-  const playerPath = new URL(player.url()).pathname;
+  const dialog = player.getByRole("dialog", { name: "Rejoindre une campagne" });
+  await dialog.getByPlaceholder("Code d'invitation…").fill(invite);
+  await dialog.getByRole("button", { name: "Rejoindre" }).click();
+  await expect(player).toHaveURL(/\/campaign\/[^/]+\/vtt/);
+  const playerBase = campaignBasePath(player);
 
   // MJ (page pleine via URL directe, donc avec le membre déjà dans la liste) :
   // deux jetons, l'un remis au joueur.
-  await page.goto(`${new URL(page.url()).pathname}/vtt`);
+  await page.goto(`${base}/vtt`);
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Tokens", exact: true }).click();
@@ -80,7 +91,7 @@ test("joueur : PV éditables sur son jeton, jamais les autres champs", async ({ 
   await page.waitForTimeout(1500); // commit débouncé (500 ms)
 
   // Joueur : la table ne montre pas les outils d'édition de la table.
-  await player.goto(`${playerPath}/vtt`);
+  await player.goto(`${playerBase}/vtt`);
   const pcanvas = player.locator("canvas").first();
   await expect(pcanvas).toBeVisible({ timeout: 30_000 });
   await expect(player.getByRole("button", { name: "Tokens", exact: true })).toBeHidden();
@@ -101,7 +112,7 @@ test("joueur : PV éditables sur son jeton, jamais les autres champs", async ({ 
 });
 
 test("carte : URL distante http(s) acceptée, autre scheme refusé", async ({ page }) => {
-  await moduleLink(page, /table/i).click();
+  await openModule(page, "vtt");
   await expect(page).toHaveURL(/\/vtt/);
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
 

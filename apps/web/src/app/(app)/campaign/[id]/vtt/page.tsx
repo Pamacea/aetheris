@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { requireCampaignPage } from "@/features/campaigns/require-member";
 import { ChatPanel } from "@/features/vtt/chat-panel";
 import { loadVttPageData } from "@/features/vtt/page-data";
 import { VttApp } from "@/features/vtt/vtt-app";
 import { TriPanel } from "@/components/tri-panel";
+import { VttDesktop } from "@/components/campaigns/vtt-desktop";
 
 export default async function VttPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,18 +12,8 @@ export default async function VttPage({ params }: { params: Promise<{ id: string
   const isGM = member.role === "GM";
 
   return (
-    <TriPanel rightPanel={<ChatPanel campaignId={id} initialMessages={messages} />}>
-      <div className="flex h-[calc(100dvh-3.75rem)] min-h-0 flex-col">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-1.5">
-          <nav className="flex items-center gap-2 text-xs text-muted" aria-label="Fil d'ariane">
-            <Link href={`/campaign/${id}`} className="hover:text-accent">
-              ← Campagne
-            </Link>
-          </nav>
-          <span className="text-[0.65rem] tracking-widest text-muted uppercase">
-            {isGM ? "Mode MJ" : "Mode joueur"}
-          </span>
-        </div>
+    <VttDesktop campaignId={id}>
+      <TriPanel rightPanel={<ChatPanel campaignId={id} initialMessages={messages} />}>
         <VttApp
           isGM={isGM}
           campaignId={id}
@@ -31,7 +21,7 @@ export default async function VttPage({ params }: { params: Promise<{ id: string
           members={members}
           initialScene={initialScene}
         />
-      </div>
-    </TriPanel>
+      </TriPanel>
+    </VttDesktop>
   );
 }

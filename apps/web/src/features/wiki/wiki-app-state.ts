@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { withEmbed } from "@/components/campaigns/embed-mode";
 import { listWikiVersions, restoreWikiVersion } from "./actions";
 import type { useWikiAutosave } from "./autosave";
 import type { WikiEntryMeta } from "./types";
@@ -33,7 +34,7 @@ export function useWikiAppState(campaignId: string, entries: WikiEntryMeta[], au
   const selectEntry = useCallback(
     async (id: string) => {
       await flush();
-      router.push(`/campaign/${campaignId}/wiki?note=${id}`);
+      router.push(withEmbed(`/campaign/${campaignId}/wiki?note=${id}`));
     },
     [flush, campaignId, router],
   );

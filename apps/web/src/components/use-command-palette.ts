@@ -2,15 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { buildCommands, fold, type Command } from "./command-palette-commands";
+import { buildCommands, fold, type Command, type PaletteEntry } from "./command-palette-commands";
 
 /**
  * État + raccourcis de la palette de commandes (Ctrl/Cmd+K) :
  * extraits du composant pour le garder sous le budget hooks.
- * Pas de useMemo (règle projet : mesurer avant de mémoriser — buildCommands
- * est un littéral statique, le filtrage fold porte sur ~40 lignes).
+ * Pas de useMemo (règle projet : mesurer avant de mémoriser — la liste reste
+ * courte : commandes statiques + 20 campagnes + 20 romans maximum).
  */
-export function useCommandPalette() {
+type PaletteData = {
+  campaigns: PaletteEntry[];
+  novels: PaletteEntry[];
+};
+
+export function useCommandPalette({ campaigns, novels }: PaletteData) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -18,7 +23,7 @@ export function useCommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const commands = buildCommands(router);
+  const commands = buildCommands(router, campaigns, novels);
   const q = fold(query.trim());
   const filtered = q
     ? commands.filter((c) => fold(c.label).includes(q) || fold(c.keywords).includes(q))
@@ -67,9 +72,10 @@ export function useCommandPalette() {
   // Option active toujours visible au clavier (↑↓).
   useEffect(() => {
     if (!open) return;
-    listRef.current?.children[activeClamped]?.scrollIntoView({
-      block: "nearest",
-    });
+    // Les en-têtes de groupe sont aussi des <li> : viser l'option active, pas l'index DOM.
+    listRef.current
+      ?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]')
+      ?.scrollIntoView({ block: "nearest" });
   }, [open, activeClamped]);
 
   function execute(cmd: Command) {

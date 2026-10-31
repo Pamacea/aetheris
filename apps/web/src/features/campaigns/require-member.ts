@@ -1,6 +1,5 @@
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { requireCampaignMember } from "@/lib/campaign-server";
 import { canViewModule } from "@/lib/grants";
 
@@ -20,7 +19,21 @@ export async function requireCampaignPage(
     if (module && !canViewModule(member.permissions, module, member.role)) notFound();
     return { member };
   }
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   if (!session) redirect("/login");
   notFound();
+}
+
+/**
+ * Un module ouvert hors du bureau (lien direct) redirige vers la table,
+ * qui ouvrira sa fenêtre. `embed=1` = rendu dans l'iframe d'une fenêtre.
+ */
+export async function redirectModuleToDesktop(
+  campaignId: string,
+  slug: string,
+  searchParams: Promise<{ embed?: string }>,
+): Promise<void> {
+  const { embed } = await searchParams;
+  if (embed === "1") return;
+  redirect(`/campaign/${campaignId}/vtt?open=${slug}`);
 }

@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { headers } from "next/headers";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
@@ -35,5 +37,11 @@ export const auth = betterAuth({
     additionalFields: {},
   },
 });
+
+/**
+ * Session de la requête, mémoïsée par React : layout, page et gardes
+ * partagent une seule lecture au lieu d'interroger la base 2–3 fois.
+ */
+export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
 
 export type Session = typeof auth.$Infer.Session;

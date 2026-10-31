@@ -20,18 +20,21 @@ export function MetaBlockView({ node, updateAttributes, editor, getPos }: NodeVi
   const frame = frameOf(node.attrs);
   const editable = editor.isEditable;
   const sizeCls = sizeTextCls(frame.size);
+  // Dans le flux : rangée clé-valeur pleine largeur (les blocs consécutifs
+  // forment une liste de propriétés). Flottant : largeur du contenu.
+  const layoutCls = isFloating(frame) ? "inline-flex" : "flex w-full border-b border-border";
   return (
     <NodeViewWrapper
       as="span"
       contentEditable={false}
       style={frameStyle(frame)}
-      className="my-1 group relative inline-flex flex-wrap items-center gap-2 border-l-2 border-accent bg-card px-2 py-1 align-middle"
+      className={`group relative flex-wrap items-center gap-2 border-l-2 border-accent bg-card px-2 py-1 align-middle ${layoutCls}`}
     >
       {editable && (
         <BlockDragHandle editor={editor} updateAttributes={updateAttributes} frame={frame} />
       )}
       <input
-        className={`input w-36 py-0.5 ${sizeCls}`}
+        className={`input w-36 shrink-0 py-0.5 ${sizeCls}`}
         name="bloc-meta-libelle"
         aria-label="Libellé du bloc"
         value={label}
@@ -39,11 +42,12 @@ export function MetaBlockView({ node, updateAttributes, editor, getPos }: NodeVi
         onChange={(e) => updateAttributes({ label: e.target.value })}
       />
       <input
-        className={`input py-0.5 ${sizeCls}`}
+        className={`input min-w-0 flex-1 py-0.5 ${sizeCls}`}
         name="bloc-meta-valeur"
         aria-label="Valeur du bloc"
         type={kind === "date" ? "date" : "text"}
         value={value}
+        placeholder={kind === "date" ? undefined : "Valeur"}
         disabled={!editable}
         onChange={(e) => updateAttributes({ value: e.target.value })}
       />

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import {
   createChapterSchema,
   createNovelSchema,
@@ -9,7 +8,7 @@ import {
   updateChapterSchema,
   updateNovelSchema,
 } from "@aetheris/shared";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chapterStatusPatch, countDocWords, isPlainObject, isValidCoverImage } from "./logic";
 
@@ -21,7 +20,7 @@ function invalid(error: string): NovelActionResult {
 
 /** Id de l'auteur connecté ; null si non connecté. */
 async function requireAuthor(): Promise<string | null> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   return session?.user.id ?? null;
 }
 

@@ -23,6 +23,7 @@ model User {
 
   sessions     Session[]
   accounts     Account[]
+  apiKeys      ApiKey[]
   campaigns    CampaignMember[]
   novels       Novel[]
   gameSystems  GameSystem[]
@@ -70,6 +71,23 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+/// Clé API personnelle : le token clair n'est jamais stocké, seul son sha256.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  prefix     String
+  hashedKey  String
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ───────────────────────── Campagnes ─────────────────────────

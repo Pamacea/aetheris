@@ -1,8 +1,25 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { castVote, resolveChoice } from "./actions";
-import type { ChoiceView } from "./choices-app";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { archiveChoice, castVote, closeChoice, resolveChoice } from "./actions";
+import type { ChoiceStatus, ChoiceView } from "./choice-view";
+
+/** Échec de transport de l'action : message local plutôt que l'error boundary. */
+const NETWORK_ERROR = "Connexion perdue — réessayez.";
+
+const STATUS_LABELS: Record<ChoiceStatus, string> = {
+  open: "Ouvert",
+  closed: "Fermé",
+  resolved: "Résolu",
+  archived: "Archivé",
+};
+
+type PendingConfirm =
+  | { kind: "resolve"; index: number }
+  | { kind: "close" }
+  | { kind: "archive" }
+  | null;
 
 /** Dépouillement visuel : barre + compteur (index clampé côté render). */
 function VoteBar({ count, total }: { count: number; total: number }) {
@@ -18,24 +35,26 @@ function VoteBar({ count, total }: { count: number; total: number }) {
 }
 
 /**
- * Un choix : vote (joueur, 1/upsert modifiable) et clôture (MJ),
- * les deux via server actions puis notification room.
+ * Un choix : vote (joueur, 1/upsert modifiable), clôture (MJ, avec ou sans
+ * option retenue) et archivage (MJ) — chaque action renvoie la vue à jour,
+ * l'appelant met la liste à jour sans re-render serveur.
  */
 export function ChoiceCard({
   campaignId,
   choice,
   isGM,
-  onMutated,
+  onUpdated,
 }: {
   campaignId: string;
   choice: ChoiceView;
   isGM: boolean;
-  onMutated: () => void;
+  onUpdated: (choice: ChoiceView) => void;
 }) {
   const open = choice.status === "open";
   const [selected, setSelected] = useState<number | null>(choice.myVote?.optionIndex ?? null);
   const [comment, setComment] = useState(choice.myVote?.comment ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
   const [pending, startTransition] = useTransition();
 
   const total = choice.counts.reduce((sum, n) => sum + n, 0);
@@ -43,30 +62,48 @@ export function ChoiceCard({
   // biaiser le vote en direct avant le premier choix.
   const showCounts = isGM || choice.myVote !== null || !open;
 
-  function vote(e: React.FormEvent): void {
-    e.preventDefault();
-    if (selected === null) return;
+  function run(
+    action: () => Promise<{ ok: true; choice: ChoiceView } | { ok: false; error: string }>,
+    onSettled?: () => void,
+  ) {
     setError(null);
-    const trimmed = comment.trim();
     startTransition(async () => {
-      const res = await castVote(campaignId, choice.id, {
-        optionIndex: selected,
-        ...(trimmed === "" ? {} : { comment: trimmed }),
-      });
-      if (!res.ok) setError(res.error);
-      else onMutated();
+      try {
+        const res = await action();
+        if (!res.ok) setError(res.error);
+        else onUpdated(res.choice);
+      } catch {
+        setError(NETWORK_ERROR);
+      } finally {
+        onSettled?.();
+      }
     });
   }
 
-  function retain(index: number): void {
-    const option = choice.options[index] ?? "";
-    if (!window.confirm(`Clôturer ce choix avec l'option « ${option} » ?`)) return;
-    setError(null);
-    startTransition(async () => {
-      const res = await resolveChoice(campaignId, choice.id, { resolvedOption: index });
-      if (!res.ok) setError(res.error);
-      else onMutated();
-    });
+  function vote(e: React.FormEvent): void {
+    e.preventDefault();
+    if (selected === null) return;
+    const trimmed = comment.trim();
+    run(() =>
+      castVote(campaignId, choice.id, {
+        optionIndex: selected,
+        ...(trimmed === "" ? {} : { comment: trimmed }),
+      }),
+    );
+  }
+
+  function confirm(): void {
+    if (!pendingConfirm) return;
+    const current = pendingConfirm;
+    run(
+      () =>
+        current.kind === "resolve"
+          ? resolveChoice(campaignId, choice.id, { resolvedOption: current.index })
+          : current.kind === "close"
+            ? closeChoice(campaignId, choice.id)
+            : archiveChoice(campaignId, choice.id),
+      () => setPendingConfirm(null),
+    );
   }
 
   return (
@@ -78,13 +115,13 @@ export function ChoiceCard({
             open ? "border-accent/60 text-accent" : "border-border text-muted"
           }`}
         >
-          {open ? "Ouvert" : "Résolu"}
+          {STATUS_LABELS[choice.status]}
         </span>
       </header>
 
       <ul className="flex flex-col gap-2">
         {choice.options.map((option, index) => {
-          const winner = !open && choice.resolvedOption === index;
+          const winner = choice.status === "resolved" && choice.resolvedOption === index;
           return (
             <li
               key={index}
@@ -121,7 +158,7 @@ export function ChoiceCard({
                   type="button"
                   className="btn border-transparent px-3 py-1.5 text-xs text-muted hover:text-foreground"
                   disabled={pending}
-                  onClick={() => retain(index)}
+                  onClick={() => setPendingConfirm({ kind: "resolve", index })}
                 >
                   Retenir
                 </button>
@@ -130,6 +167,31 @@ export function ChoiceCard({
           );
         })}
       </ul>
+
+      {isGM && (
+        <div className="flex flex-wrap gap-2">
+          {open && (
+            <button
+              type="button"
+              className="btn px-3 py-1.5 text-xs"
+              disabled={pending}
+              onClick={() => setPendingConfirm({ kind: "close" })}
+            >
+              Fermer
+            </button>
+          )}
+          {!open && choice.status !== "archived" && (
+            <button
+              type="button"
+              className="btn px-3 py-1.5 text-xs"
+              disabled={pending}
+              onClick={() => setPendingConfirm({ kind: "archive" })}
+            >
+              Archiver
+            </button>
+          )}
+        </div>
+      )}
 
       {open && (
         <form onSubmit={vote} className="flex flex-wrap items-end gap-3">
@@ -167,17 +229,46 @@ export function ChoiceCard({
       <footer className="flex flex-wrap justify-between gap-2 text-[0.65rem] tracking-widest text-muted uppercase">
         <span>{new Date(choice.createdAt).toLocaleDateString("fr-FR")}</span>
         <span className="flex gap-1">
-          {!open && choice.resolvedOption !== null && (
+          {choice.status === "resolved" && choice.resolvedOption !== null && (
             <span>Retenu : {choice.options[choice.resolvedOption] ?? "?"}</span>
           )}
           {showCounts && (
             <span>
-              {!open && choice.resolvedOption !== null && "· "}
+              {choice.status === "resolved" && choice.resolvedOption !== null && "· "}
               {total} vote{total > 1 ? "s" : ""}
             </span>
           )}
         </span>
       </footer>
+
+      <ConfirmDialog
+        open={pendingConfirm !== null}
+        title={
+          pendingConfirm?.kind === "resolve"
+            ? `Clôturer ce choix avec l'option « ${choice.options[pendingConfirm.index] ?? ""} » ?`
+            : pendingConfirm?.kind === "close"
+              ? "Fermer ce choix sans retenir d'option ?"
+              : "Archiver ce choix ?"
+        }
+        description={
+          pendingConfirm?.kind === "resolve"
+            ? undefined
+            : pendingConfirm?.kind === "close"
+              ? "Les votes seront clos."
+              : "Il sortira de l'historique actif."
+        }
+        confirmLabel={
+          pendingConfirm?.kind === "resolve"
+            ? "Retenir"
+            : pendingConfirm?.kind === "close"
+              ? "Fermer"
+              : "Archiver"
+        }
+        danger={pendingConfirm?.kind === "archive"}
+        pending={pending}
+        onConfirm={confirm}
+        onClose={() => setPendingConfirm(null)}
+      />
     </article>
   );
 }

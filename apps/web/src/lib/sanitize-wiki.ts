@@ -15,7 +15,7 @@ export function sanitizeWikiHtml(html: string): string {
       "wiki-table",
     ]),
     allowedAttributes: {
-      a: ["href", "title", "class", "data-wiki-link"],
+      a: ["href", "title", "class", "data-wiki-link", "data-wiki-link-id"],
       "aetheris-block": ["data-kind", "data-label", "data-value", "data-size"],
       "dice-block": ["data-label", "data-expr"],
       "wiki-table": ["data-rows"],

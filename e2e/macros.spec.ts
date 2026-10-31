@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createCampaign, register, uniqueEmail } from "./helpers";
+import { campaignBasePath, createCampaign, register, uniqueEmail } from "./helpers";
 
 /** Module Constructeur de macros (plugin `macros`) : éditeur sandbox + chat. */
 test.beforeEach(async ({ page }) => {
@@ -8,34 +8,39 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("macro : créer, exécuter et voir la commande dans le chat", async ({ page }) => {
-  const hub = new URL(page.url()).pathname;
-  await page.goto(`${hub}/macros`);
+  // Le chat vit désormais sur la table : le module s'ouvre dans une fenêtre
+  // du bureau pour vérifier le broadcast dans le panneau Chat de la page VTT.
+  await page
+    .getByRole("navigation", { name: "Dock des modules" })
+    .getByRole("button", { name: "Macros" })
+    .click();
+  const macros = page.frameLocator('iframe[title="Module Macros"]');
   await expect(
-    page.getByRole("heading", { level: 1, name: "Constructeur de macros" }),
+    macros.getByRole("heading", { level: 1, name: "Constructeur de macros" }),
   ).toBeVisible();
 
   // Nouvelle macro (corps par défaut → return "/roll 1d20").
-  await page.getByRole("button", { name: "+ Nouvelle macro" }).click();
-  await page.getByLabel("Nom").fill("Attaque lourde");
-  await page.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(page.getByRole("button", { name: "Attaque lourde" })).toBeVisible();
+  await macros.getByRole("button", { name: "+ Nouvelle macro" }).click();
+  await macros.getByLabel("Nom").fill("Attaque lourde");
+  await macros.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(macros.getByRole("button", { name: "Attaque lourde" })).toBeVisible();
 
   // Sandbox → jet émis sur la socket → broadcast visible dans le panneau Chat.
   const log = page.locator('[aria-label="Messages"]');
-  await page.getByRole("button", { name: "Exécuter au chat" }).click();
-  await expect(page.getByText("Jet envoyé : /roll 1d20")).toBeVisible();
+  await macros.getByRole("button", { name: "Exécuter au chat" }).click();
+  await expect(macros.getByText("Jet envoyé : /roll 1d20")).toBeVisible();
   await expect(log.getByText("jette")).toBeVisible();
 
   // Message libre → même boucle, persisté côté serveur.
-  await page.getByLabel("Corps JS").fill('return "Bonjour depuis la macro";');
-  await page.getByRole("button", { name: "Exécuter au chat" }).click();
-  await expect(page.getByText("Message envoyé : Bonjour depuis la macro")).toBeVisible();
+  await macros.getByLabel("Corps JS").fill('return "Bonjour depuis la macro";');
+  await macros.getByRole("button", { name: "Exécuter au chat" }).click();
+  await expect(macros.getByText("Message envoyé : Bonjour depuis la macro")).toBeVisible();
   await expect(log.getByText("Bonjour depuis la macro")).toBeVisible();
 });
 
 test("macro : commande inconnue affichée en erreur", async ({ page }) => {
-  const hub = new URL(page.url()).pathname;
-  await page.goto(`${hub}/macros`);
+  const hub = campaignBasePath(page);
+  await page.goto(`${hub}/macros?embed=1`);
   await page.getByLabel("Corps JS").fill('return "/imprimer fiche";');
   await page.getByRole("button", { name: "Exécuter au chat" }).click();
   // Scopé : le route-announcer de Next porte aussi role="alert".
@@ -44,8 +49,8 @@ test("macro : commande inconnue affichée en erreur", async ({ page }) => {
 });
 
 test("macro : persistance localStorage par campagne + suppression", async ({ page }) => {
-  const hub = new URL(page.url()).pathname;
-  await page.goto(`${hub}/macros`);
+  const hub = campaignBasePath(page);
+  await page.goto(`${hub}/macros?embed=1`);
   await page.getByRole("button", { name: "+ Nouvelle macro" }).click();
   await page.getByLabel("Nom").fill("Macro persistante");
   await page.getByLabel("Corps JS").fill('return "/roll 2d6";');

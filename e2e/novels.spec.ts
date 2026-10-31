@@ -22,7 +22,12 @@ test("romans : créer un roman, un chapitre, écrire et voir l'autosave", async 
   await novelStatus.click();
   await expect(novelStatus).toContainText("En écriture");
 
-  await page.getByRole("button", { name: "+ Nouveau chapitre" }).click();
+  // Création inline : Entrée sur la ligne « nouveau chapitre ».
+  await page.getByLabel("Titre du nouveau chapitre").press("Enter");
+
+  // Le titre n'est éditable qu'en mode renommage (menu contextuel).
+  await page.getByRole("link", { name: "Nouveau chapitre" }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Renommer" }).click();
   const rowTitle = page.getByLabel("Titre du chapitre 1");
   await expect(rowTitle).toHaveValue("Nouveau chapitre");
 
@@ -32,15 +37,19 @@ test("romans : créer un roman, un chapitre, écrire et voir l'autosave", async 
   await rowTitle.press("Enter");
   await saved;
   await page.reload();
+  await page.getByRole("link", { name: "Le port de cendre" }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Renommer" }).click();
   await expect(page.getByLabel("Titre du chapitre 1")).toHaveValue("Le port de cendre");
 
-  // Statut du chapitre : cycle Brouillon → En écriture → Publié (un clic).
-  const chapterStatus = page.getByRole("button", { name: /Statut de Le port de cendre/ });
-  await expect(chapterStatus).toContainText("Brouillon");
-  await chapterStatus.click();
-  await expect(chapterStatus).toContainText("En écriture");
+  // Statut du chapitre : cycle via le menu contextuel (Brouillon → En écriture).
+  const chapterRow = page.getByRole("listitem").filter({ hasText: "Le port de cendre" });
+  await page.getByLabel("Titre du chapitre 1").press("Escape");
+  await expect(chapterRow).toContainText("Brouillon");
+  await page.getByRole("link", { name: "Le port de cendre" }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Statut suivant : En écriture" }).click();
+  await expect(chapterRow).toContainText("En écriture");
 
-  await page.getByRole("link", { name: "Écrire" }).click();
+  await page.getByRole("link", { name: "Le port de cendre" }).click();
   await expect(page).toHaveURL(/\/chapters\//);
   // Titre éditable aussi sur l'éditeur.
   await expect(page.getByLabel("Titre du chapitre")).toHaveValue("Le port de cendre");

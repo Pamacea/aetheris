@@ -3,9 +3,9 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BlocksPalette } from "./blocks-palette";
-import { BLOCK_MIME, insertBlockAt, readPayload } from "./blocks-dnd";
+import { BLOCK_MIME, insertBlockAt, readPayload, type BlockDragPayload } from "./blocks-dnd";
 import {
   DiceBlockNode,
   GmSecretNode,
@@ -22,7 +22,8 @@ interface WikiEditorProps {
   notes: { id: string; title: string }[];
   isGM: boolean;
   onChange: (noteId: string, html: string) => void;
-  onWikiLinkClick: (title: string) => void;
+  /** `id` : cible stable des liens récents (absent des liens antérieurs). */
+  onWikiLinkClick: (title: string, id?: string) => void;
 }
 
 /**
@@ -39,6 +40,9 @@ export function WikiEditor({
   onWikiLinkClick,
 }: WikiEditorProps) {
   const handlers = useRef({ onChange, onWikiLinkClick, noteId });
+  // Aucun curseur enregistré (éditeur jamais focalisé) → insertion en fin de doc.
+  const hadFocus = useRef(false);
+  const [dropError, setDropError] = useState<string | null>(null);
   useEffect(() => {
     handlers.current = { onChange, onWikiLinkClick, noteId };
   });
@@ -78,7 +82,8 @@ export function WikiEditor({
         if (anchor) {
           event.preventDefault();
           const title = anchor.getAttribute("data-wiki-link");
-          if (title) handlers.current.onWikiLinkClick(title);
+          const id = anchor.getAttribute("data-wiki-link-id") ?? undefined;
+          if (title) handlers.current.onWikiLinkClick(title, id);
           return true;
         }
         return false;
@@ -86,6 +91,9 @@ export function WikiEditor({
     },
     onUpdate: ({ editor: ed }) => {
       handlers.current.onChange(handlers.current.noteId, ed.getHTML());
+    },
+    onFocus: () => {
+      hadFocus.current = true;
     },
   });
 
@@ -116,14 +124,37 @@ export function WikiEditor({
   // Copie locale : le rétrécissement de type ne descend pas dans les closures.
   const ed = editor;
 
-  // Drop d'un chip de palette : insertion à la position visée (fin de doc
-  // si les coordonnées ne tombent sur aucune position).
+  // Clic palette : remplace la sélection courante, sinon insère au curseur.
+  // Sans curseur enregistré, la cible est la fin du document.
+  function handleInsert(payload: BlockDragPayload) {
+    const selection = hadFocus.current
+      ? { from: ed.state.selection.from, to: ed.state.selection.to }
+      : null;
+    if (insertBlockAt(ed, payload, null, selection)) setDropError(null);
+  }
+
+  // Drop d'un chip : position visée uniquement. Hors zone de texte → refus
+  // visible (jamais d'insertion silencieuse en fin de document).
   function handleDrop(e: React.DragEvent) {
     const payload = readPayload(e);
     if (!payload) return;
     e.preventDefault();
-    const at = ed.view.posAtCoords({ left: e.clientX, top: e.clientY });
-    insertBlockAt(ed, payload, at?.pos ?? null);
+    const rect = ed.view.dom.getBoundingClientRect();
+    const inEditor =
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom;
+    const at = inEditor ? ed.view.posAtCoords({ left: e.clientX, top: e.clientY }) : null;
+    if (!at) {
+      setDropError("Déposez le bloc dans la zone de texte de l’entrée.");
+      return;
+    }
+    if (insertBlockAt(ed, payload, at.pos)) {
+      setDropError(null);
+    } else {
+      setDropError("Impossible d’insérer le bloc ici.");
+    }
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -135,8 +166,16 @@ export function WikiEditor({
   }
 
   return (
-    <div className="flex flex-col" onDragOver={handleDragOver} onDrop={handleDrop}>
-      {isGM && <BlocksPalette onInsert={(p) => insertBlockAt(ed, p, null)} />}
+    <div className="flex min-h-full flex-col" onDragOver={handleDragOver} onDrop={handleDrop}>
+      {isGM && <BlocksPalette onInsert={handleInsert} />}
+      {dropError && (
+        <p
+          role="alert"
+          className="-mx-5 border-b border-border bg-card px-5 py-1.5 text-xs text-destructive md:-mx-10 md:px-10"
+        >
+          {dropError}
+        </p>
+      )}
       <EditorContent editor={ed} />
     </div>
   );

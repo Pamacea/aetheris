@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { withEmbed } from "@/components/campaigns/embed-mode";
 import { TemplateForm, type FormSaveStatus } from "@/features/wiki/templates/template-form";
 import type { WikiEntryMeta, WikiTemplateMeta } from "@/features/wiki/types";
 import type { FicheRow } from "./fiches";
@@ -44,7 +45,7 @@ export function FichesApp({ campaignId, fiches, notes, templates }: FichesAppPro
       setSelectedId(noteId);
       return;
     }
-    router.push(`/campaign/${campaignId}/wiki?note=${noteId}`);
+    router.push(withEmbed(`/campaign/${campaignId}/wiki?note=${noteId}`));
   };
 
   return (

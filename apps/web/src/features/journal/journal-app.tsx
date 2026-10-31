@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { Handout } from "@aetheris/shared";
 import { createHandout, deleteHandout, updateHandout } from "./actions";
 
@@ -12,9 +11,13 @@ type View =
 
 type Filtre = "tous" | "partages" | "brouillons";
 
+/** Échec de transport d'une Server Action (serveur coupé, réseau) : jamais
+ *  laissé remonter à l'error boundary de Next, qui remplacerait le module. */
+const NETWORK_ERROR = "Connexion perdue — réessayez.";
+
 /**
  * Journal de bord : handouts (titre, contenu, image, partage) du MJ.
- * Pas de temps réel — server actions + `router.refresh()` suffisent.
+ * Pas de temps réel — server actions et leur revalidation suffisent.
  * Les joueurs reçoivent déjà la liste filtrée par la page serveur.
  */
 export function JournalApp({
@@ -26,7 +29,6 @@ export function JournalApp({
   isGM: boolean;
   entries: Handout[];
 }) {
-  const router = useRouter();
   const [view, setView] = useState<View>({ kind: "list" });
   const [title, setTitle] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -36,11 +38,8 @@ export function JournalApp({
   const [filtre, setFiltre] = useState<Filtre>("tous");
   const [pending, startTransition] = useTransition();
 
-  /** Après chaque mutation réussie : la page serveur est rechargée. */
-  function mutated(): void {
-    router.refresh();
-  }
-
+  // Pas de router.refresh() après mutation : revalidatePath() dans l'action
+  // renvoie déjà l'arbre serveur rafraîchi (évite un 2e aller-retour).
   function openCreate(): void {
     setTitle("");
     setImageUrl("");
@@ -68,24 +67,30 @@ export function JournalApp({
       imageUrl: imageUrl.trim() === "" ? null : imageUrl.trim(),
     };
     startTransition(async () => {
-      const editingId = view.kind === "form" ? view.editingId : undefined;
-      const res = editingId
-        ? await updateHandout(campaignId, editingId, { ...payload, shared })
-        : await createHandout(campaignId, { ...payload, shared });
-      if (!res.ok) {
-        setError(res.error);
-        return;
+      try {
+        const editingId = view.kind === "form" ? view.editingId : undefined;
+        const res = editingId
+          ? await updateHandout(campaignId, editingId, { ...payload, shared })
+          : await createHandout(campaignId, { ...payload, shared });
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        setView({ kind: "detail", id: res.id });
+      } catch {
+        setError(NETWORK_ERROR);
       }
-      mutated();
-      setView({ kind: "detail", id: res.id });
     });
   }
 
   function toggleShared(entry: Handout) {
     startTransition(async () => {
-      const res = await updateHandout(campaignId, entry.id, { shared: !entry.shared });
-      if (!res.ok) setError(res.error);
-      else mutated();
+      try {
+        const res = await updateHandout(campaignId, entry.id, { shared: !entry.shared });
+        if (!res.ok) setError(res.error);
+      } catch {
+        setError(NETWORK_ERROR);
+      }
     });
   }
 
@@ -94,10 +99,7 @@ export function JournalApp({
     startTransition(async () => {
       const res = await deleteHandout(campaignId, entry.id);
       if (!res.ok) setError(res.error);
-      else {
-        mutated();
-        setView({ kind: "list" });
-      }
+      else setView({ kind: "list" });
     });
   }
 
@@ -135,7 +137,7 @@ export function JournalApp({
                   disabled={pending}
                   onClick={() => toggleShared(selected)}
                 >
-                  {selected.shared ? "Désharer" : "Partager"}
+                  {selected.shared ? "Rendre privé" : "Partager"}
                 </button>
                 <button
                   type="button"

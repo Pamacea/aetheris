@@ -1,11 +1,13 @@
 /**
  * Utilitaires wiki isomorphes (client + serveur) :
- * - liens [[...]] stockés en `<a data-wiki-link="Titre">`
+ * - liens [[...]] stockés en `<a data-wiki-link="Titre" data-wiki-link-id="…">`
+ *   (l'id est absent des liens antérieurs ; le titre sert alors de repli)
  * - blocs secrets MJ stockés en `<gm-secret>…</gm-secret>`
  */
 
 const GM_SECRET_RE = /<gm-secret\b[^>]*>[\s\S]*?<\/gm-secret>/gi;
 const WIKILINK_RE = /data-wiki-link="([^"]*)"/g;
+const WIKILINK_ID_RE = /data-wiki-link-id="([^"]*)"/g;
 
 function decodeAttr(value: string): string {
   return value
@@ -36,6 +38,17 @@ export function parseWikiLinks(html: string | null | undefined): string[] {
     if (title.length > 0) titles.add(title);
   }
   return [...titles];
+}
+
+/** Ids d'entités liés dans un document HTML (liens récents uniquement). */
+export function parseWikiLinkIds(html: string | null | undefined): string[] {
+  if (!html) return [];
+  const ids = new Set<string>();
+  for (const match of html.matchAll(WIKILINK_ID_RE)) {
+    const id = decodeAttr(match[1] ?? "").trim();
+    if (id.length > 0) ids.add(id);
+  }
+  return [...ids];
 }
 
 /** Résolution insensible à la casse d'un titre vers un id d'entité. */

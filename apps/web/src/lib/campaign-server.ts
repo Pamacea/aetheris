@@ -1,6 +1,5 @@
-import { headers } from "next/headers";
 import type { PluginId } from "@aetheris/shared";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canViewModule } from "@/lib/grants";
 
@@ -17,7 +16,7 @@ interface CampaignMemberInfo {
 export async function requireCampaignMember(
   campaignId: string,
 ): Promise<CampaignMemberInfo | null> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   if (!session) return null;
   const member = await prisma.campaignMember.findUnique({
     where: { userId_campaignId: { userId: session.user.id, campaignId } },

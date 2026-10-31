@@ -1,26 +1,15 @@
 import type { Editor, JSONContent } from "@tiptap/core";
 import { noteBlockKindSchema, type NoteBlock } from "@aetheris/shared";
-import { DND_PRESETS } from "./extensions";
+import { BLOCK_PAYLOAD_TYPES, type BlockDragPayload } from "./block-defs";
 import { scopedContent } from "./blocks-scope";
+
+export type { BlockDragPayload } from "./block-defs";
 
 /** MIME du drag « bloc » (palette ⇄ éditeur TipTap). */
 export const BLOCK_MIME = "application/x-aetheris-block";
 
 /** Nœud du document ciblé par un payload. */
-export type BlockType = "dice" | "table" | "meta";
-
-/** Payload glissé/cliqué depuis la palette (structure plate : jamais de nœud PM). */
-export interface BlockDragPayload {
-  type: BlockType;
-  /** meta : kind du bloc de métadonnées. */
-  kind?: NoteBlock["kind"];
-  label?: string;
-  value?: string;
-  /** dice : expression du jet (ex. `1d20+3`). */
-  expr?: string;
-  /** Portée MJ : inséré dans un `<gm-secret>` (strippé pour les joueurs). */
-  gm?: boolean;
-}
+export type BlockType = BlockDragPayload["type"];
 
 /** Libellés des kinds de bloc de métadonnées. */
 export const KIND_LABELS: Record<NoteBlock["kind"], string> = {
@@ -32,7 +21,9 @@ export const KIND_LABELS: Record<NoteBlock["kind"], string> = {
   macro: "Macro",
 };
 
-/** Lecture defensive d'un payload JSON (dataTransfer corrompu → null, jamais de throw). */
+const PAYLOAD_TYPES = new Set<string>(BLOCK_PAYLOAD_TYPES);
+
+/** Lecture défensive d'un payload JSON (dataTransfer corrompu → null, jamais de throw). */
 export function parsePayload(raw: string | null | undefined): BlockDragPayload | null {
   if (!raw) return null;
   let parsed: unknown;
@@ -43,13 +34,17 @@ export function parsePayload(raw: string | null | undefined): BlockDragPayload |
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
   const o = parsed as Record<string, unknown>;
-  if (o.type !== "dice" && o.type !== "table" && o.type !== "meta") return null;
-  const out: BlockDragPayload = { type: o.type };
+  if (typeof o.type !== "string" || !PAYLOAD_TYPES.has(o.type)) return null;
+  const out: BlockDragPayload = { type: o.type as BlockDragPayload["type"] };
   if (typeof o.label === "string" && o.label.length > 0) out.label = o.label;
   if (typeof o.value === "string") out.value = o.value;
   if (typeof o.expr === "string" && o.expr.length > 0) out.expr = o.expr;
   if (o.gm === true) out.gm = true;
-  if (o.type === "meta") {
+  if (out.type === "heading") {
+    if (o.level !== 1 && o.level !== 2 && o.level !== 3) return null;
+    out.level = o.level;
+  }
+  if (out.type === "meta") {
     const kind = noteBlockKindSchema.safeParse(o.kind);
     if (!kind.success || !out.label) return null;
     out.kind = kind.data;
@@ -78,55 +73,62 @@ export function blockContentOf(p: BlockDragPayload): JSONContent {
           value: p.value ?? "",
         },
       };
+    case "heading":
+      return { type: "heading", attrs: { level: p.level ?? 1 } };
+    case "paragraph":
+      return { type: "paragraph" };
+    case "blockquote":
+      return { type: "blockquote", content: [{ type: "paragraph" }] };
+    case "bulletList":
+    case "orderedList":
+      return {
+        type: p.type,
+        content: [{ type: "listItem", content: [{ type: "paragraph" }] }],
+      };
+    case "horizontalRule":
+      return { type: "horizontalRule" };
+    case "gmSecret":
+      return { type: "gmSecret", content: [{ type: "paragraph" }] };
   }
 }
 
-export interface BlockChip {
-  key: string;
-  title: string;
-  hint: string;
-  payload: BlockDragPayload;
+export interface InsertRange {
+  from: number;
+  to: number;
 }
 
-/** Chips de la palette : blocs de base + presets « favoris » de campagne. */
-export const PALETTE_CHIPS: BlockChip[] = [
-  {
-    key: "dice",
-    title: "Jet de dés",
-    hint: "dés · 1d20",
-    payload: { type: "dice", label: "Jet", expr: "1d20" },
-  },
-  { key: "table", title: "Tableau", hint: "tableau", payload: { type: "table" } },
-  {
-    key: "valeur",
-    title: "Valeur",
-    hint: "valeur",
-    payload: { type: "meta", kind: "custom", label: "Valeur", value: "" },
-  },
-  ...DND_PRESETS.flatMap((pack) =>
-    pack.items.map<BlockChip>((it) => ({
-      key: `${pack.pack}-${it.title}`,
-      title: it.title,
-      hint: pack.pack,
-      payload: { type: "meta", kind: it.kind, label: it.label, value: "" },
-    })),
-  ),
-];
+/**
+ * Cible d'insertion : position de drop explicite, sinon la sélection courante
+ * (non vide → remplacement), sinon la fin du document de façon déterministe.
+ */
+export function insertionTarget(
+  pos: number | null,
+  selection: InsertRange | null,
+  docSize: number,
+): InsertRange {
+  if (pos !== null) return { from: pos, to: pos };
+  if (selection) return selection;
+  return { from: docSize, to: docSize };
+}
 
 /**
- * Insertion d'un bloc : au curseur (`pos` null) ou à la position de drop.
- * La portée MJ passe par `<gm-secret>` — même chemin que le menu slash.
+ * Insertion d'un bloc à la position de drop, à la sélection fournie, ou en fin
+ * de document. La portée MJ passe par `<gm-secret>` — même chemin que le slash.
  */
 export function insertBlockAt(
   editor: Editor,
   payload: BlockDragPayload,
   pos: number | null,
+  selection: InsertRange | null = null,
 ): boolean {
-  // Position numérique toujours : `insertContent` (sans At) remplace la
-  // NodeSelection posée sur le bloc précédent au lieu d'insérer à côté.
-  // Curseur après le bloc sélectionné pour enchaîner les insertions.
-  const sel = editor.state.selection;
-  const at = pos ?? (sel.empty ? sel.from : sel.to);
-  const content = scopedContent(editor.state, blockContentOf(payload), payload.gm === true, at);
-  return editor.chain().focus().insertContentAt(at, content).run();
+  const target = insertionTarget(pos, selection, editor.state.doc.content.size);
+  const gm = payload.gm === true && payload.type !== "gmSecret";
+  const content = scopedContent(editor.state, blockContentOf(payload), gm, target.from);
+  const inserted = editor.chain().focus().insertContentAt(target, content).run();
+  if (!inserted) return false;
+  // Replie la sélection après le bloc inséré : au clic suivant, on ajoute au
+  // lieu de remplacer le NodeSelection laissé par l'insertion précédente.
+  const $to = editor.state.selection.$to;
+  editor.commands.setTextSelection($to.depth > 0 ? $to.after(1) : $to.pos);
+  return true;
 }

@@ -93,8 +93,11 @@ export function TriPanel({
       )}
 
       {/* Centre — zone basculable (VTT ↔ Éditeur). La table défile à la molette
-          sans scrollbar native (DA « Pandémonium »). */}
-      <div className="no-scrollbar flex min-w-0 flex-1 flex-col overflow-y-auto">{children}</div>
+          sans scrollbar native (DA « Pandémonium »). `contain: size` coupe la
+          taille intrinsèque du canvas : sans lui, il force la page à défiler. */}
+      <div className="no-scrollbar flex min-w-0 flex-1 flex-col overflow-y-auto [contain:size]">
+        {children}
+      </div>
 
       {!rightCollapsed && (
         <div

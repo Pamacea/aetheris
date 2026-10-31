@@ -35,7 +35,7 @@ export function CreateNovelDialogFields({
         <span className="text-[0.7rem] tracking-[0.2em] text-muted uppercase">Synopsis</span>
         <textarea
           name="synopsis"
-          rows={4}
+          rows={2}
           maxLength={5000}
           placeholder="Un résumé de l'intrigue…"
           className="input resize-y"

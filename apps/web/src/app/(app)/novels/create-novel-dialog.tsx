@@ -4,10 +4,9 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GameModal } from "@/components/game-modal";
 import { createNovel, updateNovel } from "@/features/novels/actions";
+import { readCoverFile } from "@/features/novels/cover-image";
 import { CreateNovelDialogFields } from "./create-novel-dialog-fields";
 import { IconCross } from "./icons";
-
-const MAX_COVER_BYTES = 1_200_000;
 
 export function CreateNovelButton() {
   const router = useRouter();
@@ -27,13 +26,8 @@ export function CreateNovelButton() {
 
   function handleCover(file: File | undefined) {
     if (!file) return;
-    if (file.size > MAX_COVER_BYTES) {
-      setError("Image trop lourde (max ~1,2 Mo).");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setCover(String(reader.result ?? ""));
-    reader.readAsDataURL(file);
+    setError(null);
+    readCoverFile(file).then(setCover, (e: Error) => setError(e.message));
   }
 
   function clearCover() {

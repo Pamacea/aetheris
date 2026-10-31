@@ -1,3 +1,5 @@
+import { DonationButton } from "@/components/donation/DonationButton";
+
 export function PricingNote() {
   return (
     <section className="section text-center">
@@ -9,6 +11,9 @@ export function PricingNote() {
         <p className="mt-2 text-sm text-muted">
           Aucun abonnement, aucune limite artificielle — installez, jouez, écrivez.
         </p>
+        <div className="mt-4">
+          <DonationButton className="btn btn-tri text-xs" />
+        </div>
       </div>
     </section>
   );

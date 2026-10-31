@@ -1,23 +1,31 @@
 import { expect, test } from "@playwright/test";
 import { createCampaign, inviteCode, register, uniqueEmail } from "./helpers";
 
-test("inscription → création de campagne → hub titre + code d'invitation", async ({ page }) => {
+test("inscription → création de campagne → table + code d'invitation", async ({ page }) => {
   const email = uniqueEmail("camp");
   const title = `Campagne E2E ${Date.now()}`;
 
   await register(page, email, "MJ E2E");
   const campaignPath = await createCampaign(page, title);
 
-  await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+  // La table de jeu remplace le hub : l'URL et le bureau VTT le confirment.
+  await expect(page).toHaveURL(/\/campaign\/[^/]+\/vtt/);
+  await expect(page.getByRole("navigation", { name: "Dock des modules" })).toBeVisible();
+
+  // Le titre et le code d'invitation vivent désormais dans les réglages.
+  await page.goto(`${campaignPath}/settings?embed=1`);
+  await expect(page.getByLabel("Titre", { exact: true })).toHaveValue(title);
   await expect(inviteCode(page)).not.toBeEmpty();
   expect(campaignPath).toContain("/campaign/");
 });
 
 test("rejoindre une campagne par code d'invitation", async ({ page, browser }) => {
   const title = `Campagne Join ${Date.now()}`;
+  let campaignPath = "";
   const invite = await (async () => {
     await register(page, uniqueEmail("host"), "MJ Join");
-    await createCampaign(page, title);
+    campaignPath = await createCampaign(page, title);
+    await page.goto(`${campaignPath}/settings?embed=1`);
     return ((await inviteCode(page).textContent()) ?? "").trim();
   })();
   expect(invite).not.toBe("");
@@ -25,9 +33,15 @@ test("rejoindre une campagne par code d'invitation", async ({ page, browser }) =
   const ctx = await browser.newContext();
   const player = await ctx.newPage();
   await register(player, uniqueEmail("join"), "Joueur Join");
-  await player.getByPlaceholder("Code d'invitation…").fill(invite);
   await player.getByRole("button", { name: "Rejoindre" }).click();
-  await expect(player).toHaveURL(/\/campaign\//);
-  await expect(player.getByRole("heading", { level: 1, name: title })).toBeVisible();
+  const dialog = player.getByRole("dialog", { name: "Rejoindre une campagne" });
+  await dialog.getByPlaceholder("Code d'invitation…").fill(invite);
+  await dialog.getByRole("button", { name: "Rejoindre" }).click();
+  await expect(player).toHaveURL(/\/campaign\/[^/]+\/vtt/);
+  await expect(player.getByRole("navigation", { name: "Dock des modules" })).toBeVisible();
+
+  // Le joueur a bien rejoint LA campagne invitée (titre en lecture seule).
+  await player.goto(`${campaignPath}/settings?embed=1`);
+  await expect(player.getByLabel("Titre", { exact: true })).toHaveValue(title);
   await ctx.close();
 });

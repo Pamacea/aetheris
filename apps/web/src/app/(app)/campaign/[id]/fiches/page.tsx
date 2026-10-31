@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignPlugin } from "@/lib/campaign-server";
+import { redirectModuleToDesktop } from "@/features/campaigns/require-member";
 import { FichesApp } from "@/features/fiches/fiches-app";
 import { selectFiches } from "@/features/fiches/fiches";
 import type { WikiEntryMeta, WikiTemplateMeta } from "@/features/wiki/types";
@@ -14,9 +13,16 @@ import type { WikiEntryMeta, WikiTemplateMeta } from "@/features/wiki/types";
  * Liste des entities dont le type référence un JsonTemplate de la campagne ;
  * édition = TemplateForm du wiki (autosave via saveTemplateData, garde membre).
  */
-export default async function FichesPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FichesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ embed?: string }>;
+}) {
   const { id } = await params;
-  const session = await auth.api.getSession({ headers: await headers() });
+  await redirectModuleToDesktop(id, "fiches", searchParams);
+  const session = await getSession();
   if (!session) redirect("/login");
 
   const member = await requireCampaignPlugin(id, "fiches");
@@ -51,15 +57,7 @@ export default async function FichesPage({ params }: { params: Promise<{ id: str
   return (
     // 3.75rem top bar (modules fusionnés) + ~0.5rem fil d'ariane.
     <div className="flex h-[calc(100dvh-4.25rem)] flex-col">
-      <div className="flex items-center justify-center gap-3 border-b border-border px-4 py-1.5">
-        <nav
-          className="flex flex-1 items-center gap-2 text-xs text-muted"
-          aria-label="Fil d'ariane"
-        >
-          <Link href={`/campaign/${id}`} className="hover:text-accent">
-            ← Campagne
-          </Link>
-        </nav>
+      <div className="flex items-center justify-end gap-3 border-b border-border px-4 py-1.5">
         <span className="text-[0.65rem] tracking-widest text-muted uppercase">
           {isGM ? "Mode MJ" : "Mode joueur"}
         </span>

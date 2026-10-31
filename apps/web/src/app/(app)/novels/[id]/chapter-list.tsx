@@ -12,28 +12,19 @@ export interface ChapterRow {
 }
 
 /**
- * Liste de chapitres de l'auteur : création, rename inline, drag de
- * réordonnancement (HTML5 natif), statut et suppression.
+ * Liste de chapitres de l'auteur : création rapide (Entrée), rename inline,
+ * drag de réordonnancement (HTML5 natif), statut et suppression via menu
+ * contextuel.
  */
 export function ChapterList({ novelId, chapters }: { novelId: string; chapters: ChapterRow[] }) {
   const ops = useChapterOps(novelId, chapters);
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium tracking-[0.25em] text-muted uppercase">
-          <span className="mark-tri" aria-hidden />
-          Chapitres
-        </h2>
-        <button
-          type="button"
-          onClick={ops.addChapter}
-          disabled={ops.pending}
-          className="btn px-3 py-1 text-xs"
-        >
-          + Nouveau chapitre
-        </button>
-      </div>
+      <h2 className="text-xs font-medium tracking-[0.25em] text-muted uppercase">
+        <span className="mark-tri" aria-hidden />
+        Chapitres
+      </h2>
 
       {ops.error && <p className="text-sm text-destructive">{ops.error}</p>}
 
@@ -50,6 +41,7 @@ export function ChapterList({ novelId, chapters }: { novelId: string; chapters: 
         onStatusChange={ops.setStatus}
         onRemove={ops.removeChapter}
         onDrop={ops.onDrop}
+        onAdd={ops.addChapter}
       />
     </section>
   );

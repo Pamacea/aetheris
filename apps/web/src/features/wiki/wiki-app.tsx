@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { withEmbed } from "@/components/campaigns/embed-mode";
 import { fold } from "@/lib/text";
 import { createWikiEntry } from "./actions";
 import { useWikiAutosave } from "./autosave";
-import { BacklinksPanel } from "./backlinks-panel";
+import { BacklinksMobile, BacklinksPanel } from "./backlinks-panel";
 import { WikiEditor } from "./editor";
 import { EntriesPanel } from "./entries-panel";
 import { WikiAppHistory } from "./history";
@@ -26,8 +27,11 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
 
   // Clic sur un [[lien]] : résolu → navigation ; inconnu → création (MJ).
   const handleWikiLink = useCallback(
-    async (title: string) => {
-      const target = localEntries.find((n) => fold(n.title) === fold(title));
+    async (title: string, id?: string) => {
+      // L'id est prioritaire : le lien reste valide après un renommage.
+      const target = id
+        ? localEntries.find((n) => n.id === id)
+        : localEntries.find((n) => fold(n.title) === fold(title));
       if (target) {
         await selectEntry(target.id);
         return;
@@ -37,7 +41,7 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
       const res = await createWikiEntry(campaignId, { title });
       if (res.ok) {
         setLocalEntries((prev) => [...prev, { id: res.id, title, folder: null, type: "note" }]);
-        router.push(`/campaign/${campaignId}/wiki?note=${res.id}`);
+        router.push(withEmbed(`/campaign/${campaignId}/wiki?note=${res.id}`));
       }
     },
     [campaignId, flush, isGM, localEntries, router, selectEntry, setLocalEntries],
@@ -83,6 +87,15 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
               onHistory={() => void w.openHistory(active.id)}
             />
 
+            {/* Sous `lg`, le panneau latéral des liens entrants est masqué :
+                ce bouton ouvre la même liste dans une modale. */}
+            <section
+              aria-label="Liens entrants"
+              className="flex items-center justify-end border-b border-border px-5 py-1 lg:hidden"
+            >
+              <BacklinksMobile backlinks={backlinks} selectEntry={w.selectEntry} />
+            </section>
+
             {active.template && (
               <TemplateForm
                 key={`form-${active.id}`}
@@ -105,7 +118,7 @@ export function WikiApp({ campaignId, entries, active, templates, backlinks, isG
                 notes={w.localEntries.map((n) => ({ id: n.id, title: n.title }))}
                 isGM={isGM}
                 onChange={autosave.handleChange}
-                onWikiLinkClick={(t) => void handleWikiLink(t)}
+                onWikiLinkClick={(t, id) => void handleWikiLink(t, id)}
               />
             </div>
           </>

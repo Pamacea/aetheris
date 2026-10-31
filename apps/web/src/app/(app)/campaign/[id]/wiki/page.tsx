@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { EyeIcon, EyeOffIcon, LayoutIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
 import { stripGmSecrets } from "@/lib/wiki";
-import { requireCampaignPage } from "@/features/campaigns/require-member";
+import { redirectModuleToDesktop, requireCampaignPage } from "@/features/campaigns/require-member";
 import { resolveBacklinks } from "@/features/wiki/backlinks";
 import { WikiApp } from "@/features/wiki/wiki-app";
 import type { WikiTemplateMeta } from "@/features/wiki/types";
@@ -19,10 +20,11 @@ export default async function WikiPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ note?: string }>;
+  searchParams: Promise<{ note?: string; embed?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
+  await redirectModuleToDesktop(id, "wiki", searchParams);
   const { member } = await requireCampaignPage(id, "wiki");
   const isGM = member.role === "GM";
 
@@ -98,21 +100,28 @@ export default async function WikiPage({
   });
 
   return (
-    // 3.75rem top bar (modules fusionnés) + ~0.5rem fil d'ariane.
+    // 3.75rem top bar (modules fusionnés) ; pas de fil d'ariane (refonte wiki).
     <div className="flex h-[calc(100dvh-4.25rem)] flex-col">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-1.5">
-        <nav className="flex items-center gap-2 text-xs text-muted" aria-label="Fil d'ariane">
-          <Link href={`/campaign/${id}`} className="hover:text-accent">
-            ← Campagne
-          </Link>
-        </nav>
+        <span className="text-[0.65rem] tracking-[0.2em] text-muted uppercase">Wiki</span>
         <div className="flex items-center gap-2">
           {isGM && (
-            <Link href={`/campaign/${id}/wiki/templates`} className="btn px-2 py-1 text-xs">
+            <Link
+              href={`/campaign/${id}/wiki/templates`}
+              className="inline-flex h-8 items-center gap-1.5 border border-border bg-card px-2.5 text-xs transition hover:border-accent/60 hover:bg-card-hover"
+            >
+              <LayoutIcon />
               Modèles
             </Link>
           )}
-          <span className="text-[0.65rem] tracking-widest text-muted uppercase">
+          <span
+            className={`inline-flex h-8 items-center gap-1.5 border px-2 text-[0.65rem] tracking-widest uppercase ${
+              isGM
+                ? "border-accent/50 bg-accent/10 text-accent"
+                : "border-border bg-card text-muted"
+            }`}
+          >
+            {isGM ? <EyeIcon /> : <EyeOffIcon />}
             {isGM ? "Mode MJ" : "Mode joueur"}
           </span>
         </div>

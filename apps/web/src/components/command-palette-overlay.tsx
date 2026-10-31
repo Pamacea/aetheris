@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { Command } from "./command-palette-commands";
 
 const LIST_ID = "palette-commandes";
@@ -74,27 +75,41 @@ export function CommandPaletteOverlay({
             </li>
           ) : (
             filtered.map((c, i) => (
-              <li
-                key={c.id}
-                id={`${LIST_ID}-${c.id}`}
-                role="option"
-                aria-selected={i === activeClamped}
-                onClick={() => onExecute(c)}
-                onMouseEnter={() => onActiveChange(i)}
-                className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm transition ${
-                  i === activeClamped
-                    ? "bg-card-hover text-foreground"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <span aria-hidden className={i === activeClamped ? "mark-tri" : "opacity-0"} />
-                  {c.label}
-                </span>
-                <span className="text-[0.65rem] tracking-widest text-muted uppercase">
-                  {c.hint}
-                </span>
-              </li>
+              <Fragment key={c.id}>
+                {c.group && filtered[i - 1]?.group !== c.group && (
+                  <li
+                    role="presentation"
+                    className="px-3 pt-3 pb-1 text-[0.65rem] tracking-widest text-muted uppercase"
+                  >
+                    {c.group}
+                  </li>
+                )}
+                <li
+                  id={`${LIST_ID}-${c.id}`}
+                  role="option"
+                  aria-selected={i === activeClamped}
+                  onClick={() => onExecute(c)}
+                  onMouseEnter={() => onActiveChange(i)}
+                  className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm transition ${
+                    i === activeClamped
+                      ? "bg-card-hover text-foreground"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden
+                      className={`shrink-0 ${i === activeClamped ? "mark-tri" : "opacity-0"}`}
+                    />
+                    <span className="truncate" title={c.label}>
+                      {c.label}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[0.65rem] tracking-widest text-muted uppercase">
+                    {c.hint}
+                  </span>
+                </li>
+              </Fragment>
             ))
           )}
         </ul>

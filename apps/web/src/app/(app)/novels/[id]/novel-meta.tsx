@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CycleStatus } from "@/components/cycle-status";
@@ -74,6 +75,14 @@ export function NovelMeta({
           legend="Statut du roman"
           className="self-stretch"
         />
+        <Link
+          href={`/novels/${novelId}/print`}
+          target="_blank"
+          rel="noopener"
+          className="btn self-stretch px-3 text-xs"
+        >
+          Export
+        </Link>
       </div>
 
       {editingSynopsis ? (
@@ -87,7 +96,7 @@ export function NovelMeta({
             const s = currentSynopsis.trim();
             if (s !== (synopsis ?? "")) save({ synopsis: s || null });
           }}
-          rows={4}
+          rows={2}
           maxLength={5000}
           aria-label="Synopsis"
           className="input resize-y text-sm"

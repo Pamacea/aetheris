@@ -3,18 +3,45 @@ import type { useRouter } from "next/navigation";
 
 type Router = ReturnType<typeof useRouter>;
 
+export type PaletteEntry = { id: string; title: string };
+
 export type Command = {
   id: string;
   label: string;
   hint: string;
   keywords: string;
+  /** En-tête de section dans la liste (undefined = commande racine sans groupe). */
+  group?: string;
   run: () => void;
 };
+
+function entityCommands(
+  entries: PaletteEntry[],
+  router: Router,
+  kind: "campaign" | "novel",
+  group: string,
+  hint: string,
+  path: string,
+  keywords: string,
+): Command[] {
+  return entries.map((entry) => ({
+    id: `${kind}-${entry.id}`,
+    label: entry.title,
+    hint,
+    group,
+    keywords: `${keywords} ${entry.title}`,
+    run: () => router.push(`/${path}/${entry.id}`),
+  }));
+}
 
 // Implémentation partagée avec la wiki (évite la duplication) — API publique conservée.
 export { fold } from "@/lib/text";
 
-export function buildCommands(router: Router): Command[] {
+export function buildCommands(
+  router: Router,
+  campaigns: PaletteEntry[] = [],
+  novels: PaletteEntry[] = [],
+): Command[] {
   return [
     {
       id: "dashboard",
@@ -25,7 +52,7 @@ export function buildCommands(router: Router): Command[] {
     },
     {
       id: "novels",
-      label: "Romans",
+      label: "Studio d'écriture",
       hint: "Navigation",
       keywords: "romans novels écriture studio",
       run: () => router.push("/novels"),
@@ -38,13 +65,6 @@ export function buildCommands(router: Router): Command[] {
       run: () => router.push("/profile"),
     },
     {
-      id: "builder",
-      label: "Builder",
-      hint: "Navigation",
-      keywords: "builder atelier plugins macros systèmes modules",
-      run: () => router.push("/builder"),
-    },
-    {
       id: "signout",
       label: "Se déconnecter",
       hint: "Session",
@@ -55,5 +75,15 @@ export function buildCommands(router: Router): Command[] {
         router.refresh();
       },
     },
+    ...entityCommands(
+      campaigns,
+      router,
+      "campaign",
+      "Campagnes",
+      "Campagne",
+      "campaign",
+      "campagne",
+    ),
+    ...entityCommands(novels, router, "novel", "Romans", "Roman", "novels", "roman"),
   ];
 }

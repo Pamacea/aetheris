@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireCampaignPage } from "@/features/campaigns/require-member";
+import { redirectModuleToDesktop, requireCampaignPage } from "@/features/campaigns/require-member";
 import { SettingsInfoForm } from "@/features/campaign-settings/settings-info-form";
 import { ThemeEditor } from "@/features/campaign-settings/theme-editor";
 import { PluginToggles } from "@/features/campaign-settings/plugin-toggles";
@@ -17,10 +16,13 @@ import { CopyCodeButton } from "../copy-code-button";
  */
 export default async function CampaignSettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ embed?: string }>;
 }) {
   const { id } = await params;
+  await redirectModuleToDesktop(id, "settings", searchParams);
   const { member } = await requireCampaignPage(id);
   const isGM = member.role === "GM";
 
@@ -41,12 +43,6 @@ export default async function CampaignSettingsPage({
 
   return (
     <div className="w-full px-6 flex flex-1 flex-col gap-6 py-12">
-      <nav className="text-xs text-muted" aria-label="Fil d'ariane">
-        <Link href={`/campaign/${id}`} className="hover:text-accent">
-          ← Campagne
-        </Link>
-      </nav>
-
       <header>
         <h1 className="text-3xl tracking-wide">
           <span className="mark-tri" aria-hidden />

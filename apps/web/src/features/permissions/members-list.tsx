@@ -48,7 +48,7 @@ export function PermissionsMembers({
                     aria-hidden
                     className="panel flex h-9 w-9 items-center justify-center text-xs text-accent"
                   >
-                    {m.user.name.charAt(0).toUpperCase()}
+                    {Array.from(m.user.name.trim())[0]?.toUpperCase() ?? ""}
                   </span>
                   <div>
                     <p className="text-sm font-medium">{m.user.name}</p>

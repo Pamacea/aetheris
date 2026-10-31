@@ -7,7 +7,7 @@
   "author": "",
   "type": "module",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && node -e \"require('node:fs').copyFileSync('package.json','dist/package.json')\"",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -21,7 +21,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "dev": "nest start --watch"
+    "dev": "nest start"
   },
   "dependencies": {
     "@aetheris/shared": "workspace:*",

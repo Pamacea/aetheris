@@ -32,10 +32,11 @@ export function useChapterOps(novelId: string, chapters: ChapterRow[]) {
   const [draftTitle, setDraftTitle] = useState("");
   const dragId = useRef<string | null>(null);
 
-  function addChapter() {
+  function addChapter(title?: string) {
+    const clean = title?.trim() || "Nouveau chapitre";
     setError(null);
     startTransition(async () => {
-      const res = await createChapter(novelId, { title: "Nouveau chapitre" });
+      const res = await createChapter(novelId, { title: clean });
       if (!res.ok) {
         setError(res.error);
         return;

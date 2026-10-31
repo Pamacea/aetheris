@@ -5,6 +5,20 @@ import { countWords } from "@/lib/novel-autosave";
  * c'est la seule partie testable sans base ni DOM.
  */
 
+/** Cycle du statut d'un chapitre : un clic = état suivant (pas de select). */
+export const CHAPTER_STATES = [
+  { value: "draft", label: "Brouillon" },
+  { value: "review", label: "En écriture" },
+  { value: "published", label: "Publié" },
+] as const;
+
+export type ChapterStatus = (typeof CHAPTER_STATES)[number]["value"];
+
+export function nextChapterStatus(status: string) {
+  const idx = CHAPTER_STATES.findIndex((s) => s.value === status);
+  return CHAPTER_STATES[(idx + 1) % CHAPTER_STATES.length]!;
+}
+
 /** Recompose l'ordre après un déplacement (drag) : `ids[from]` va en `to`. */
 export function moveItem(ids: string[], from: number, to: number): string[] {
   if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) {

@@ -102,6 +102,10 @@ export function CombatApp({
       )}
 
       <CombatList state={state} isGM={isGM} changeHp={changeHp} removeCombatant={removeCombatant} />
+
+      {/* Marge basse réelle : le padding-bottom du conteneur scrollable
+          (mode embed) n'est pas compté dans le défilement. */}
+      <div aria-hidden className="h-8 shrink-0" />
     </div>
   );
 }

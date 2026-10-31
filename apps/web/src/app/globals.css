@@ -507,6 +507,19 @@ gm-secret::before {
 }
 
 /* ============================================================
+   Fenêtres-bureau (table VTT) : un module chargé en iframe
+   same-origin masque le chrome de l'application.
+   ============================================================ */
+html[data-embed] [data-app-chrome] {
+  display: none;
+}
+
+/* Le chrome disparaît : les pages modules reprennent toute la hauteur. */
+html[data-embed] main > div {
+  height: 100dvh !important;
+}
+
+/* ============================================================
    API PUBLIQUE DES VARIABLES DE THÈME (Phase 9)
    Alias stables `--aetheris-*` : le CSS custom par campagne, les
    presets et l'export JSON ciblent ces noms. Ils lisent les variables
@@ -569,4 +582,105 @@ main:focus-visible,
 .wiki-prose:focus-visible,
 .novel-prose:focus-visible {
   outline: none;
+}
+
+/* ============================================================
+   Impression / export PDF
+   Aucune librairie PDF : window.print() → « Enregistrer au format PDF ».
+   ============================================================ */
+
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    color-scheme: light;
+  }
+
+  /* Chrome applicatif, grain de parchemin et bouton d'impression. */
+  [data-app-chrome],
+  .print-hidden,
+  body::after {
+    display: none !important;
+  }
+
+  .print-page {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .print-page,
+  .print-page * {
+    color: #000 !important;
+    background: transparent !important;
+    border-color: #8a8a8a !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .print-page a {
+    text-decoration: underline;
+  }
+
+  .print-page mark {
+    background: #f6e58d !important;
+  }
+
+  .print-page table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-page th,
+  .print-page td {
+    border: 1px solid #8a8a8a !important;
+    padding: 0.35rem 0.6rem;
+    vertical-align: top;
+  }
+
+  .print-page h1,
+  .print-page h2,
+  .print-page h3 {
+    break-after: avoid;
+  }
+
+  .print-page blockquote,
+  .print-page tr {
+    break-inside: avoid;
+  }
+
+  /* Mise en page livre : page de titre centrée, page blanche (verso),
+     synopsis, puis un chapitre par page. */
+  .print-title-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 4cm);
+    text-align: center;
+    break-after: page;
+  }
+
+  .print-title-page h1 {
+    font-size: 2.25rem;
+  }
+
+  .print-blank-page {
+    height: 1px;
+    break-after: page;
+  }
+
+  .print-front-matter {
+    break-after: page;
+  }
+
+  .print-chapter {
+    break-before: page;
+  }
 }

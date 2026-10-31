@@ -1,6 +1,7 @@
 "use client";
 
 import { CommandPaletteOverlay } from "./command-palette-overlay";
+import type { PaletteEntry } from "./command-palette-commands";
 import { useCommandPalette } from "./use-command-palette";
 
 /**
@@ -9,8 +10,14 @@ import { useCommandPalette } from "./use-command-palette";
  * Pattern combobox/listbox : focus piégé sur la saisie, option active
  * suivie par aria-activedescendant, retour de focus à la fermeture.
  */
-export function CommandPalette() {
-  const p = useCommandPalette();
+export function CommandPalette({
+  campaigns,
+  novels,
+}: {
+  campaigns: PaletteEntry[];
+  novels: PaletteEntry[];
+}) {
+  const p = useCommandPalette({ campaigns, novels });
 
   return (
     <>
@@ -20,10 +27,22 @@ export function CommandPalette() {
         onClick={p.openPalette}
         aria-haspopup="dialog"
         aria-expanded={p.open}
-        // le libellé doit contenir le texte visible (axe label-content-name-mismatch)
-        aria-label="Ouvrir la palette de commandes (⌘K)"
+        aria-label="Ouvrir la palette de commandes (Ctrl / ⌘ K)"
+        title="Rechercher (Ctrl / ⌘ K)"
       >
-        ⌘K
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
       </button>
 
       {p.open && (

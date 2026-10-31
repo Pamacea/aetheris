@@ -1,7 +1,6 @@
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { JSONContent } from "@tiptap/core";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ChapterEditor } from "./chapter-editor";
 
@@ -11,11 +10,19 @@ export default async function ChapterPage({
   params: Promise<{ id: string; chId: string }>;
 }) {
   const { id, chId } = await params;
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
 
   const novel = await prisma.novel.findUnique({
     where: { id },
-    select: { id: true, title: true, authorId: true },
+    select: {
+      id: true,
+      title: true,
+      authorId: true,
+      chapters: {
+        select: { id: true, title: true, status: true },
+        orderBy: { position: "asc" },
+      },
+    },
   });
   if (!novel) notFound();
 
@@ -38,6 +45,7 @@ export default async function ChapterPage({
       content={(chapter.content as JSONContent | null) ?? null}
       status={chapter.status}
       readOnly={!isOwner}
+      chapters={novel.chapters}
     />
   );
 }

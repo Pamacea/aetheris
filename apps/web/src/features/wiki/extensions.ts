@@ -4,7 +4,15 @@ import { PluginKey } from "@tiptap/pm/state";
 import Suggestion from "@tiptap/suggestion";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
-import type { NoteBlock } from "@aetheris/shared";
+import {
+  BLOCK_DEFS,
+  BLOCK_PRESETS,
+  DND_PRESETS,
+  PRESET_BLOCK_DEFS,
+  type BlockDef,
+} from "./block-defs";
+import { blockContentOf } from "./blocks-dnd";
+import { scopedContent } from "./blocks-scope";
 import { frameAttrSpecs, legacySize, parseFrameTokens } from "./blocks-frame";
 import { SuggestionList, type SuggestionItem, type SuggestionListRef } from "./suggestion-list";
 import { MetaBlockView } from "./meta-block-view";
@@ -19,7 +27,15 @@ export const WikiLinkMark = Mark.create({
   keepOnSplit: false,
 
   addAttributes() {
-    return { title: { default: "" } };
+    return {
+      title: { default: "" },
+      // Lien stable : l'id survit au renommage de la cible. Les liens
+      // antérieurs n'en ont pas — le titre sert alors de repli.
+      id: {
+        default: "",
+        renderHTML: (attrs) => (attrs.id ? { "data-wiki-link-id": attrs.id } : {}),
+      },
+    };
   },
 
   parseHTML() {
@@ -27,11 +43,10 @@ export const WikiLinkMark = Mark.create({
       {
         tag: "a[data-wiki-link]",
         getAttrs: (el) => {
-          const title =
-            typeof el === "string"
-              ? el
-              : ((el as HTMLElement).getAttribute("data-wiki-link") ?? "");
-          return title.length > 0 ? { title } : false;
+          if (typeof el === "string") return false;
+          const title = el.getAttribute("data-wiki-link") ?? "";
+          if (title.length === 0) return false;
+          return { title, id: el.getAttribute("data-wiki-link-id") ?? "" };
         },
       },
     ];
@@ -265,196 +280,75 @@ interface SlashItem extends SuggestionItem {
   kind: "slash";
 }
 
-/** Libellés pré-remplis par univers (simple presets : pas de sous-typage dans le schema).
- *  Exportés : source des « favoris » de la Bibliothèque de blocs. */
-export const BLOCK_PRESETS: {
-  pack: string;
-  items: { title: string; kind: NoteBlock["kind"]; label: string }[];
-}[] = [
-  {
-    pack: "générique",
-    items: [
-      { title: "Date", kind: "date", label: "Date" },
-      { title: "Événement", kind: "event", label: "Événement" },
-      { title: "Description", kind: "description", label: "Description" },
-      { title: "Catégorie", kind: "category", label: "Catégorie" },
-      { title: "Personnalisé", kind: "custom", label: "Personnalisé" },
-      { title: "Texte", kind: "custom", label: "Texte" },
-      { title: "Histoire", kind: "description", label: "Histoire" },
-      { title: "Macro", kind: "macro", label: "Macro" },
-    ],
-  },
-  {
-    pack: "SF",
-    items: [
-      { title: "Ère", kind: "custom", label: "Ère" },
-      { title: "Colonie", kind: "category", label: "Colonie" },
-      { title: "Navire", kind: "custom", label: "Navire" },
-    ],
-  },
-  {
-    pack: "Médiéval fantasy",
-    items: [
-      { title: "Ère", kind: "custom", label: "Ère" },
-      { title: "Royaume", kind: "category", label: "Royaume" },
-      { title: "Quête", kind: "event", label: "Quête" },
-    ],
-  },
-  {
-    pack: "Horreur",
-    items: [
-      { title: "Menace", kind: "event", label: "Menace" },
-      { title: "Sanction", kind: "custom", label: "Sanction" },
-      { title: "Witness", kind: "description", label: "Witness" },
-    ],
-  },
-];
+/** Presets de campagne : ré-exportés depuis la source unique des blocs. */
+export { BLOCK_PRESETS, DND_PRESETS };
 
-/** Presets visibles en drag & drop (palette + Bibliothèque) : pack générique seul —
- *  les packs d'extension (SF/Horreur/Médiéval) restent au menu slash. */
-export const DND_PRESETS = BLOCK_PRESETS.filter((p) => p.pack === "générique");
-
-/** Insertion d'un bloc : la variante MJ le place dans un <gm-secret> (existant
- *  ou créé au besoin) — stripGmSecrets() retire alors toute la zone côté joueurs. */
-function insertMetaBlock(preset: { kind: NoteBlock["kind"]; label: string }, gm: boolean) {
+/** Commande slash d'une définition : formatage courant ou insertion du payload. */
+function slashCommand(def: BlockDef, gm: boolean) {
   return ({ editor, range }: { editor: Editor; range: Range }) => {
-    // Profondeur lue AVANT deleteRange (la chaîne ne s'exécute qu'à run()).
-    const { $from } = editor.state.selection;
-    let insideSecret = false;
-    for (let d = $from.depth; d > 0; d--) {
-      if ($from.node(d).type.name === "gmSecret") {
-        insideSecret = true;
-        break;
-      }
+    const p = def.payload;
+    if (p.type === "heading") {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setHeading({ level: p.level ?? 1 })
+        .run();
+      return;
     }
-    const block = {
-      type: "metaBlock",
-      attrs: { kind: preset.kind, label: preset.label, value: "" },
-    };
-    const chain = editor.chain().focus().deleteRange(range);
-    if (gm && !insideSecret) {
-      chain.insertContent({ type: "gmSecret", content: [block, { type: "paragraph" }] });
-    } else {
-      chain.insertContent(block);
+    if (p.type === "paragraph") {
+      editor.chain().focus().deleteRange(range).setParagraph().run();
+      return;
     }
-    chain.run();
+    if (p.type === "blockquote") {
+      editor.chain().focus().deleteRange(range).toggleBlockquote().run();
+      return;
+    }
+    if (p.type === "bulletList") {
+      editor.chain().focus().deleteRange(range).toggleBulletList().run();
+      return;
+    }
+    if (p.type === "orderedList") {
+      editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+      return;
+    }
+    if (p.type === "horizontalRule") {
+      editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+      return;
+    }
+    // Contenu calculé avant deleteRange (la chaîne ne s'exécute qu'à run()).
+    const content = scopedContent(
+      editor.state,
+      blockContentOf(p),
+      gm && p.type !== "gmSecret",
+      range.from,
+    );
+    editor.chain().focus().deleteRange(range).insertContent(content).run();
+  };
+}
+
+function defToSlashItem(def: BlockDef, gm: boolean, title = def.label): SlashItem {
+  return {
+    kind: "slash",
+    title,
+    hint: def.hint ?? def.description,
+    command: slashCommand(def, gm),
   };
 }
 
 /** Liste des entrées du menu slash (pures : testables sans éditeur). */
 export function slashItems(isGM: boolean): SlashItem[] {
-  return [
-    {
-      kind: "slash",
-      title: "Titre 1",
-      hint: "h1",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run(),
-    },
-    {
-      kind: "slash",
-      title: "Titre 2",
-      hint: "h2",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run(),
-    },
-    {
-      kind: "slash",
-      title: "Titre 3",
-      hint: "h3",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run(),
-    },
-    {
-      kind: "slash",
-      title: "Texte",
-      hint: "paragraphe",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).setParagraph().run(),
-    },
-    {
-      kind: "slash",
-      title: "Liste à puces",
-      hint: "•",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).toggleBulletList().run(),
-    },
-    {
-      kind: "slash",
-      title: "Liste numérotée",
-      hint: "1.",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
-    },
-    {
-      kind: "slash",
-      title: "Citation",
-      hint: ">",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
-    },
-    {
-      kind: "slash",
-      title: "Filet horizontal",
-      hint: "---",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
-    },
-    {
-      kind: "slash",
-      title: "Jet de dés",
-      hint: "bloc · 1d20",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).insertContent({ type: "diceBlock" }).run(),
-    },
-    {
-      kind: "slash",
-      title: "Tableau de données",
-      hint: "bloc · tableau",
-      command: ({ editor, range }) =>
-        editor.chain().focus().deleteRange(range).insertContent({ type: "tableBlock" }).run(),
-    },
-    ...(isGM
-      ? [
-          {
-            kind: "slash" as const,
-            title: "Bloc secret MJ",
-            hint: "visible uniquement par les MJ",
-            command: ({ editor, range }: { editor: Editor; range: Range }) =>
-              editor
-                .chain()
-                .focus()
-                .deleteRange(range)
-                .insertContent({
-                  type: "gmSecret",
-                  content: [{ type: "paragraph" }],
-                })
-                .run(),
-          },
-        ]
-      : []),
-    ...BLOCK_PRESETS.flatMap(({ pack, items }) =>
-      items.flatMap((b) => {
-        const entries: SlashItem[] = [
-          {
-            kind: "slash",
-            title: b.title,
-            hint: `bloc · ${pack}`,
-            command: insertMetaBlock(b, false),
-          },
-        ];
-        if (isGM) {
-          entries.push({
-            kind: "slash",
-            title: `${b.title} (MJ seulement)`,
-            hint: `bloc MJ · ${pack}`,
-            command: insertMetaBlock(b, true),
-          });
-        }
-        return entries;
-      }),
-    ),
-  ];
+  const items = BLOCK_DEFS.filter(
+    (d) => d.category === "text" || d.category === "sheet" || (d.category === "gm" && isGM),
+  ).map((d) => defToSlashItem(d, false));
+
+  for (const def of PRESET_BLOCK_DEFS) {
+    items.push(defToSlashItem(def, false));
+    if (isGM) {
+      items.push(defToSlashItem(def, true, `${def.label} (MJ seulement)`));
+    }
+  }
+  return items;
 }
 
 /** Filtrage insensible à la casse du menu slash (title + hint). */
@@ -480,6 +374,8 @@ export function createSlashExtension(opts: { isGM: boolean }): Extension {
 interface WikiLinkItem extends SuggestionItem {
   kind: "wikilink";
   isNew: boolean;
+  /** Entité cible (absent pour une création à la volée). */
+  id?: string;
 }
 
 /** Candidats de l'autocomplete [[…]] (purs : testables sans éditeur).
@@ -496,6 +392,7 @@ export function wikiLinkItems(
       kind: "wikilink",
       title: n.title,
       isNew: false,
+      id: n.id,
     }));
   if (q.length > 0 && !matches.some((m) => m.title.toLocaleLowerCase("fr") === q)) {
     matches.push({
@@ -525,7 +422,7 @@ export function createWikiLinkExtension(
           {
             type: "text",
             text: item.title,
-            marks: [{ type: WikiLinkMark.name, attrs: { title: item.title } }],
+            marks: [{ type: WikiLinkMark.name, attrs: { title: item.title, id: item.id ?? "" } }],
           },
           { type: "text", text: " ", marks: [] },
         ])

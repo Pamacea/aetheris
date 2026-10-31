@@ -1,19 +1,30 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createChoiceSchema, resolveChoiceSchema, voteChoiceSchema } from "@aetheris/shared";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignMember } from "@/lib/campaign-server";
+import { choiceSelect, toChoiceView, type ChoiceView } from "./choice-view";
 import { clampOptionIndex, parseOptions } from "./vote-logic";
 
-type ChoiceActionResult = { ok: true; id: string } | { ok: false; error: string };
+type ChoiceActionResult = { ok: true; choice: ChoiceView } | { ok: false; error: string };
 
 function invalid(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
 
-function revalidateChoices(campaignId: string): void {
-  revalidatePath(`/campaign/${campaignId}/choices`);
+/** Ligne complète (votes inclus) → vue client, pour la réponse de l'action. */
+async function reloadChoice(
+  campaignId: string,
+  choiceId: string,
+  userId: string,
+  isGM: boolean,
+): Promise<ChoiceActionResult> {
+  const row = await prisma.playerChoice.findFirst({
+    where: { id: choiceId, campaignId },
+    select: choiceSelect(isGM),
+  });
+  const choice = row ? toChoiceView(row, userId, isGM) : null;
+  return choice ? { ok: true, choice } : invalid("Choix introuvable.");
 }
 
 /** Membre + choix appartenant à la campagne ; null si absent (404 silencieux). */
@@ -53,7 +64,7 @@ export async function createChoice(
     return invalid(parsed.error.issues[0]?.message ?? "Entrée invalide.");
   }
 
-  const choice = await prisma.playerChoice.create({
+  const created = await prisma.playerChoice.create({
     data: {
       prompt: parsed.data.prompt,
       options: parsed.data.options,
@@ -61,8 +72,7 @@ export async function createChoice(
     },
     select: { id: true },
   });
-  revalidateChoices(campaignId);
-  return { ok: true, id: choice.id };
+  return reloadChoice(campaignId, created.id, member.userId, true);
 }
 
 /** Vote d'un joueur : 1 vote/joueur (upsert), modifiable tant qu'ouvert. */
@@ -97,8 +107,8 @@ export async function castVote(
       comment: comment === "" ? null : comment,
     },
   });
-  revalidateChoices(campaignId);
-  return { ok: true, id: choiceId };
+  const isGM = ctx.member.role === "GM";
+  return reloadChoice(campaignId, choiceId, ctx.member.userId, isGM);
 }
 
 /** Clôture (MJ) : le choix passe à `resolved` avec l'option retenue. */
@@ -124,6 +134,41 @@ export async function resolveChoice(
     where: { id: choiceId },
     data: { status: "resolved", resolvedOption: resolved.index },
   });
-  revalidateChoices(campaignId);
-  return { ok: true, id: choiceId };
+  return reloadChoice(campaignId, choiceId, ctx.member.userId, true);
+}
+
+/** Fermeture sans retenir d'option (MJ) : plus aucun vote accepté. */
+export async function closeChoice(
+  campaignId: string,
+  choiceId: string,
+): Promise<ChoiceActionResult> {
+  const ctx = await requireChoice(campaignId, choiceId);
+  if (!ctx) return invalid("Non connecté ou choix introuvable.");
+  if (ctx.member.role !== "GM") return invalid("Réservé aux MJ.");
+  if (ctx.choice.status !== "open") return invalid("Ce choix est déjà clôturé.");
+
+  await prisma.playerChoice.update({
+    where: { id: choiceId },
+    data: { status: "closed" },
+  });
+  return reloadChoice(campaignId, choiceId, ctx.member.userId, true);
+}
+
+/** Archivage (MJ) d'un choix déjà fermé/résolu : masqué de la liste active. */
+export async function archiveChoice(
+  campaignId: string,
+  choiceId: string,
+): Promise<ChoiceActionResult> {
+  const ctx = await requireChoice(campaignId, choiceId);
+  if (!ctx) return invalid("Non connecté ou choix introuvable.");
+  if (ctx.member.role !== "GM") return invalid("Réservé aux MJ.");
+  if (ctx.choice.status === "open")
+    return invalid("Fermez ou résolvez le choix avant de l'archiver.");
+  if (ctx.choice.status === "archived") return invalid("Ce choix est déjà archivé.");
+
+  await prisma.playerChoice.update({
+    where: { id: choiceId },
+    data: { status: "archived" },
+  });
+  return reloadChoice(campaignId, choiceId, ctx.member.userId, true);
 }

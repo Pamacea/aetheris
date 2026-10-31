@@ -23,3 +23,7 @@ playwright-report/
 # Vercel CLI (local link/dev cache)
 .vercel/
 .env*
+
+# Artefacts d'outillage (métriques d'agents, redirection Windows)
+.smite/
+nul

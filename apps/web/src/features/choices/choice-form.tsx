@@ -2,17 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { createChoice } from "./actions";
+import type { ChoiceView } from "./choice-view";
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
+/** Échec de transport de l'action : message local plutôt que l'error boundary. */
+const NETWORK_ERROR = "Connexion perdue — réessayez.";
 
 /** Création d'un choix (MJ) : prompt + 2..6 options, lancement immédiat (open). */
 export function ChoiceForm({
   campaignId,
-  onMutated,
+  onCreated,
 }: {
   campaignId: string;
-  onMutated: () => void;
+  onCreated: (choice: ChoiceView) => void;
 }) {
   const [prompt, setPrompt] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
@@ -36,17 +39,21 @@ export function ChoiceForm({
     if (!valid) return;
     setError(null);
     startTransition(async () => {
-      const res = await createChoice(campaignId, {
-        prompt: prompt.trim(),
-        options: options.map((o) => o.trim()),
-      });
-      if (!res.ok) {
-        setError(res.error);
-        return;
+      try {
+        const res = await createChoice(campaignId, {
+          prompt: prompt.trim(),
+          options: options.map((o) => o.trim()),
+        });
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        setPrompt("");
+        setOptions(["", ""]);
+        onCreated(res.choice);
+      } catch {
+        setError(NETWORK_ERROR);
       }
-      setPrompt("");
-      setOptions(["", ""]);
-      onMutated();
     });
   }
 

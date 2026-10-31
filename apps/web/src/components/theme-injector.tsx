@@ -24,9 +24,13 @@ export function ThemeInjector() {
   useEffect(() => {
     if (!campaignId) return;
     let alive = true;
-    getCampaignTheme(campaignId).then((r) => {
-      if (alive) setTheme({ id: campaignId, css: r.css });
-    });
+    getCampaignTheme(campaignId)
+      .then((r) => {
+        if (alive) setTheme({ id: campaignId, css: r.css });
+      })
+      .catch(() => {
+        // Thème indisponible (serveur coupé) : le thème par défaut suffit.
+      });
     return () => {
       alive = false;
     };

@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { CollapsibleSidePanel, usePersistedCollapse } from "@/components/collapsible-side-panel";
 import { createWikiEntry } from "./actions";
+import { TemplateQuickCreate } from "./templates/template-quick-create";
 import { fold } from "@/lib/text";
 import type { WikiActiveEntry, WikiEntryMeta, WikiTemplateMeta } from "./types";
 
@@ -34,6 +35,7 @@ export function EntriesPanel({
   const [folder, setFolder] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [collapsed, toggleCollapsed] = usePersistedCollapse("aetheris:wiki:entries-collapsed");
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -68,29 +70,33 @@ export function EntriesPanel({
   const folders = [...new Set(entries.map((n) => n.folder).filter((f): f is string => !!f))].sort();
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col overflow-hidden border-r border-border bg-card">
+    <CollapsibleSidePanel
+      id="panel-entries"
+      label={`Entrées (${entries.length})`}
+      side="left"
+      collapsed={collapsed}
+      onToggle={toggleCollapsed}
+      width="w-60"
+    >
       <div className="flex flex-col gap-2 border-b border-border p-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[0.65rem] tracking-[0.2em] text-muted uppercase">
-            Entrées ({entries.length})
-          </span>
+        <div className="flex items-center gap-2">
+          <input
+            className="input min-w-0 flex-1 py-1 text-sm"
+            name="recherche-entrees"
+            placeholder="Rechercher…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
           {isGM && (
             <button
               type="button"
-              className="btn px-2 py-0.5 text-xs text-accent"
+              className="btn shrink-0 px-2 py-1 text-xs text-accent"
               onClick={() => setNewOpen((o) => !o)}
             >
               + Nouvelle
             </button>
           )}
         </div>
-        <input
-          className="input py-1 text-sm"
-          name="recherche-entrees"
-          placeholder="Rechercher…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
         {newOpen && (
           <form onSubmit={(e) => void handleCreate(e)} className="flex flex-col gap-2">
             <input
@@ -142,17 +148,24 @@ export function EntriesPanel({
             </button>
           </form>
         )}
+        {isGM && (
+          <div className="border-t border-border pt-2">
+            <p className="mb-1 text-[0.6rem] tracking-widest text-muted uppercase">
+              Créer depuis un modèle
+            </p>
+            <TemplateQuickCreate
+              campaignId={campaignId}
+              templates={templates}
+              onCreated={(id) => {
+                setNewOpen(false);
+                void selectEntry(id);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2">
-        {isGM && (
-          <Link
-            href={`/campaign/${campaignId}/wiki/templates`}
-            className="mb-3 block border-l-2 border-transparent px-2 py-1.5 text-sm text-muted hover:border-accent hover:text-foreground"
-          >
-            Modèles ({templates.length})
-          </Link>
-        )}
         {grouped.size === 0 && (
           <p className="p-3 text-xs text-muted">{query ? "Aucun résultat." : "Aucune entrée."}</p>
         )}
@@ -181,6 +194,6 @@ export function EntriesPanel({
           </div>
         ))}
       </nav>
-    </aside>
+    </CollapsibleSidePanel>
   );
 }

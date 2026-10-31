@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CreateNovelButton } from "./create-novel-dialog";
 import { StatusBadge } from "./status-badge";
@@ -11,7 +10,7 @@ export default async function NovelsPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   if (!session) redirect("/login");
 
   const { q } = await searchParams;
@@ -29,7 +28,7 @@ export default async function NovelsPage({
   });
 
   return (
-    <div className="w-full px-6 flex flex-1 flex-col gap-8 py-12">
+    <div className="mx-auto w-full px-6 lg:w-3/4 flex flex-1 flex-col gap-8 py-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl tracking-wide">
@@ -81,7 +80,7 @@ export default async function NovelsPage({
                       <img src={n.coverImage} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-2xl text-muted">
-                        <span className="mark-tri" aria-hidden />
+                        <span className="mark-tri" style={{ marginRight: 0 }} aria-hidden />
                       </div>
                     )}
                   </div>

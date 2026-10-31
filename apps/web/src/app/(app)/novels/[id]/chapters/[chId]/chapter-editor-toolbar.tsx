@@ -88,7 +88,7 @@ type ToolbarFlags = {
   code: boolean;
   link: boolean;
   table: boolean;
-  align: string;
+  align: string | null;
   color: string;
   highlightColor: string;
   family: string;
@@ -233,13 +233,22 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
         code: ed.isActive("codeBlock"),
         link: ed.isActive("link"),
         table: ed.isActive("table"),
-        align: ed.isActive("textAlign", { textAlign: "center" })
-          ? "center"
-          : ed.isActive("textAlign", { textAlign: "right" })
-            ? "right"
-            : ed.isActive("textAlign", { textAlign: "justify" })
-              ? "justify"
-              : "left",
+        // `textAlign` est un attribut global : `isActive("textAlign", …)` ne
+        // matche aucun nœud/mark du schéma et renvoie toujours false. On lit
+        // tous les blocs sélectionnés : Ctrl+A (AllSelection) a `$from.parent`
+        // = doc, d'où « gauche » actif alors que le texte est justifié.
+        align: (() => {
+          const read = (node: { attrs: Record<string, unknown> }) =>
+            (node.attrs.textAlign as string | undefined) ?? "left";
+          const { selection } = ed.state;
+          if (selection.empty) return read(selection.$from.parent);
+          const modes = new Set<string>();
+          ed.state.doc.nodesBetween(selection.from, selection.to, (node) => {
+            if (node.isTextblock) modes.add(read(node));
+          });
+          // Sélection hétérogène : aucun mode n'est « actif ».
+          return modes.size === 1 ? [...modes][0]! : null;
+        })(),
         color: typeof textStyle.color === "string" ? textStyle.color : "",
         highlightColor: typeof highlight.color === "string" ? highlight.color : "",
         family: typeof textStyle.fontFamily === "string" ? textStyle.fontFamily : "",
@@ -258,13 +267,19 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
         ? "border border-accent bg-accent/15 text-accent"
         : "border border-transparent text-muted hover:text-foreground"
     }`;
-  const selectCls = "input input-sm cursor-pointer";
+  const selectCls = "input input-sm cursor-pointer border-y-0 border-r-0";
 
   return (
     <div
       className="flex w-full flex-wrap items-center justify-center gap-1"
       role="toolbar"
       aria-label="Mise en forme"
+      // Garde le focus/sélection dans l'éditeur quand on clique un bouton
+      // (sinon la sélection est perdue et les clics suivants sans effet).
+      onMouseDown={(e) => {
+        if ((e.target as HTMLElement).closest("select, input")) return;
+        e.preventDefault();
+      }}
     >
       {/* Police + taille */}
       <span className="flex items-center gap-1">
@@ -280,7 +295,9 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
           className={selectCls}
           style={{ width: "auto", padding: "0.25rem 1.4rem 0.25rem 0.5rem" }}
         >
-          <option value="">Police</option>
+          <option value="" hidden>
+            Police
+          </option>
           {FAMILIES.map((group) => (
             <optgroup key={group.label} label={group.label}>
               {group.options.map((f) => (

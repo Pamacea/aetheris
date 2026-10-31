@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { AmbianceState, AudioTrack, Playlist } from "@aetheris/shared";
-import { getAmbianceAudio } from "@/lib/ambiance-audio";
+import { getAmbianceAudio, stopAmbianceAudio } from "@/lib/ambiance-audio";
 import { stepTrackIndex } from "./track-logic";
 
 /**
@@ -34,8 +34,9 @@ export function useAmbianceAudio({
 
   // ── Lecteur audio HTML5 ───────────────────────────────────────────
   // Déclaré AVANT les effets de lecture : les listeners sont posés au montage
-  // avant tout play(). Détachement au démontage sans pause() — la lecture
-  // continue en arrière-plan après navigation.
+  // avant tout play(). Un simple démontage React ne coupe pas le son, mais la
+  // destruction du document (fermeture de la fenêtre iframe, navigation) doit
+  // l'arrêter explicitement : `pagehide` est le seul signal fiable à ce moment.
   useEffect(() => {
     const a = getAmbianceAudio();
     if (!a) return;
@@ -45,10 +46,12 @@ export function useAmbianceAudio({
     a.addEventListener("play", onPlay);
     a.addEventListener("pause", onPause);
     a.addEventListener("ended", ended);
+    window.addEventListener("pagehide", stopAmbianceAudio);
     return () => {
       a.removeEventListener("play", onPlay);
       a.removeEventListener("pause", onPause);
       a.removeEventListener("ended", ended);
+      window.removeEventListener("pagehide", stopAmbianceAudio);
     };
   }, []);
 

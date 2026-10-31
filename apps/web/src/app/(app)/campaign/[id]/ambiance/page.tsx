@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import {
   EMPTY_AMBIANCE_STATE,
@@ -8,9 +6,10 @@ import {
   type AmbianceState,
   type Playlist,
 } from "@aetheris/shared";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireCampaignPlugin } from "@/lib/campaign-server";
+import { redirectModuleToDesktop } from "@/features/campaigns/require-member";
 import { AmbianceApp } from "@/features/ambiance/ambiance-app";
 
 /**
@@ -18,9 +17,16 @@ import { AmbianceApp } from "@/features/ambiance/ambiance-app";
  * Lecture ici (server) ; les mutations vivent dans features/ambiance.
  * Le MJ pilote, l'état temps réel part par `ambiance:state` (gateway).
  */
-export default async function AmbiancePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AmbiancePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ embed?: string }>;
+}) {
   const { id } = await params;
-  const session = await auth.api.getSession({ headers: await headers() });
+  await redirectModuleToDesktop(id, "ambiance", searchParams);
+  const session = await getSession();
   if (!session) redirect("/login");
   // Plugin désactivé (Réglages) ou grant refusé → 404, comme les autres modules.
   const member = await requireCampaignPlugin(id, "ambiance");
@@ -51,12 +57,6 @@ export default async function AmbiancePage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="w-full px-6 flex flex-1 flex-col gap-6 py-12">
-      <nav className="text-xs text-muted" aria-label="Fil d'ariane">
-        <Link href={`/campaign/${id}`} className="hover:text-accent">
-          ← Campagne
-        </Link>
-      </nav>
-
       <header>
         <h1 className="text-3xl tracking-wide">
           <span className="mark-tri" aria-hidden />

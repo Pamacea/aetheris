@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createCampaign, moduleLink, register, uniqueEmail } from "./helpers";
+import { createCampaign, openModule, register, uniqueEmail } from "./helpers";
 
 /** Smoke des modules reconstruits : wiki, graphe, choix, VTT. */
 test.beforeEach(async ({ page }) => {
@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("wiki : créer une entrée et la voir dans le panneau", async ({ page }) => {
-  await moduleLink(page, "Wiki").click();
+  await openModule(page, "wiki");
   await expect(page).toHaveURL(/\/wiki/);
   const title = `Entrée ${Date.now()}`;
   await page.getByRole("button", { name: "+ Nouvelle" }).click();
@@ -18,14 +18,14 @@ test("wiki : créer une entrée et la voir dans le panneau", async ({ page }) =>
 });
 
 test("graphe : la page charge avec son titre", async ({ page }) => {
-  await moduleLink(page, /graphe/i).click();
+  await openModule(page, "graph");
   await expect(page).toHaveURL(/\/graph/);
   await expect(page.getByRole("heading", { level: 1, name: /Graphe de relations/ })).toBeVisible();
 });
 
 test("choix : lancer un vote et le voir dans l'historique", async ({ page }) => {
   const prompt = `Route ${Date.now()}`;
-  await moduleLink(page, "Choix").click();
+  await openModule(page, "choices");
   await expect(page).toHaveURL(/\/choices/);
   await page.getByPlaceholder("Quelle route prenons-nous ?").fill(prompt);
   await page.getByPlaceholder("Option 1").fill("Le port");
@@ -35,7 +35,7 @@ test("choix : lancer un vote et le voir dans l'historique", async ({ page }) => 
 });
 
 test("vtt : la table se charge avec un canvas", async ({ page }) => {
-  await moduleLink(page, /table/i).click();
+  await openModule(page, "vtt");
   await expect(page).toHaveURL(/\/vtt/);
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 30_000 });
 });

@@ -4,19 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { signIn } from "@/lib/auth-client";
-
-type SocialProvider = "discord" | "github";
-
-const PROVIDER_LABELS: Record<SocialProvider, string> = {
-  discord: "Discord",
-  github: "GitHub",
-};
+import { SocialAuthButtons, type SocialProvider } from "@/components/social-auth-buttons";
 
 export function LoginForm({ providers }: { providers: SocialProvider[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,25 +31,6 @@ export function LoginForm({ providers }: { providers: SocialProvider[] }) {
       setError("Connexion impossible. Réessayez.");
     } finally {
       setPending(false);
-    }
-  }
-
-  async function onSocial(provider: SocialProvider) {
-    setPendingProvider(provider);
-    setError(null);
-    try {
-      const { error } = await signIn.social({
-        provider,
-        callbackURL: "/dashboard",
-      });
-      if (error) {
-        setError(error.message ?? `Connexion ${PROVIDER_LABELS[provider]} impossible.`);
-      }
-    } catch {
-      setError(`Connexion ${PROVIDER_LABELS[provider]} impossible.`);
-    } finally {
-      // en cas d'échec (redirect annulé) :
-      setPendingProvider(null);
     }
   }
 
@@ -116,30 +90,7 @@ export function LoginForm({ providers }: { providers: SocialProvider[] }) {
           </button>
         </form>
 
-        {providers.length > 0 && (
-          <div className="mt-6 flex flex-col gap-3">
-            <div className="flex items-center gap-3 text-muted" aria-hidden>
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-[0.65rem] tracking-[0.25em] uppercase">ou</span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <div className="flex flex-col gap-2">
-              {providers.map((provider) => (
-                <button
-                  key={provider}
-                  type="button"
-                  disabled={pendingProvider !== null}
-                  onClick={() => onSocial(provider)}
-                  className="btn w-full"
-                >
-                  {pendingProvider === provider
-                    ? "Redirection…"
-                    : `Continuer avec ${PROVIDER_LABELS[provider]}`}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <SocialAuthButtons providers={providers} />
       </main>
     </div>
   );

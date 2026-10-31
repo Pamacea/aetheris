@@ -21,7 +21,7 @@ test("combat : ajout de combattants, initiative, tour suivant / round", async ({
   await register(page, uniqueEmail("combat"), "MJ Combat");
   const path = await createCampaign(page, `Campagne Combat ${Date.now()}`);
 
-  await page.goto(`${path}/combat`);
+  await page.goto(`${path}/combat?embed=1`);
   await expect(page.getByRole("heading", { level: 1, name: /Combat & Initiative/ })).toBeVisible();
   await expect(page.getByText("Hors combat")).toBeVisible();
   await expect(page.getByText("Aucun combattant")).toBeVisible();
@@ -55,23 +55,26 @@ test("combat : les changements du MJ arrivent en direct chez le joueur", async (
 }) => {
   await register(page, uniqueEmail("host-combat"), "MJ Combat");
   const path = await createCampaign(page, `Campagne Sync ${Date.now()}`);
+  await page.goto(`${path}/settings?embed=1`);
   const invite = ((await inviteCode(page).textContent()) ?? "").trim();
   expect(invite).not.toBe("");
 
   const ctx = await browser.newContext();
   const player = await ctx.newPage();
   await register(player, uniqueEmail("join-combat"), "Joueur Combat");
-  await player.getByPlaceholder("Code d'invitation…").fill(invite);
   await player.getByRole("button", { name: "Rejoindre" }).click();
+  const dialog = player.getByRole("dialog", { name: "Rejoindre une campagne" });
+  await dialog.getByPlaceholder("Code d'invitation…").fill(invite);
+  await dialog.getByRole("button", { name: "Rejoindre" }).click();
   await expect(player).toHaveURL(/\/campaign\//);
 
   // Le joueur est sur la page ET connecté au relais avant l'action du MJ.
-  await player.goto(`${path}/combat`);
+  await player.goto(`${path}/combat?embed=1`);
   await expect(player.getByText("Aucun combattant")).toBeVisible();
   await expect(player.getByText("Temps réel actif")).toBeVisible();
   await expect(player.getByRole("button", { name: "Jeter l'initiative" })).toHaveCount(0);
 
-  await page.goto(`${path}/combat`);
+  await page.goto(`${path}/combat?embed=1`);
   await page.getByPlaceholder("Gobelin, Astarion…").fill("Spectre");
   await page.getByRole("button", { name: "Ajouter", exact: true }).click();
   // Vu SANS rechargement : relais `plugin:event`.

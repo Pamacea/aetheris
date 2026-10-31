@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireCampaignPage } from "@/features/campaigns/require-member";
+import { redirectModuleToDesktop, requireCampaignPage } from "@/features/campaigns/require-member";
 import { PermissionsMembers } from "@/features/permissions/members-list";
 
 /**
@@ -10,15 +9,21 @@ import { PermissionsMembers } from "@/features/permissions/members-list";
  * persistés sur `CampaignMember.permissions` = { view: { [module]: false } }
  * (logique : features/permissions, lecture : lib/canViewModule).
  */
-export default async function PermissionsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PermissionsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ embed?: string }>;
+}) {
   const { id } = await params;
+  await redirectModuleToDesktop(id, "permissions", searchParams);
   const { member } = await requireCampaignPage(id);
   if (member.role !== "GM") redirect(`/campaign/${id}`);
 
   const campaign = await prisma.campaign.findUnique({
     where: { id },
     select: {
-      title: true,
       members: {
         orderBy: [{ role: "asc" }, { id: "asc" }],
         select: {
@@ -34,16 +39,6 @@ export default async function PermissionsPage({ params }: { params: Promise<{ id
 
   return (
     <div className="w-full px-6 flex flex-1 flex-col gap-8 py-12">
-      <nav className="text-xs text-muted" aria-label="Fil d'ariane">
-        <Link href="/dashboard" className="hover:text-accent">
-          Campagnes
-        </Link>
-        <span className="mx-2">/</span>
-        <Link href={`/campaign/${id}`} className="hover:text-accent">
-          {campaign.title}
-        </Link>
-      </nav>
-
       <header>
         <h1 className="text-3xl tracking-wide">
           <span className="mark-tri" aria-hidden />

@@ -3,6 +3,7 @@ import { Cinzel, Geist_Mono, Newsreader, Plus_Jakarta_Sans } from "next/font/goo
 import "./globals.css";
 import { ThemeInjector } from "@/components/theme-injector";
 import { SkipLink } from "@/components/skip-link";
+import { UserTheme } from "@/components/user-theme";
 
 // Sans UI — interface et éléments interactifs.
 const jakarta = Plus_Jakarta_Sans({
@@ -32,6 +33,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Aetheris",
   description: "Plateforme VTT & Lore Studio — campagnes, wiki, table virtuelle et romans.",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -45,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SkipLink />
         {children}
         <ThemeInjector />
+        <UserTheme />
       </body>
     </html>
   );

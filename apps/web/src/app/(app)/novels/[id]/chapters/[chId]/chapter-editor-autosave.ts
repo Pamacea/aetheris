@@ -22,6 +22,7 @@ import {
 import { saveChapterContent } from "@/features/novels/actions";
 import { toPlainDoc } from "@/features/novels/logic";
 import { HIGHLIGHT } from "./chapter-editor-toolbar";
+import { ChapterIndent } from "./chapter-editor-indent";
 
 /* Bordures inline : `.novel-prose` ne cible pas les tableaux et globals.css
    est hors périmètre du module — le style voyage avec le document. */
@@ -88,6 +89,7 @@ export function useChapterAutosave({ novelId, chapterId, content, readOnly }: Au
         HTMLAttributes: { style: `background-color:${HIGHLIGHT}` },
       }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      ChapterIndent,
       Table.configure({ HTMLAttributes: { style: "border-collapse:collapse;width:100%" } }),
       TableRow,
       TableCell.configure({ HTMLAttributes: { style: CELL_STYLE } }),
@@ -99,7 +101,7 @@ export function useChapterAutosave({ novelId, chapterId, content, readOnly }: Au
     editable: !readOnly,
     editorProps: {
       attributes: {
-        class: "novel-prose min-h-[60vh] outline-none",
+        class: "novel-prose min-h-[45vh] outline-none",
         spellcheck: "true",
       },
     },
