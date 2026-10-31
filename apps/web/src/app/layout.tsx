@@ -39,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="fr"
       className={`${jakarta.variable} ${newsreader.variable} ${cinzel.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
         <SkipLink />

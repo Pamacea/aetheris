@@ -3,36 +3,22 @@ import Link from "next/link";
 /** Mockup CSS d'une scène de campagne (pas d'asset : pure décoration). */
 function SceneMockup() {
   const tokens = [
-    { top: "28%", left: "34%", color: "var(--accent)" },
-    { top: "55%", left: "62%", color: "var(--accent-2)" },
-    { top: "68%", left: "25%", color: "var(--muted)" },
-    { top: "38%", left: "72%", color: "var(--muted)" },
+    { className: "top-[28%] left-[34%] bg-[var(--accent)]" },
+    { className: "top-[55%] left-[62%] bg-[var(--accent-2)]" },
+    { className: "top-[68%] left-[25%] bg-[var(--muted)]" },
+    { className: "top-[38%] left-[72%] bg-[var(--muted)]" },
   ];
   return (
     <div className="panel relative mx-auto mt-14 aspect-[16/9] w-full overflow-hidden" aria-hidden>
       {/* grille de carte */}
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
-          backgroundSize: "3rem 3rem",
-        }}
-      />
+      <div className="absolute inset-0 opacity-40 bg-[linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] bg-[size:3rem_3rem]" />
       {/* halo central */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 50% 55% at 45% 50%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%)",
-        }}
-      />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_55%_at_45%_50%,color-mix(in_srgb,var(--accent)_14%,transparent),transparent_70%)]" />
       {/* jetons */}
       {tokens.map((t, i) => (
         <span
           key={i}
-          className="absolute h-4 w-4 rotate-45 border border-foreground/60"
-          style={{ top: t.top, left: t.left, background: t.color }}
+          className={"absolute h-4 w-4 rotate-45 border border-foreground/60 " + t.className}
         />
       ))}
       {/* panneau latéral simulé */}

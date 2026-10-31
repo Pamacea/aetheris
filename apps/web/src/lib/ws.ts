@@ -3,7 +3,11 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@aetheris/share
 
 export type CampaignSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3002";
+// Prod (Vercel services) : même origine, le rewrite /socket.io route vers Nest.
+// En dev, Next (:3001) et Nest (:3002) sont séparés.
+const WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ??
+  (process.env.NODE_ENV === "production" ? undefined : "http://localhost:3002");
 
 let socket: CampaignSocket | null = null;
 
@@ -16,7 +20,8 @@ export function getCampaignSocket(): CampaignSocket {
   socket ??= io(WS_URL, {
     autoConnect: false,
     withCredentials: true,
-    transports: ["websocket", "polling"],
+    // Vercel Functions ne supporte pas le long-polling Socket.IO.
+    transports: ["websocket"],
   });
   return socket;
 }

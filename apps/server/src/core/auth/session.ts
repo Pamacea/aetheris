@@ -32,7 +32,13 @@ export function parseSessionToken(
       if (eq === -1) continue;
       if (part.slice(0, eq).trim() === SESSION_COOKIE) {
         const value = part.slice(eq + 1).trim();
-        if (value.length > 0) return stripSignature(decodeURIComponent(value));
+        if (value.length > 0) {
+          try {
+            return stripSignature(decodeURIComponent(value));
+          } catch {
+            return undefined; // cookie malformé → non authentifié (401)
+          }
+        }
       }
     }
   }

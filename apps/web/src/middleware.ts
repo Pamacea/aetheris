@@ -39,17 +39,37 @@ function clientKey(request: NextRequest): string {
   return request.headers.get("x-real-ip") ?? "local";
 }
 
+// Better Auth préfixe le cookie en HTTPS ; simple présence, pas de validation
+// en base ici (le guard de page s'en charge) — but : 307 avant streaming.
+const SESSION_COOKIES = [
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+  "better-auth.session_data",
+];
+const PROTECTED_PREFIXES = ["/dashboard", "/novels", "/profile"];
+
 export function middleware(request: NextRequest) {
-  const now = Date.now();
-  if (overLimit(clientKey(request), now)) {
-    return new NextResponse("Trop de requêtes", {
-      status: 429,
-      headers: { "Retry-After": String(Math.ceil(WINDOW_MS / 1000)) },
-    });
+  const { pathname } = request.nextUrl;
+
+  if (
+    PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) &&
+    !SESSION_COOKIES.some((name) => request.cookies.has(name))
+  ) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (pathname.startsWith("/api/auth/")) {
+    const now = Date.now();
+    if (overLimit(clientKey(request), now)) {
+      return new NextResponse("Trop de requêtes", {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(WINDOW_MS / 1000)) },
+      });
+    }
   }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/api/auth/:path*"],
+  matcher: ["/api/auth/:path*", "/dashboard/:path*", "/novels/:path*", "/profile/:path*"],
 };

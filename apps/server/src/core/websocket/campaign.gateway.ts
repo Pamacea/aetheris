@@ -77,7 +77,7 @@ const ambiancePlaylistsChangedSchema = z.object({
  * l'adhésion à la room est vérifiée contre CampaignMember.
  */
 @WebSocketGateway({
-  cors: { origin: "http://localhost:3001", credentials: true },
+  cors: { origin: process.env.WEB_ORIGIN ?? "http://localhost:3001", credentials: true },
 })
 export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnModuleDestroy {
   @WebSocketServer()

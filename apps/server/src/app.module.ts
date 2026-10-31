@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
 import { PrismaModule } from "./core/database/prisma.module.js";
@@ -19,8 +21,17 @@ import { PluginsController } from "./plugins/plugins.controller.js";
     }),
     PrismaModule,
     EventEmitterModule.forRoot(),
+    // 100 requêtes / 60 s et par IP (ttl en ms depuis throttler v6).
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
   ],
   controllers: [AppController, PluginsController],
-  providers: [AppService, SessionGuard, PluginGuard, PluginRegistryService, CampaignGateway],
+  providers: [
+    AppService,
+    SessionGuard,
+    PluginGuard,
+    PluginRegistryService,
+    CampaignGateway,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

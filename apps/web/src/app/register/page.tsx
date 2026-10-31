@@ -15,18 +15,23 @@ export default function RegisterPage() {
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const { error } = await signUp.email({
-      name: String(fd.get("name")),
-      email: String(fd.get("email")),
-      password: String(fd.get("password")),
-    });
-    if (error) {
-      setError(error.message ?? "Impossible de créer le compte.");
+    try {
+      const { error } = await signUp.email({
+        name: String(fd.get("name")),
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
+      });
+      if (error) {
+        setError(error.message ?? "Impossible de créer le compte.");
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Création impossible. Réessayez.");
+    } finally {
       setPending(false);
-      return;
     }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -55,11 +60,21 @@ export default function RegisterPage() {
               maxLength={80}
               autoComplete="name"
               className="input"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "register-error" : undefined}
             />
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
             Email
-            <input name="email" type="email" required autoComplete="email" className="input" />
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              className="input"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "register-error" : undefined}
+            />
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
             Mot de passe
@@ -70,9 +85,15 @@ export default function RegisterPage() {
               minLength={8}
               autoComplete="new-password"
               className="input"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "register-error" : undefined}
             />
           </label>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p id="register-error" role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={pending}

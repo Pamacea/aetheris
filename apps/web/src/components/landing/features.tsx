@@ -20,8 +20,8 @@ const FEATURES = [
     body: "Fiches PJ/PNJ personnalisables, macros et systèmes de règles construits dans le builder — D&D ou votre maison.",
   },
   {
-    title: "Local-first, gratuit",
-    body: "Pas d'abonnement, pas de carte bancaire. Vos campagnes vivent sur votre instance, vos données restent les vôtres.",
+    title: "Gratuit, sans carte bancaire",
+    body: "Pas d'abonnement, pas de carte bancaire. Vos données vous appartiennent et restent exportables.",
   },
 ] as const;
 

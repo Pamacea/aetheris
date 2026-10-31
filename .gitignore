@@ -19,3 +19,6 @@ Thumbs.db
 # Playwright
 test-results/
 playwright-report/
+
+# Vercel CLI (local link/dev cache)
+.vercel/

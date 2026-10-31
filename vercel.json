@@ -1,0 +1,24 @@
+{
+  "services": {
+    "server": {
+      "root": "apps/server/",
+      "framework": "nestjs",
+      "devCommand": "pnpm dev",
+      "installCommand": "pnpm install --frozen-lockfile",
+      "buildCommand": "pnpm --filter @aetheris/database generate && pnpm exec turbo build --filter=server"
+    },
+    "web": {
+      "root": "apps/web/",
+      "framework": "nextjs",
+      "installCommand": "pnpm install --frozen-lockfile",
+      "buildCommand": "pnpm --filter @aetheris/database generate && pnpm exec turbo build --filter=web"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/auth/(.*)", "destination": { "service": "web" } },
+    { "source": "/api", "destination": { "service": "server" } },
+    { "source": "/api/(.*)", "destination": { "service": "server" } },
+    { "source": "/socket.io/(.*)", "destination": { "service": "server" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ]
+}

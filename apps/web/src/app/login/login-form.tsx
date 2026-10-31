@@ -23,28 +23,41 @@ export function LoginForm({ providers }: { providers: SocialProvider[] }) {
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const { error } = await signIn.email({
-      email: String(fd.get("email")),
-      password: String(fd.get("password")),
-    });
-    if (error) {
-      setError(error.message ?? "Identifiants invalides.");
+    try {
+      const { error } = await signIn.email({
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
+      });
+      if (error) {
+        setError(error.message ?? "Identifiants invalides.");
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Connexion impossible. Réessayez.");
+    } finally {
       setPending(false);
-      return;
     }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   async function onSocial(provider: SocialProvider) {
     setPendingProvider(provider);
     setError(null);
-    await signIn.social({
-      provider,
-      callbackURL: "/dashboard",
-    });
-    // en cas d'échec (redirect annulé) :
-    setPendingProvider(null);
+    try {
+      const { error } = await signIn.social({
+        provider,
+        callbackURL: "/dashboard",
+      });
+      if (error) {
+        setError(error.message ?? `Connexion ${PROVIDER_LABELS[provider]} impossible.`);
+      }
+    } catch {
+      setError(`Connexion ${PROVIDER_LABELS[provider]} impossible.`);
+    } finally {
+      // en cas d'échec (redirect annulé) :
+      setPendingProvider(null);
+    }
   }
 
   return (
@@ -66,7 +79,15 @@ export function LoginForm({ providers }: { providers: SocialProvider[] }) {
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-sm">
             Email
-            <input name="email" type="email" required autoComplete="email" className="input" />
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              className="input"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "login-error" : undefined}
+            />
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
             Mot de passe
@@ -77,9 +98,15 @@ export function LoginForm({ providers }: { providers: SocialProvider[] }) {
               minLength={8}
               autoComplete="current-password"
               className="input"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "login-error" : undefined}
             />
           </label>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p id="login-error" role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={pending}
