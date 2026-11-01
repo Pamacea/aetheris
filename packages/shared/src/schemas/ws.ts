@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TOKEN_CONDITIONS, type TokenCondition } from "../conditions.js";
 import type { PluginEvent, PluginEventRequest } from "./plugins.js";
 
 /**
@@ -94,6 +95,19 @@ export type MapUrl = z.infer<typeof mapUrlSchema>;
 export const tokenImageUrlSchema = httpImageUrlSchema.nullable().default(null).catch(null);
 export type TokenImageUrl = z.infer<typeof tokenImageUrlSchema>;
 
+const TOKEN_CONDITION_IDS = TOKEN_CONDITIONS.map((c) => c.id) as [
+  TokenCondition,
+  ...TokenCondition[],
+];
+
+/** États actifs : IDs connus, doublons retirés, 14 max. Champ absent
+ *  (scènes antérieures) → []. Aucun `.catch` : une valeur inconnue est refusée. */
+const tokenConditionsSchema = z
+  .array(z.enum(TOKEN_CONDITION_IDS))
+  .max(TOKEN_CONDITIONS.length)
+  .transform((ids) => [...new Set(ids)])
+  .default([]);
+
 export const sceneTokenSchema = z.object({
   id: z.string().min(1).max(64),
   x: z.number(),
@@ -115,6 +129,8 @@ export const sceneTokenSchema = z.object({
   sight: tokenSightSchema.default(DEFAULT_SIGHT),
   // .default(...) : champ absent des scènes antérieures → aucune lumière.
   light: tokenLightSchema.default(DEFAULT_LIGHT),
+  // .default([]) : champ absent des scènes antérieures → aucun état.
+  conditions: tokenConditionsSchema,
 });
 export type SceneToken = z.infer<typeof sceneTokenSchema>;
 

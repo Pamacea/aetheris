@@ -149,6 +149,7 @@ async function seedDemoContent(campaignId: string): Promise<void> {
         imageUrl: null,
         sight: { enabled: true, rangeCells: null, type: "normal" },
         light: { enabled: false, radiusCells: null },
+        conditions: [],
       },
       {
         id: randomUUID(),
@@ -166,6 +167,7 @@ async function seedDemoContent(campaignId: string): Promise<void> {
         imageUrl: null,
         sight: { enabled: true, rangeCells: null, type: "normal" },
         light: { enabled: false, radiusCells: null },
+        conditions: [],
       },
     ],
     walls: [],

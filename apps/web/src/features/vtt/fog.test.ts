@@ -29,6 +29,7 @@ const jeton = (over: Partial<TokenState> = {}): TokenState => ({
   imageUrl: null,
   sight: { enabled: true, rangeCells: null, type: "normal" },
   light: { enabled: false, radiusCells: null },
+  conditions: [],
   ...over,
 });
 

@@ -1,6 +1,13 @@
 import { sceneTokenSchema } from "@aetheris/shared";
 import { describe, expect, it } from "vitest";
-import { canEditToken, clampHp, clampInt, newSceneToken, resolveMapUrl } from "./helpers";
+import {
+  activeConditions,
+  canEditToken,
+  clampHp,
+  clampInt,
+  newSceneToken,
+  resolveMapUrl,
+} from "./helpers";
 import type { GridSettings } from "./types";
 
 const grid: GridSettings = { type: "square", size: 64, offsetX: 0, offsetY: 0 };
@@ -79,7 +86,19 @@ describe("newSceneToken", () => {
       imageUrl: null,
       sight: { enabled: true, rangeCells: null, type: "normal" },
       light: { enabled: false, radiusCells: null },
+      conditions: [],
     });
+  });
+});
+
+describe("activeConditions", () => {
+  it("filtre et trie selon l'ordre canonique de la liste", () => {
+    expect(activeConditions(["prone", "blinded"]).map((c) => c.id)).toEqual(["blinded", "prone"]);
+    expect(activeConditions([])).toEqual([]);
+  });
+
+  it("expose le libellé court des pastilles", () => {
+    expect(activeConditions(["invisible"]).map((c) => c.short)).toEqual(["In"]);
   });
 });
 

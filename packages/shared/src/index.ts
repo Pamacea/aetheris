@@ -18,6 +18,7 @@ export * from "./schemas/templates.js";
 export * from "./schemas/theme.js";
 export * from "./schemas/wiki.js";
 export * from "./schemas/ws.js";
+export * from "./conditions.js";
 export * from "./dice.js";
 export * from "./entity-combat.js";
 export * from "./scene-visibility.js";

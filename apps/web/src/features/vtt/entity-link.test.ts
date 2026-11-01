@@ -32,6 +32,7 @@ const token = (patch: Partial<TokenState> = {}): TokenState => ({
   imageUrl: null,
   sight: { enabled: true, rangeCells: null, type: "normal" },
   light: { enabled: false, radiusCells: null },
+  conditions: [],
   ...patch,
 });
 

@@ -6,6 +6,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.4] — 2026-11-01
+
+### Ajouté
+
+- **États des jetons (VTT)** : 14 conditions de jeu (aveuglé, charmé, à terre, paralysé, inconscient…) définies dans `@aetheris/shared` avec libellés français. Le MJ les bascule depuis une rangée « États » de l'en-tête du jeton ; les pastilles ambre s'affichent sous les PV/CA, repliées dans la largeur du disque. Le joueur voit les états mais ne peut pas les modifier ; les scènes existantes restent valides (défaut vide), les doublons sont retirés et un identifiant inconnu est refusé.
+
+### Corrigé
+
+- **Sécurité `scene:commit`** : les `conditions` d'un jeton sont verrouillées pour un joueur, comme la lumière, l'image, le nom et la couleur.
+
+### Tests
+
+- Shared : 3 tests de schéma (défaut, dédoublonnage, refus des IDs inconnus et des tableaux > 14). Web : 2 tests de l'ordre canonique des conditions. Serveur : cas joueur modifiant `conditions`. Suites : shared 140, web 370, serveur 59 ; E2E 29/29.
+
 ## [0.7.3] — 2026-11-01
 
 ### Ajouté

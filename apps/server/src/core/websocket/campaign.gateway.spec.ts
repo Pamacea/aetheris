@@ -370,13 +370,14 @@ describe("CampaignGateway.sceneCommit (sécurité joueur)", () => {
     ).rejects.toBeInstanceOf(WsException);
   });
 
-  it("refuse le changement de propriétaire, d'identité de fiche, de couleur et d'image", async () => {
+  it("refuse le changement de propriétaire, d'identité de fiche, de couleur, d'image et d'états", async () => {
     const cases = [
       { ownerId: "user-2" },
       { noteId: "note-1" },
       { color: "#ffffff" },
       { imageUrl: "https://exemple.fr/jeton.png" },
       { light: { enabled: true, radiusCells: 3 } },
+      { conditions: ["poisoned"] },
     ];
     for (const over of cases) {
       const { gateway, socket } = player({ entities: ["note-1"] });
@@ -452,7 +453,10 @@ describe("CampaignGateway.sceneCommit (sécurité joueur)", () => {
       {
         campaignId: CAMPAIGN,
         // Commit d'un client filtré : les murs secrets sont absents.
-        state: scene({ walls: [], tokens: [token({ ownerId: "user-1", hp: 4 })] }),
+        state: scene({
+          walls: [],
+          tokens: [token({ ownerId: "user-1", hp: 4 })],
+        }),
       },
       socket,
     );

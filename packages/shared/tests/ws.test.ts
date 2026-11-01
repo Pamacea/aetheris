@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { TOKEN_CONDITIONS } from "../dist/conditions.js";
 import {
   chatSendSchema,
   diceRollRequestSchema,
@@ -154,6 +155,51 @@ test("jeton : imageUrl absent → null, http(s) conservé, le reste normalisé",
     assert.equal(r.success, true);
     if (r.success) assert.equal(r.data.tokens[0].imageUrl, null);
   }
+});
+
+test("jeton : conditions absentes → [], valides conservées dans l'ordre", () => {
+  assert.deepEqual(sceneStateSchema.parse(etat()).tokens[0].conditions, []);
+  const r = sceneStateSchema.parse(
+    etat({ tokens: [{ ...jeton, conditions: ["prone", "blinded"] }] }),
+  );
+  assert.deepEqual(r.tokens[0].conditions, ["prone", "blinded"]);
+});
+
+test("jeton : conditions dédoublonnées", () => {
+  const r = sceneStateSchema.parse(
+    etat({ tokens: [{ ...jeton, conditions: ["prone", "blinded", "prone"] }] }),
+  );
+  assert.deepEqual(r.tokens[0].conditions, ["prone", "blinded"]);
+});
+
+test("jeton : condition inconnue, non-tableau et plus de 14 refusés", () => {
+  assert.equal(
+    sceneStateSchema.safeParse(etat({ tokens: [{ ...jeton, conditions: ["noyé"] }] })).success,
+    false,
+  );
+  assert.equal(
+    sceneStateSchema.safeParse(etat({ tokens: [{ ...jeton, conditions: "prone" }] })).success,
+    false,
+  );
+  assert.equal(
+    sceneStateSchema.safeParse(
+      etat({
+        tokens: [
+          {
+            ...jeton,
+            conditions: [...TOKEN_CONDITIONS.map((c) => c.id)],
+          },
+        ],
+      }),
+    ).success,
+    true,
+  );
+  assert.equal(
+    sceneStateSchema.safeParse(
+      etat({ tokens: [{ ...jeton, conditions: [...TOKEN_CONDITIONS.map((c) => c.id), "prone"] }] }),
+    ).success,
+    false,
+  );
 });
 
 test("theatreNotes absent : défaut [] (payloads antérieurs valides)", () => {

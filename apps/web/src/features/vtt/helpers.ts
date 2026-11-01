@@ -1,4 +1,5 @@
 import { resolveColor } from "@/lib/pixi-theme";
+import { TOKEN_CONDITIONS, type TokenCondition } from "@aetheris/shared";
 import { TOKEN_COLORS, type GridSettings, type TokenState, type VttPoint } from "./types";
 
 /**
@@ -42,7 +43,15 @@ export function newSceneToken(
     imageUrl: null,
     sight: { enabled: true, rangeCells: null, type: "normal" },
     light: { enabled: false, radiusCells: null },
+    conditions: [],
   };
+}
+
+/** Conditions actives dans l'ordre canonique de la liste (pastilles du jeton). */
+export function activeConditions(
+  ids: readonly TokenCondition[],
+): (typeof TOKEN_CONDITIONS)[number][] {
+  return TOKEN_CONDITIONS.filter((condition) => ids.includes(condition.id));
 }
 
 /** Saisie numérique entière bornée ; null si vide ou non numérique. */

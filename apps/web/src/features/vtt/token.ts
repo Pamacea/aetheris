@@ -1,5 +1,5 @@
 import { Container, Graphics, Sprite, Text, Texture } from "pixi.js";
-import { cssColor } from "./helpers";
+import { activeConditions, cssColor } from "./helpers";
 import type { TokenState } from "./types";
 
 /**
@@ -142,6 +142,7 @@ export function buildToken(t: TokenState, selectedToken: string | null): Contain
   const stats: string[] = [];
   if (t.hpMax != null) stats.push(`${t.hp ?? 0}/${t.hpMax} PV`);
   if (t.ac != null) stats.push(`CA ${t.ac}`);
+  let stackY = label.y + fontSize + 6;
   if (stats.length > 0) {
     const statLine = new Text({
       text: stats.join(" · "),
@@ -150,6 +151,51 @@ export function buildToken(t: TokenState, selectedToken: string | null): Contain
     statLine.anchor.set(0.5, 0);
     statLine.y = label.y + fontSize + 2;
     c.addChild(statLine);
+    stackY = statLine.y + fontSize + 5;
+  }
+
+  // États actifs : pastilles ambre sous PV/CA, repliées dans la largeur du
+  // disque. Couleur fixe (indépendante du jeton) pour rester lisible.
+  const conditions = activeConditions(t.conditions);
+  if (conditions.length > 0) {
+    const chipFont = Math.max(8, Math.round(t.size * 0.12));
+    const padX = Math.max(2, Math.round(chipFont * 0.45));
+    const gap = 2;
+    const chipH = chipFont + 4;
+    const chips = conditions.map((condition) => {
+      const text = new Text({
+        text: condition.short,
+        style: { fontFamily: "Cinzel, serif", fontSize: chipFont, fill: 0x140f08 },
+      });
+      text.anchor.set(0.5);
+      return { text, w: Math.ceil(text.width) + padX * 2 };
+    });
+    const drawRow = (items: typeof chips, top: number) => {
+      const total = items.reduce((sum, item) => sum + item.w, 0) + gap * (items.length - 1);
+      let cursor = -total / 2;
+      for (const item of items) {
+        c.addChild(
+          new Graphics().roundRect(cursor, top, item.w, chipH, chipH / 2).fill({ color: 0xd9a441 }),
+        );
+        item.text.position.set(cursor + item.w / 2, top + chipH / 2);
+        c.addChild(item.text);
+        cursor += item.w + gap;
+      }
+    };
+    let row: typeof chips = [];
+    let rowWidth = 0;
+    let top = stackY;
+    for (const chip of chips) {
+      if (row.length > 0 && rowWidth + gap + chip.w > t.size) {
+        drawRow(row, top);
+        top += chipH + gap;
+        row = [];
+        rowWidth = 0;
+      }
+      rowWidth = row.length === 0 ? chip.w : rowWidth + gap + chip.w;
+      row.push(chip);
+    }
+    if (row.length > 0) drawRow(row, top);
   }
 
   if (t.id === selectedToken) {

@@ -1,6 +1,7 @@
 import { ImageUploadField } from "@/components/image-upload";
 import { EyeIcon, EyeOffIcon, TrashIcon } from "@/components/icons";
 import { getCampaignSocket } from "@/lib/ws";
+import { TOKEN_CONDITIONS, type TokenCondition } from "@aetheris/shared";
 import { saveTokenCombat } from "./actions";
 import { entityTokenPatch } from "./entity-link";
 import { canEditToken, clampHp, clampInt } from "./helpers";
@@ -23,10 +24,10 @@ interface VttTokenHeaderProps {
 }
 
 /**
- * Une seule ligne, jamais repliée : les champs défilent horizontalement si la
- * table est étroite, la corbeille reste épinglée à droite.
+ * Champs sur une ligne défilante (corbeille épinglée à droite) ; la rangée
+ * « États » du MJ passe en seconde ligne pleine largeur.
  */
-const HEADER_CLS = "flex items-center border-b border-border bg-neutral-950";
+const HEADER_CLS = "flex flex-wrap items-center border-b border-border bg-neutral-950";
 const ROW_CLS =
   "no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto px-2 py-1.5 text-xs";
 const NUM_CLS = "input w-14 shrink-0 py-1 text-right font-mono text-xs";
@@ -113,6 +114,17 @@ export function VttTokenHeader({
 
   const setLight = (patch: Partial<TokenState["light"]>) =>
     updateToken(token.id, { light: { ...token.light, ...patch } });
+
+  /** États : réservés au MJ (verrouillés côté serveur pour un joueur). */
+  const toggleCondition = (id: TokenCondition) => {
+    const next = token.conditions.includes(id)
+      ? token.conditions.filter((c) => c !== id)
+      : [...token.conditions, id];
+    // Ordre canonique de la liste, quel que soit l'ordre des clics.
+    updateToken(token.id, {
+      conditions: TOKEN_CONDITIONS.filter((c) => next.includes(c.id)).map((c) => c.id),
+    });
+  };
 
   /** Champ vide = portée globale du brouillard (`fog.sightCells`). */
   const setLightRange = (raw: string) => {
@@ -368,6 +380,32 @@ export function VttTokenHeader({
         >
           <TrashIcon className="h-4 w-4" />
         </button>
+      )}
+
+      {isGM && (
+        <div className="flex basis-full flex-wrap items-center gap-1 border-t border-border px-2 py-1">
+          <span className={LABEL_CLS}>États</span>
+          {TOKEN_CONDITIONS.map((condition) => {
+            const active = token.conditions.includes(condition.id);
+            return (
+              <button
+                key={condition.id}
+                type="button"
+                aria-pressed={active}
+                aria-label={`${condition.label} : ${active ? "actif" : "inactif"}`}
+                title={`${condition.label} — ${active ? "retirer" : "appliquer"}`}
+                onClick={() => toggleCondition(condition.id)}
+                className={`h-6 shrink-0 border px-1.5 text-[0.6rem] leading-none transition ${
+                  active
+                    ? "border-amber-500/40 text-accent"
+                    : "border-border text-muted hover:text-foreground"
+                }`}
+              >
+                {condition.label}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
