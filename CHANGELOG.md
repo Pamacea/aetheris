@@ -6,6 +6,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.8] — 2026-11-01
+
+### Modifié
+
+- **Roadmap sans référence morte** : les trois renvois à `docs/audit-0.6.0.md`
+  (fichier supprimé) sont retirés de `ROADMAP.md` ; le bilan 0.6.0 reste cité sans lien.
+- **Serveur MCP Neon versionné** : `.mcp.json` déclare `https://mcp.neon.tech/mcp` en
+  OAuth, sans clé ni secret. Le skill Neon installé localement (`.claude/skills/`,
+  `skills-lock.json`) reste hors dépôt.
+
+### Opérations
+
+- **Données E2E purgées sur la branche Neon `preview`** : 1072 campagnes et 1391 comptes
+  marqués supprimés ; 53 campagnes protégées (au moins un membre non marqué) intactes.
+  La branche `main` n'a pas été touchée.
+
 ## [0.7.7] — 2026-11-01
 
 ### Ajouté

@@ -46,7 +46,7 @@ Périmètre : 11 modules de campagne + 4 surfaces produit = **15 entrées**.
 
 **Bilan : 11 modules fonctionnels, 4 partiels (Ambiance, Macros, Permissions,
 Export auteur/Import), 0 absent.** En comptant l'éditeur de modèles comme une surface
-distincte — ce que fait l'audit 0.6.0 (`docs/audit-0.6.0.md`) — cela donne 12 surfaces
+distincte — ce que faisait l'audit 0.6.0 — cela donne 12 surfaces
 fonctionnelles ; rattaché au Wiki, il ramène la matrice à 15 entrées et 11 modules
 fonctionnels. Les exports réellement livrés sont les **modèles, thèmes et systèmes de jeu
 en JSON**, plus l'**archive auteur des romans en ZIP JSON** ; il n'existe ni export ni
@@ -101,9 +101,9 @@ serveurs de dev actifs) le 2026-11-01. `pnpm fmt:check` est vert sur 446 fichier
 - **Déploiement Vercel Services** (`vercel.json`) : service Nest et service Next, rewrites
   `/api/auth`, `/api/uploads`, `/api` et `/socket.io`. WebSocket supporté en mono-instance ;
   aucun adaptateur Redis n'est installé.
-- **Documentation versionnée** : `docs/audit-0.6.0.md` (audit 0.6.0), `docs/deployment.md`
-  (migrations, baseline Neon), `docs/storage.md` (Vercel Blob) et `docs/export.md`
-  (périmètre des exports) sont versionnés avec le code.
+- **Documentation versionnée** : `docs/deployment.md` (migrations, baseline Neon),
+  `docs/storage.md` (Vercel Blob) et `docs/export.md` (périmètre des exports) sont
+  versionnés avec le code.
 
 ### Abandonné ou non livré
 
@@ -189,9 +189,9 @@ Candidats, non planifiés et non promis :
    déploiement doit dépasser une instance.
 9. **Tests** : handshake WebSocket, événements de plugins, export/import de campagne et
    parcours E2E de l'historique VTT.
-10. **Documentation** : maintenir `docs/audit-0.6.0.md`, `docs/deployment.md`,
-    `docs/storage.md` et `docs/export.md` ; garder README, ROADMAP, landing et CHANGELOG
-    alignés à chaque version.
+10. **Documentation** : maintenir `docs/deployment.md`, `docs/storage.md` et
+    `docs/export.md` ; garder README, ROADMAP, landing et CHANGELOG alignés à chaque
+    version.
 
 ---
 

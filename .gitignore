@@ -27,3 +27,7 @@ playwright-report/
 # Artefacts d'outillage (métriques d'agents, redirection Windows)
 .smite/
 nul
+
+# Skill Neon installé localement (contenu tiers) ; .mcp.json reste versionné
+.claude/skills/
+skills-lock.json
