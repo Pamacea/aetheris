@@ -20,13 +20,28 @@ interface VttToolbarProps {
   tool: VttTool;
   setTool: (tool: VttTool) => void;
   zoom: number;
+  isGM: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 /**
  * Outils de la table, posés dans le dock inférieur à côté des modules :
  * icônes seules (libellé au survol), l'outil actif reste allumé en accent.
  */
-export function VttToolbar({ visibleTools, tool, setTool, zoom }: VttToolbarProps) {
+export function VttToolbar({
+  visibleTools,
+  tool,
+  setTool,
+  zoom,
+  isGM,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+}: VttToolbarProps) {
   // Snapshot serveur null (rien à hydrater), puis le nœud du dock côté client.
   const host = useSyncExternalStore(
     () => () => {},
@@ -58,6 +73,34 @@ export function VttToolbar({ visibleTools, tool, setTool, zoom }: VttToolbarProp
           </button>
         );
       })}
+      {isGM && (
+        <>
+          <button
+            type="button"
+            title="Annuler (Ctrl+Z)"
+            aria-label="Annuler la dernière action"
+            onClick={onUndo}
+            disabled={!canUndo}
+            className="grid h-6 w-6 place-items-center text-muted transition hover:bg-card-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          >
+            <span aria-hidden className="text-sm leading-none">
+              ↶
+            </span>
+          </button>
+          <button
+            type="button"
+            title="Rétablir (Ctrl+Shift+Z)"
+            aria-label="Rétablir la dernière action annulée"
+            onClick={onRedo}
+            disabled={!canRedo}
+            className="grid h-6 w-6 place-items-center text-muted transition hover:bg-card-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          >
+            <span aria-hidden className="text-sm leading-none">
+              ↷
+            </span>
+          </button>
+        </>
+      )}
       <span className="ml-1 font-mono text-[0.6rem] text-muted" title="Zoom">
         {Math.round(zoom * 100)} %
       </span>

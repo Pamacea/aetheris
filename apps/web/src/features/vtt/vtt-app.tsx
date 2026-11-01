@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useVttActions } from "./use-vtt-actions";
 import { useVttBridge } from "./bridge";
 import { createVttScene } from "./scene";
+import { useVttHistory } from "./use-vtt-history";
 import { useVttSocket } from "./socket";
 import { useVttState } from "./state";
 import { useVttApiSync } from "./sync";
@@ -32,7 +33,7 @@ export function VttApp({
 
   const st = useVttState(initialScene);
 
-  const { wsRef } = useVttSocket({
+  const { wsRef, connected, remoteSeqRef } = useVttSocket({
     campaignId,
     isGM,
     grid: st.grid,
@@ -49,6 +50,29 @@ export function VttApp({
       setMapUrl: st.setMapUrl,
       setFogOn: st.setFogOn,
       setSightCells: st.setSightCells,
+    },
+  });
+
+  const { undo, redo, canUndo, canRedo } = useVttHistory({
+    isGM,
+    connected,
+    remoteSeqRef,
+    scene: {
+      tokens: st.tokens,
+      walls: st.walls,
+      grid: st.grid,
+      mapUrl: st.mapUrl,
+      fogOn: st.fogOn,
+      sightCells: st.sightCells,
+    },
+    apply: {
+      setTokens: st.setTokens,
+      setWalls: st.setWalls,
+      setGrid: st.setGrid,
+      setMapUrl: st.setMapUrl,
+      setFogOn: st.setFogOn,
+      setSightCells: st.setSightCells,
+      setSelectedId: st.setSelectedId,
     },
   });
 
@@ -92,6 +116,8 @@ export function VttApp({
     setSelectedId: st.setSelectedId,
     setWalls: st.setWalls,
     setWallSelection: st.setWallSelection,
+    undo,
+    redo,
   });
 
   const bridge = useVttBridge({
@@ -127,6 +153,10 @@ export function VttApp({
         userId={userId}
         members={members}
         entities={entities}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
       />
       <div className="relative flex min-h-0 flex-1">
         <VttStage tool={st.tool} containerRef={containerRef} />

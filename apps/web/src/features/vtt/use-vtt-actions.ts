@@ -30,6 +30,9 @@ interface VttActionsParams {
   setSelectedId: Dispatch<SetStateAction<string | null>>;
   setWalls: Dispatch<SetStateAction<WallLine[]>>;
   setWallSelection: Dispatch<SetStateAction<WallSelection | null>>;
+  /** Annule/rétablit une action de scène ; false si la pile est vide. */
+  undo: () => boolean;
+  redo: () => boolean;
 }
 
 /** Sélecteur « champ de saisie » : les raccourcis ne doivent pas s'y appliquer. */
@@ -64,6 +67,8 @@ export function useVttActions({
   setSelectedId,
   setWalls,
   setWallSelection,
+  undo,
+  redo,
 }: VttActionsParams) {
   const [mapUploadError, setMapUploadError] = useState<string | null>(null);
 
@@ -184,6 +189,15 @@ export function useVttActions({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isEditable(document.activeElement)) return;
+      // Annuler/rétablir : Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z ou Ctrl/Cmd+Y.
+      const mod = (e.ctrlKey || e.metaKey) && !e.altKey;
+      const key = e.key.toLowerCase();
+      if (mod && (key === "z" || key === "y")) {
+        if (!isGM) return; // aucun raccourci d'historique pour un joueur
+        const isRedo = key === "y" || e.shiftKey;
+        if ((isRedo ? redo : undo)()) e.preventDefault();
+        return;
+      }
       if (e.key === "Escape") {
         if (tool === "wall") apiRef.current?.cancelDraft();
         if (wallSelection) {

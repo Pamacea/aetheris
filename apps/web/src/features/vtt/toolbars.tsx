@@ -20,6 +20,10 @@ interface VttToolbarsProps {
   userId: string;
   members: VttMember[];
   entities: VttEntity[];
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 /** En-tête unique du token sélectionné + barre de sorts + outils (dock). */
@@ -33,6 +37,10 @@ export function VttToolbars({
   userId,
   members,
   entities,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: VttToolbarsProps) {
   // Joueur : Curseur + Vue uniquement — tout le reste édite la table (MJ).
   const visibleTools = TOOLS.filter((t) => isGM || !t.gmOnly);
@@ -64,7 +72,17 @@ export function VttToolbars({
       )}
 
       {/* Barre flottante en bas de la table, au niveau du dock des modules. */}
-      <VttToolbar visibleTools={visibleTools} tool={st.tool} setTool={st.setTool} zoom={st.zoom} />
+      <VttToolbar
+        visibleTools={visibleTools}
+        tool={st.tool}
+        setTool={st.setTool}
+        zoom={st.zoom}
+        isGM={isGM}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={onUndo}
+        onRedo={onRedo}
+      />
     </>
   );
 }

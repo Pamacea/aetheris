@@ -6,6 +6,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.5] — 2026-11-01
+
+### Ajouté
+
+- **Annuler/rétablir les actions de scène (VTT, MJ)** : historique en mémoire côté client, plafonné à 30 entrées et regroupant une rafale (drag, saisie, tracé) en une seule action. `Ctrl/Cmd+Z` annule, `Ctrl/Cmd+Shift+Z` et `Ctrl/Cmd+Y` rétablissent ; les boutons ↶/↷ de la barre d'outils suivent l'état des piles et sont réservés au MJ. Une restauration passe par les setters habituels et le commit débouncé existant : rien n'est persisté séparément. Les états reçus par WebSocket et les échos `token:moved` du propre geste du MJ n'enregistrent jamais d'entrée.
+
+### Tests
+
+- 6 tests de la logique d'historique (plafond à 30, piles vides, ordre inverse, redo vidé par une nouvelle action). Suite web : 376 tests, shared 140, serveur 59 ; E2E 29/29.
+
 ## [0.7.4] — 2026-11-01
 
 ### Ajouté

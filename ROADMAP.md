@@ -1,9 +1,8 @@
 # ROADMAP — Aetheris
 
 > **Plateforme VTT & Lore Studio**
-> Version documentée : 0.6.1 · Dernière mise à jour : 2026-11-01.
-> Source de vérité : le code au commit `e5cdff4` (`e5cdff4074445cc982818ae5f0e04a4dd45fa509`,
-> `PATCH: aetheris - v0.6.1`, 2026-11-01).
+> Version documentée : 0.7.5 · Dernière mise à jour : 2026-11-01.
+> Base vérifiée : commit `2ca775e` (v0.7.4), complétée par `UPDATE: aetheris - v0.7.5`.
 > Chaque statut ci-dessous est vérifié dans le code ; aucune case n'est cochée sans preuve.
 
 ---
@@ -23,37 +22,40 @@ et Macros.
 
 ---
 
-## État réel vérifié en v0.6.1
+## État réel vérifié en v0.7.5
 
 Périmètre : 11 modules de campagne + 4 surfaces produit = **15 entrées**.
 
-| #   | Module          | Statut               | Preuve et limite                                                                                                                                                                                                                                                |
-| --- | --------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Table / VTT     | Fonctionnel          | `features/vtt`, gateway `token:*` / `scene:*` ; une seule scène par campagne, pas de liste de scènes.                                                                                                                                                           |
-| 2   | Wiki            | Fonctionnel          | Routes `/wiki` et `/wiki/templates`, TipTap, blocs, versions, partage public ; l'éditeur de modèles est un sous-module du Wiki.                                                                                                                                 |
-| 3   | Graphe          | Fonctionnel          | Route `/graph`, liens `EntityLink`, zoom/pan ; E2E limité au chargement.                                                                                                                                                                                        |
-| 4   | Journal         | Fonctionnel          | Route `/journal`, CRUD manuel de handouts (`features/journal/actions.ts`) ; **aucune automatisation table → journal**.                                                                                                                                          |
-| 5   | Choix           | Fonctionnel          | Route `/choices`, création MJ et vote joueur ; la mise à jour passe par un refetch RSC, pas par un payload poussé.                                                                                                                                              |
-| 6   | Ambiance        | Partiel              | Playlists en base et transport synchronisé (`ambiance:state`) ; pas de position/seek partagée, un retardataire démarre la piste à 0.                                                                                                                            |
-| 7   | Combat          | Fonctionnel          | Route `/combat`, initiative, tours et diffusion MJ → joueurs ; pas de moteur de règles.                                                                                                                                                                         |
-| 8   | Fiches          | Fonctionnel          | Route `/fiches`, modèles 12 colonnes, assignation, édition contrôlée par rôle.                                                                                                                                                                                  |
-| 9   | Macros          | Partiel              | Éditeur et exécution en iframe sandbox ; stockage `localStorage` par campagne, pas de persistance serveur ni de partage.                                                                                                                                        |
-| 10  | Réglages        | Fonctionnel          | Route `/settings`, thème CSS sanitisé, bascules des 5 plugins ; le JS de thème n'est exécuté qu'en aperçu sandboxé.                                                                                                                                             |
-| 11  | Permissions     | Partiel              | Rôles MJ/PJ, dernier MJ protégé, grants `view` ; grants limités à `vtt/wiki/graph/journal/choices/ambiance`. Depuis 0.6.1, les événements WebSocket contrôlent l'assignation et la propriété (jetons, fiches), mais les grants n'y sont toujours pas appliqués. |
-| 12  | Romans          | Fonctionnel          | Routes `/novels`, autosave, statuts, impression, partage lecture/relecture/édition ; partage et impression non couverts par l'E2E.                                                                                                                              |
-| 13  | Bibliothèque    | Fonctionnel          | Route `/library`, romans publiés, recherche auteur/genre/tag ; pas d'E2E dédié.                                                                                                                                                                                 |
-| 14  | Systèmes de jeu | Fonctionnel (limité) | 7 presets et systèmes maison via l'assistant de création de campagne ; génère un modèle Personnage, pas de moteur de règles.                                                                                                                                    |
-| 15  | Export / Import | **Absent**           | Schéma `campaignExportSchema` et tests uniquement ; `jszip` installé mais inutilisé, aucune action ni UI.                                                                                                                                                       |
+| #   | Module                 | Statut               | Preuve et limite                                                                                                                                                                                                                                                                                                                  |
+| --- | ---------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Table / VTT            | Fonctionnel          | `features/vtt`, gateway `token:*` / `scene:*` ; une seule scène par campagne, pas de liste de scènes. Depuis 0.7.2–0.7.5 : images de jetons (`imageUrl`), sources lumineuses, 14 états et annuler/rétablir MJ (30 entrées en mémoire).                                                                                            |
+| 2   | Wiki                   | Fonctionnel          | Routes `/wiki` et `/wiki/templates`, TipTap, blocs, versions, partage public ; l'éditeur de modèles est un sous-module du Wiki.                                                                                                                                                                                                   |
+| 3   | Graphe                 | Fonctionnel          | Route `/graph`, liens `EntityLink`, zoom/pan ; E2E limité au chargement.                                                                                                                                                                                                                                                          |
+| 4   | Journal                | Fonctionnel          | Route `/journal`, CRUD de handouts et `JournalAutomationService` (0.7.1) : jets, arrivées, activation de scène et événements de plugins alimentent le journal si le module est actif. Anti-flood d'une entrée par campagne et par seconde, en mémoire.                                                                            |
+| 5   | Choix                  | Fonctionnel          | Route `/choices`, création MJ et vote joueur ; la mise à jour passe par un refetch RSC, pas par un payload poussé.                                                                                                                                                                                                                |
+| 6   | Ambiance               | Partiel              | Playlists en base et transport synchronisé (`ambiance:state`) ; pas de position/seek partagée, un retardataire démarre la piste à 0.                                                                                                                                                                                              |
+| 7   | Combat                 | Fonctionnel          | Route `/combat`, initiative, tours et diffusion MJ → joueurs ; pas de moteur de règles.                                                                                                                                                                                                                                           |
+| 8   | Fiches                 | Fonctionnel          | Route `/fiches`, modèles 12 colonnes, assignation, édition contrôlée par rôle.                                                                                                                                                                                                                                                    |
+| 9   | Macros                 | Partiel              | Éditeur et exécution en iframe sandbox ; stockage `localStorage` par campagne, pas de persistance serveur ni de partage.                                                                                                                                                                                                          |
+| 10  | Réglages               | Fonctionnel          | Route `/settings`, thème CSS sanitisé, bascules des 5 plugins ; le JS de thème n'est exécuté qu'en aperçu sandboxé.                                                                                                                                                                                                               |
+| 11  | Permissions            | Partiel              | Rôles MJ/PJ, dernier MJ protégé, grants `view` ; grants limités à `vtt/wiki/graph/journal/choices/ambiance`. Depuis 0.6.1, les événements WebSocket contrôlent l'assignation et la propriété (jetons, fiches), mais les grants n'y sont toujours pas appliqués.                                                                   |
+| 12  | Romans                 | Fonctionnel          | Routes `/novels`, autosave, statuts, impression, partage lecture/relecture/édition ; partage et impression non couverts par l'E2E.                                                                                                                                                                                                |
+| 13  | Bibliothèque           | Fonctionnel          | Route `/library`, romans publiés, recherche auteur/genre/tag ; pas d'E2E dédié.                                                                                                                                                                                                                                                   |
+| 14  | Systèmes de jeu        | Fonctionnel (limité) | 7 presets et systèmes maison via l'assistant de création de campagne ; génère un modèle Personnage, pas de moteur de règles.                                                                                                                                                                                                      |
+| 15  | Export auteur / Import | Partiel (assumé)     | `GET /novels/export` livre un ZIP JSON des romans dont l'utilisateur est l'auteur (200 maximum, document TipTap brut et texte extrait), filtré strictement sur `authorId` et documenté dans `docs/export.md`. L'export de campagne reste absent : `campaignExportSchema` et tests seulement, aucune action ni UI d'import/export. |
 
-**Bilan : 11 modules fonctionnels, 3 partiels (Ambiance, Macros, Permissions), 1 absent
-(Export/Import).** En comptant l'éditeur de modèles comme une surface distincte — ce que
-fait l'audit 0.6.0 (`docs/audit-0.6.0.md`) — cela donne 12 surfaces fonctionnelles ; rattaché au Wiki,
-il ramène la matrice à 15 entrées et 11 modules fonctionnels. Les exports réellement
-livrés sont limités aux **modèles, thèmes et systèmes de jeu en JSON** — pas de campagne
-ni de compte.
+**Bilan : 11 modules fonctionnels, 4 partiels (Ambiance, Macros, Permissions,
+Export auteur/Import), 0 absent.** En comptant l'éditeur de modèles comme une surface
+distincte — ce que fait l'audit 0.6.0 (`docs/audit-0.6.0.md`) — cela donne 12 surfaces
+fonctionnelles ; rattaché au Wiki, il ramène la matrice à 15 entrées et 11 modules
+fonctionnels. Les exports réellement livrés sont les **modèles, thèmes et systèmes de jeu
+en JSON**, plus l'**archive auteur des romans en ZIP JSON** ; il n'existe ni export ni
+import de campagne, ni export de compte.
 
 Contrôles effectués le 2026-11-01 : `pnpm typecheck` passe sur les 5 workspaces ;
-`pnpm exec turbo lint` passe (serveur : 0 erreur ; web : 0 erreur, 4 warnings préexistants).
+`pnpm exec turbo lint` passe (serveur : 0 erreur ; web : 0 erreur, 4 warnings préexistants) ;
+`pnpm test` passe (shared 140, web 376, serveur 59) et `pnpm test:e2e` passe (29/29 sur
+serveurs de dev actifs) le 2026-11-01. `pnpm fmt:check` est vert sur 446 fichiers.
 
 ---
 
@@ -66,10 +68,12 @@ Contrôles effectués le 2026-11-01 : `pnpm typecheck` passe sur les 5 workspace
   (contrats Zod), `packages/plugin-api`.
 - **Next.js pour les pages et Server Actions** ; **NestJS pour le temps réel** et le
   relais des événements de campagne.
-- **Prisma + Neon (PostgreSQL)**. Une migration additive de baseline
-  (`20261101090000_schema_0_6_0`) est générée et la procédure de baseline est documentée
-  dans `docs/deployment.md`. La baseline n'est pas encore exécutée sur Neon : tant qu'elle
-  ne l'est pas, `pnpm db:push` reste la méthode d'exploitation de la base Neon.
+- **Prisma + Neon (PostgreSQL)**. La migration additive de baseline
+  `20261101090000_schema_0_6_0` est générée et validée sur PostgreSQL 17 ; la procédure
+  `migrate resolve --applied` est documentée dans `docs/deployment.md`. **La base Neon
+  n'a pas d'historique de migrations baseline** : `pnpm db:push` reste donc la méthode
+  d'exploitation, en écart assumé avec la règle « pas de `db:push` en production » de
+  `docs/deployment.md`, tant que la procédure de baseline n'a pas été exécutée.
 - **Better Auth** : e-mail/mot de passe, sessions, OAuth Discord/GitHub activé par variables
   d'environnement.
 - **Contrats partagés** : les payloads HTTP/WS, formules, systèmes de jeu et schémas sont
@@ -78,11 +82,28 @@ Contrôles effectués le 2026-11-01 : `pnpm typecheck` passe sur les 5 workspace
   `ambiance`, `fiches`, `macros`) ; le cœur n'est pas désactivable.
 - **Sandbox** : CSS sanitisé, JS exécuté dans une iframe `sandbox="allow-scripts"` sans
   origine, via `new Function` confiné — aucun `eval` dans le document parent.
+- **Stockage d'images** : Vercel Blob via `POST /api/uploads`, session obligatoire,
+  validation des magic bytes (PNG, JPEG, WebP, GIF ; SVG refusé), 8 Mo par fichier et
+  quota de 200 Mo / 500 fichiers par utilisateur ; le chemin serveur est reconstruit.
+  Décision, coûts et sécurité dans `docs/storage.md`.
+- **Journal automatique serveur** : `JournalAutomationService` écoute `dice.rolled`,
+  `campaign.joined`, `scene.activated` et `plugin.event`. L'anti-flood (une écriture par
+  campagne et par seconde) est un `Map` en mémoire : il ne protège qu'une **instance**,
+  à déplacer dans un store partagé si le serveur est répliqué.
+- **Annuler/rétablir VTT** : historique en mémoire côté client (`features/vtt/history.ts`,
+  `use-vtt-history.ts`), plafonné à 30 instantanés, avec regroupement des rafales sur
+  400 ms. Raccourcis `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, `Ctrl/Cmd+Y` et boutons dédiés,
+  réservés au MJ. Rien n'est persisté séparément : la restauration passe par les setters
+  et le commit débouncé existants, et l'historique est perdu au rechargement.
+- **Lumière et vision séparées** : une source lumineuse éclaire la carte (polygone
+  découpé par les murs, portée en cases) mais ne révèle pas la silhouette des jetons hors
+  vision ; seuls les jetons possédés ou déjà visibles projettent leur lumière.
 - **Déploiement Vercel Services** (`vercel.json`) : service Nest et service Next, rewrites
-  `/api/auth`, `/api` et `/socket.io`. WebSocket supporté en mono-instance ; aucun adaptateur
-  Redis n'est installé.
-- **Documentation versionnée** : `docs/audit-0.6.0.md` (audit 0.6.0) et
-  `docs/deployment.md` (migrations, baseline Neon) sont versionnés avec le code.
+  `/api/auth`, `/api/uploads`, `/api` et `/socket.io`. WebSocket supporté en mono-instance ;
+  aucun adaptateur Redis n'est installé.
+- **Documentation versionnée** : `docs/audit-0.6.0.md` (audit 0.6.0), `docs/deployment.md`
+  (migrations, baseline Neon), `docs/storage.md` (Vercel Blob) et `docs/export.md`
+  (périmètre des exports) sont versionnés avec le code.
 
 ### Abandonné ou non livré
 
@@ -90,12 +111,12 @@ Contrôles effectués le 2026-11-01 : `pnpm typecheck` passe sur les 5 workspace
   (`features/vtt/socket.ts`).
 - **Dés 3D** : abandonnés ; les jets sont calculés côté serveur, sans physique ni rendu 3D.
 - **Local-first** : abandonné ; l'application est déployée sur Vercel et la base est sur Neon.
-- **Export/import ZIP de campagne** : schéma et tests seulement, aucune action ni UI.
+- **Export/import de campagne** : schéma `campaignExportSchema` et tests seulement, aucune
+  action ni UI. L'export auteur de romans est livré, mais il ne couvre pas la campagne.
 - **`packages/config`** : n'existe pas ; les configurations vivent dans chaque workspace.
 - **Route `/builder`** : n'existe pas ; les modèles sont dans `/wiki/templates`, les macros
   dans `/campaign/[id]/macros`, les systèmes de jeu dans l'assistant de création.
 - **Route `/campaign/[id]/chat`** : n'existe pas ; le chat et les dés vivent dans la VTT.
-- **Journal automatique** : non implémenté ; le journal est un CRUD manuel.
 - **Tous les modules activables** : faux ; seuls les 5 plugins du catalogue le sont.
 
 ---
@@ -124,6 +145,25 @@ Contrôles effectués le 2026-11-01 : `pnpm typecheck` passe sur les 5 workspace
 - **0.6.1 — 2026-11-01** : filtrage serveur de la scène VTT et des fiches visibles, contrôles
   d'assignation/propriété sur les événements WebSocket, grants sur les Server Actions,
   rotation du token de partage des romans et navigation publique corrigée.
+- **0.6.2 — 2026-11-01** : ROADMAP réécrite sur l'état vérifié, README et landing alignés,
+  entrée CHANGELOG 0.6.1 datée.
+- **0.6.3 — 2026-11-01** : migration additive de baseline `20261101090000_schema_0_6_0`
+  validée sur PostgreSQL 17 (13 migrations, zéro drift) ; procédure Neon documentée sans
+  exécution.
+- **0.6.4 — 2026-11-01** : correctif de sélection des modèles de fiches, E2E 27/27 et CI
+  `check` + `e2e`.
+- **0.7.0 — 2026-11-01** : uploads Vercel Blob sécurisés, campagne de démonstration avec
+  rollback, export auteur ZIP, guide MJ `/aide`, documentation storage/export.
+- **0.7.1 — 2026-11-01** : journal automatique serveur (`@nestjs/event-emitter`) pour les
+  jets, arrivées, scènes et événements de plugins, avec anti-flood.
+- **0.7.2 — 2026-11-01** : jetons illustrés par image distante (`imageUrl`), champ verrouillé
+  pour les joueurs.
+- **0.7.3 — 2026-11-01** : sources lumineuses par jeton découpées par les murs, redessin
+  immédiat du brouillard.
+- **0.7.4 — 2026-11-01** : 14 états de jetons avec pastilles, édition MJ et verrouillage
+  joueur.
+- **0.7.5 — 2026-11-01** : annuler/rétablir les actions de scène du MJ (30 entrées en
+  mémoire, raccourcis et boutons de barre d'outils).
 
 ---
 
@@ -131,22 +171,27 @@ Contrôles effectués le 2026-11-01 : `pnpm typecheck` passe sur les 5 workspace
 
 Candidats, non planifiés et non promis :
 
-1. **Export/import de campagne** : brancher une action et une UI sur `campaignExportSchema` ;
-   trancher JSON vs ZIP (jszip est déjà installé).
+1. **Export/import de campagne** : brancher `campaignExportSchema` sur une Server Action et
+   une UI, trancher JSON vs ZIP (`jszip` est déjà utilisé par l'export auteur) et créer une
+   nouvelle campagne à l'import.
 2. **Ambiance** : partager la position de lecture et rattraper les clients retardataires.
 3. **Macros** : persister les macros côté serveur et les partager dans la campagne.
 4. **Permissions** : appliquer les grants aux événements WebSocket et documenter la limite
    des grants au niveau module.
-5. **Migrations** : valider la migration `20261101090000_schema_0_6_0` sur un PostgreSQL
-   jetable, puis exécuter la procédure de baseline sur Neon (`docs/deployment.md`) sans DDL ;
-   garder `db:push` en attendant.
-6. **Journal** : assumer le CRUD manuel dans la documentation ou implémenter une
-   automatisation table → journal.
-7. **Temps réel multi-instances** : adaptateur Redis ou hébergement long-running si le
+5. **Migrations** : exécuter la procédure de baseline sur Neon (`docs/deployment.md`) sans
+   DDL, puis retirer `db:push` de l'exploitation courante.
+6. **Journal** : déplacer l'anti-flood dans un store partagé avant tout déploiement
+   multi-instances.
+7. **Historique VTT** : décider s'il faut étendre l'annulation aux actions hors scène ou
+   conserver l'historique entre rechargements ; aujourd'hui il est en mémoire et limité à la
+   session du MJ.
+8. **Temps réel multi-instances** : adaptateur Redis ou hébergement long-running si le
    déploiement doit dépasser une instance.
-8. **Tests** : handshake WebSocket, événements de plugins, export de campagne.
-9. **Documentation** : maintenir `docs/audit-0.6.0.md` et `docs/deployment.md` à jour ;
-   garder README, ROADMAP, landing et CHANGELOG alignés à chaque version.
+9. **Tests** : handshake WebSocket, événements de plugins, export/import de campagne et
+   parcours E2E de l'historique VTT.
+10. **Documentation** : maintenir `docs/audit-0.6.0.md`, `docs/deployment.md`,
+    `docs/storage.md` et `docs/export.md` ; garder README, ROADMAP, landing et CHANGELOG
+    alignés à chaque version.
 
 ---
 

@@ -50,8 +50,14 @@ export function useVttSocket({
   apply,
 }: VttSocketParams) {
   const { socket, connected } = useCampaignSocket(campaignId);
-  /** true pendant l'application d'un état reçu (évite la boucle d'émission). */
-  const applyingRemoteRef = useRef(false);
+  /**
+   * Compteur monotone des états distants appliqués (token déplacé, scène
+   * reçue). Les effets comparent leur propre dernier compteur vu : pas de
+   * booléen à consommer, donc indépendant de l'ordre des effets.
+   */
+  const remoteSeqRef = useRef(0);
+  /** Dernier compteur distant consommé par l'effet de commit. */
+  const seenRemoteRef = useRef(0);
   /** Premier rendu : rien n'a encore été édité, inutile d'écrire l'état initial. */
   const firstRunRef = useRef(true);
   /** Socket + campagne exposées à la fermeture Pixi (drags en cours). */
@@ -66,17 +72,17 @@ export function useVttSocket({
     socket.emit("scene:activate", { campaignId });
   }, [isGM, connected, socket, campaignId]);
 
-  // Réceptions : appliquées localement, sans re-émission (flag consommé
-  // par l'effet de commit ci-dessous).
+  // Réceptions : appliquées localement, sans re-émission (compteur consommé
+  // par l'effet de commit ci-dessous et par l'historique).
   useEffect(() => {
     const onMoved = (p: TokenMoved) => {
-      applyingRemoteRef.current = true;
+      remoteSeqRef.current += 1;
       apply.setTokens((ts) =>
         ts.map((t) => (t.id === p.tokenId ? { ...t, x: p.x, y: p.y, rot: p.rot ?? t.rot } : t)),
       );
     };
     const onState = (state: SceneState) => {
-      applyingRemoteRef.current = true;
+      remoteSeqRef.current += 1;
       // `scene:state` est la scène persistée brute : rejouer l'hydratation par
       // la fiche, sinon les jetons liés reperdent nom/PV/CA à chaque commit.
       apply.setTokens((prev) => hydrateTokens(state.tokens, entities, prev));
@@ -105,8 +111,9 @@ export function useVttSocket({
   // Émissions : commit d'état complet débouncé (persisté + broadcast).
   // Se déclenche aussi à la connexion (= resync initial).
   useEffect(() => {
-    if (applyingRemoteRef.current) {
-      applyingRemoteRef.current = false;
+    // Un état distant vient d'être appliqué : il ne se re-émet pas.
+    if (remoteSeqRef.current !== seenRemoteRef.current) {
+      seenRemoteRef.current = remoteSeqRef.current;
       return;
     }
     const state: SceneState = {
@@ -135,5 +142,5 @@ export function useVttSocket({
     return () => clearTimeout(timer);
   }, [connected, socket, campaignId, tokens, walls, grid, mapUrl, fogOn, sightCells]);
 
-  return { socket, connected, wsRef };
+  return { socket, connected, wsRef, remoteSeqRef };
 }
