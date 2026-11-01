@@ -9,7 +9,6 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Tableau de bord" },
   { href: "/library", label: "Bibliothèque" },
   { href: "/novels", label: "Studio d'écriture" },
-  { href: "/profile", label: "Profil" },
   { href: "/aide", label: "Aide" },
 ] as const;
 

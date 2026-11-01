@@ -6,6 +6,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.8.1] — 2026-11-01
+
+### Modifié
+
+- **Navbar** : retrait du lien « Profil » (`top-nav.tsx`) ; l'accès au profil reste dans le
+  menu utilisateur à droite. Le témoin de nav connectée du test E2E anonyme devient
+  « Aide ».
+- **`docs/deployment.md`** : la section « Basculer Vercel Preview » documente le constat
+  vérifié (l'intégration Neon-Vercel crée `preview/<branche-git>` par déploiement et ne
+  peut pas épingler Preview sur la branche `preview`), la procédure A (base fixe via
+  `DATABASE_URL` manuel après retrait de Preview de l'intégration), la procédure B
+  (déploiement figé) et le piège `vercel env pull`.
+
+### Sécurité
+
+- `.gitignore` couvre désormais les copies déchiffrées de `.enc.env` (`*.dec.env`,
+  `*.decrypted`) et `.claude/settings.local.json`, retiré du suivi Git.
+- Passe les six paquets en 0.8.1.
+
 ## [0.8.0] — 2026-11-01
 
 ### Ajouté

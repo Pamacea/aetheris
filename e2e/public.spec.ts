@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { createCampaign, openModule, register, uniqueEmail } from "./helpers";
 
 /** Libellés de la nav affichés uniquement pour une session connectée. */
-const CONNECTED_NAV_LABELS = ["Tableau de bord", "Studio d'écriture", "Profil"] as const;
+const CONNECTED_NAV_LABELS = ["Tableau de bord", "Studio d'écriture", "Aide"] as const;
 
 /** Contexte neuf sans cookies : visiteur anonyme, même après un register. */
 async function asAnonymous(browser: Browser, run: (page: Page) => Promise<void>) {

@@ -293,20 +293,50 @@ Vérification d'isolation (comptes `@e2e.aetheris.test`) : `main` 65 → 65, `pr
 
 ### Basculer Vercel Preview (étape dashboard)
 
+**Constat vérifié le 2026-11-01 dans la documentation Neon** : l'intégration Neon-Vercel
+ne permet **pas** d'épingler l'environnement Preview sur une branche Neon existante.
+Elle crée une branche `preview/<branche-git>` à chaque déploiement de préversion, enfant
+de la branche par défaut du projet Neon (`main`). Les seuls mappings fixes sont
+Production (branche choisie à l'intégration) et Development (`vercel-dev`, optionnel).
+Sources : « Neon-Managed Vercel integration » et « Vercel-native integration previews »
+(neon.com/docs) — voir aussi `docs/realtime.md` pour le contexte de décision.
+
+Conséquences pour l'alpha : deux déploiements Preview ne partagent pas la même base, et
+chaque nouveau déploiement repart d'une copie de `main`. Or les testeurs ont besoin d'une
+base **stable** qui n'est pas la production.
+
 Les variables `DATABASE_URL` / `POSTGRES_*` de Preview sont **integration-owned** :
 Vercel refuse de les modifier ou de les supprimer à la main, et un resync les réécrit.
-La bascule se fait donc dans l'intégration, pas en CLI :
+Deux procédures sont possibles, à valider dans le dashboard au moment de l'opération :
 
-1. Vercel → **Storage** → ressource `aetheris` → **Projects** → **Connect Project**.
-2. Cocher **Create database branch for deployment** pour **Preview** (laisser
-   Production décoché) ; la branche de production se règle dans Neon Console →
-   Integrations → Manage → Settings.
-3. Redéployer une préversion et vérifier que `DATABASE_URL` pointe une branche
-   `preview/<branche-git>` (jamais `main`).
+**A. Base fixe `preview` (recommandée pour l'alpha)**
 
-Avec l'intégration Neon gérée par Vercel, chaque déploiement de préversion reçoit une
-branche éphémère enfant de la branche par défaut ; elle n'est pas éligible à l'instant
-restore. Les déploiements déjà créés ne reçoivent pas le nouveau mapping.
+1. Vercel → **Storage** → ressource `aetheris` → **Projects** → **Connect Project** :
+   retirer l'environnement **Preview** de l'intégration pour arrêter l'injection dynamique
+   (laisser Production coché).
+2. Vercel → **Settings → Environment Variables → Preview** : définir `DATABASE_URL` avec
+   la connexion de la branche `preview` obtenue par
+   `npx neonctl connection-string preview --project-id flat-firefly-09779629`.
+   La valeur reste un secret : ne jamais la coller dans le dépôt ni dans un ticket.
+3. Redéployer une préversion, puis vérifier que les écritures arrivent sur
+   `br-royal-pond-b2gsa7np` : compter les comptes `@e2e.aetheris.test` sur `preview`
+   avant et après une inscription de test (méthode de la 7.1 : `main` 65 → 65,
+   `preview` 65 → 68).
+4. Vérifier après tout resync de l'intégration que `DATABASE_URL` de Preview n'a pas été
+   réécrite (Vercel ne montre que les variables du projet, pas les valeurs injectées par
+   déploiement).
+
+**B. Déploiement Preview figé (sans toucher à l'intégration)**
+
+Garder un unique déploiement Preview pendant toute la durée de l'alpha : les testeurs
+partagent la branche éphémère de ce déploiement. Tout nouveau déploiement crée une
+branche neuve, vide, et fait perdre les données de test. Acceptable pour une session
+courte, pas pour une alpha de plusieurs jours.
+
+**Piège de vérification** : `vercel env pull --environment=preview` renvoie la valeur
+statique du projet (celle de `main`), pas la connexion injectée par déploiement. Ne pas
+s'en servir pour conclure. Les déploiements déjà créés ne reçoivent pas un nouveau
+mapping ; il faut redéployer.
 
 ### Suite
 

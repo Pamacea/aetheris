@@ -8,6 +8,10 @@ dist/
 .env.local
 .env.*.local
 
+# Copies déchiffrées de .enc.env (la version chiffrée reste suivie)
+*.dec.env
+*.decrypted
+
 # Prisma / Docker data
 packages/database/prisma/*.db
 
@@ -30,4 +34,5 @@ nul
 
 # Skill Neon installé localement (contenu tiers) ; .mcp.json reste versionné
 .claude/skills/
+.claude/settings.local.json
 skills-lock.json
