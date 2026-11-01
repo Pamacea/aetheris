@@ -22,7 +22,7 @@ test("campagne de démonstration : seed visible et retour au dashboard", async (
   await expect(page.getByRole("link", { name: /Campagne de démonstration/ })).toBeVisible();
 });
 
-test("upload : refus propre sans stockage Blob configuré", async ({ page }) => {
+test("upload : 200 avec stockage, 503 explicite sinon, jamais 500", async ({ page }) => {
   await page.goto("/dashboard");
 
   const result = await page.evaluate(async () => {
@@ -32,12 +32,15 @@ test("upload : refus propre sans stockage Blob configuré", async ({ page }) => 
     form.append("file", new File([png], "test.png", { type: "image/png" }));
     form.append("purpose", "cover");
     const res = await fetch("/api/uploads", { method: "POST", body: form });
-    const body = (await res.json()) as { error?: string };
-    return { status: res.status, error: body.error ?? "" };
+    const body = (await res.json()) as { url?: string; error?: string };
+    return { status: res.status, url: body.url ?? "", error: body.error ?? "" };
   });
 
+  // Un store est configuré en local et sur Vercel ; en CI (aucun token), le refus doit
+  // rester un JSON 503 exploitable plutôt qu'un 500 sans corps.
   if (result.status === 200) {
-    test.skip(true, "BLOB_READ_WRITE_TOKEN configuré : le refus 503 ne s'applique pas.");
+    expect(result.url).toMatch(/^https:\/\//);
+    return;
   }
   expect(result.status).toBe(503);
   expect(result.error).toContain("Stockage d'images non configuré");

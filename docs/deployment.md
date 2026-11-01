@@ -242,13 +242,76 @@ Garde-fous :
 campagnes en cours) : la base partagée n'est tolérable que tant que ces données sont
 sacrifiables.
 
-Procédure préparée, non exécutée :
+### État au 2026-11-01
 
-1. Créer une branche Neon par environnement (`preview`, `staging`) à partir de la prod.
-2. Dans Vercel, donner à chaque environnement sa propre `DATABASE_URL` (Preview ≠
-   Production) et vérifier que chaque service lit celle de son environnement.
-3. Appliquer `prisma migrate deploy` sur chaque branche, puis semer les données de démo.
-4. Garder la production sur sa branche racine ; les tests manuels et les E2E visent la
-   branche de préversion.
-5. Pour les E2E destructifs, préférer une branche jetable recréée depuis la préversion
+| Élément                        | État                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| Projet Neon                    | `aetheris` (`flat-firefly-09779629`)                                             |
+| Branche de production          | `main` (`br-super-resonance-b2ucfvpx`), primaire                                 |
+| Branche d'isolation            | `preview` (`br-royal-pond-b2gsa7np`), enfant de `main`                           |
+| Historique Prisma de `preview` | les 13 migrations sont marquées appliquées (`migrate status` : à jour)           |
+| Vercel Preview                 | **pas encore** basculé : les variables Neon sont gérées par l'intégration        |
+| Rétention d'historique Neon    | 21 600 s (6 h) — plan Free ; instant restore indisponible sur une branche enfant |
+
+La branche a été créée avec :
+
+```bash
+npx neonctl branches create --project-id flat-firefly-09779629 \
+  --name preview --parent main --no-secrets
+```
+
+Elle est une copie de `main` au moment de sa création (copy-on-write) : les données
+existantes y sont présentes, mais isolées. Baseline Prisma appliquée sur **cette branche
+uniquement** :
+
+```bash
+PREVIEW_URL="$(npx neonctl connection-string preview --project-id flat-firefly-09779629)"
+cd packages/database
+for d in $(ls prisma/migrations | grep -E '^[0-9]{14}_' | sort); do
+  DATABASE_URL="$PREVIEW_URL" pnpm exec prisma migrate resolve --applied "$d"
+done
+DATABASE_URL="$PREVIEW_URL" pnpm exec prisma migrate status   # « Database schema is up to date! »
+```
+
+Vérifié : `main` reste sans historique Prisma (13 migrations non appliquées) et n'a pas
+été modifiée par cette opération.
+
+### E2E locaux sur la branche preview
+
+Le serveur lit `DATABASE_URL` depuis `process.env` avant le `.env` racine (`next.config.ts`
+ne remplace jamais une variable déjà définie ; `ConfigModule.forRoot` de NestJS conserve
+`process.env`). D'où :
+
+```bash
+DATABASE_URL="$(npx neonctl connection-string preview --project-id flat-firefly-09779629)" pnpm dev
+# autre terminal
+pnpm test:e2e
+```
+
+Vérification d'isolation (comptes `@e2e.aetheris.test`) : `main` 65 → 65, `preview`
+65 → 68 après `e2e/campaign.spec.ts`. Les écritures E2E vont donc bien sur `preview`.
+
+### Basculer Vercel Preview (étape dashboard)
+
+Les variables `DATABASE_URL` / `POSTGRES_*` de Preview sont **integration-owned** :
+Vercel refuse de les modifier ou de les supprimer à la main, et un resync les réécrit.
+La bascule se fait donc dans l'intégration, pas en CLI :
+
+1. Vercel → **Storage** → ressource `aetheris` → **Projects** → **Connect Project**.
+2. Cocher **Create database branch for deployment** pour **Preview** (laisser
+   Production décoché) ; la branche de production se règle dans Neon Console →
+   Integrations → Manage → Settings.
+3. Redéployer une préversion et vérifier que `DATABASE_URL` pointe une branche
+   `preview/<branche-git>` (jamais `main`).
+
+Avec l'intégration Neon gérée par Vercel, chaque déploiement de préversion reçoit une
+branche éphémère enfant de la branche par défaut ; elle n'est pas éligible à l'instant
+restore. Les déploiements déjà créés ne reçoivent pas le nouveau mapping.
+
+### Suite
+
+1. Garder la production sur `main` ; tests manuels et E2E visent `preview`.
+2. Pour les E2E destructifs, préférer une branche jetable recréée depuis `preview`
    plutôt qu'un nettoyage a posteriori.
+3. Avant de compter sur un retour arrière, passer au plan Launch (7 jours d'historique) :
+   6 h ne couvrent pas une nuit d'incident.

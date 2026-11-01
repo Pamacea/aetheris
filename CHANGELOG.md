@@ -6,6 +6,34 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.7] — 2026-11-01
+
+### Ajouté
+
+- **Branche Neon d'isolation `preview`** (`br-royal-pond-b2gsa7np`, enfant de `main`) :
+  les écritures de test n'atteignent plus la base des testeurs. Les 13 migrations y sont
+  marquées appliquées (`migrate status` : à jour) ; `main` reste sans historique Prisma et
+  n'a pas été modifiée. Les E2E locaux visent cette branche en préfixant `pnpm dev` d'un
+  `DATABASE_URL` obtenu par `neonctl connection-string preview`.
+- **Store Vercel Blob `aetheris-blob`** (`store_jTTswl1CarB52twA`, `fra1`, accès public),
+  connecté aux environnements Production et Preview.
+
+### Corrigé
+
+- **Uploads sans stockage exploitable** : `POST /api/uploads` répond 503 avec un message
+  explicite (et l'UI propose une URL `http(s)`) quand le token est absent **ou** refusé par
+  Vercel, au lieu d'un 500 sans corps. Le test E2E n° 21 accepte 200 ou 503 selon le
+  stockage disponible et échoue toujours sur 500.
+
+### Documenté
+
+- `docs/deployment.md` : état réel de la séparation des environnements (branche `preview`,
+  baseline Prisma, lancement des E2E sur preview, preuve d'isolation) et étape dashboard
+  restante pour basculer Vercel Preview, variables Neon étant gérées par l'intégration.
+  Rétention Neon constatée : 6 h (Free), branches enfants non éligibles à l'instant restore.
+- `docs/storage.md` : store déployé, configuration locale du token, limite OIDC en
+  `development`, comportement 503, exploitation des blobs E2E et quotas.
+
 ## [0.7.6] — 2026-11-01
 
 ### Ajouté

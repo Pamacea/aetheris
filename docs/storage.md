@@ -54,12 +54,38 @@ base de données         seule l'URL est conservée, lecture directe depuis le C
   plus être créées par le nouvel upload.
 - **Le secret reste côté serveur** : jamais exposé au navigateur (pas de préfixe `NEXT_PUBLIC_`).
 
+## État déployé
+
+| Élément             | Valeur                                              |
+| ------------------- | --------------------------------------------------- |
+| Store               | `aetheris-blob` (`store_jTTswl1CarB52twA`)          |
+| Région              | `fra1` (Francfort)                                  |
+| Accès               | public — les URL sont servies par le CDN Vercel     |
+| Environnements liés | Production, Preview                                 |
+| Développement local | token lecture/écriture dans le `.env` (non commité) |
+
+Créé le **2026-11-01** avec :
+
+```bash
+vercel blob create-store aetheris-blob --access public --region fra1 \
+  --environment production --environment preview --yes
+```
+
+L'environnement `development` de Vercel n'est **pas** connecté au store : l'OIDC seul ne
+suffit donc pas en local (`OIDC is enabled for this project, but not for the "development"
+environment`). Pour passer à l'OIDC plus tard : connecter le store à Development dans le
+dashboard Vercel, puis `vercel env pull`.
+
 ## Configuration
 
-1. Vercel → **Storage** → **Blob** → créer un store.
-2. Copier le token dans les variables du projet (`BLOB_READ_WRITE_TOKEN`), prod et préversion.
-3. En local, sans token, l'API `POST /api/uploads` répond **503** et l'UI propose de
-   coller une URL `http(s)` existante. Aucune erreur bloquante ailleurs.
+1. Créer le store (voir ci-dessus) : il injecte `BLOB_READ_WRITE_TOKEN` dans les
+   environnements choisis.
+2. En local, placer un token lecture/écriture dans le `.env` racine (jamais commité).
+   `vercel env pull --environment=preview` fournit la valeur quand le dashboard refuse
+   de l'afficher.
+3. En local **sans** token exploitable, l'API `POST /api/uploads` répond **503** avec un
+   message explicite et l'UI propose de coller une URL `http(s)` existante. Un token
+   présent mais refusé par Vercel produit le même 503, jamais un 500 sans corps.
 
 ## Alternative : Cloudflare R2
 
@@ -78,5 +104,9 @@ Ce qu'il faudrait changer, **non implémenté aujourd'hui** :
 - **Rotation du token** : créer un nouveau token, remplacer la variable, redéployer, révoquer l'ancien.
 - **Blob orphelin** : supprimer via le dashboard Vercel (Storage → Blob) ou `del()` de
   `@vercel/blob`, après avoir vérifié qu'aucune ligne en base ne référence l'URL.
+- **Blobs des tests E2E** : quand un token est configuré, `e2e/onboarding.spec.ts` envoie
+  un PNG de 12 octets à chaque exécution (préfixe `u/<userId>/cover/`).
+  `cleanup-e2e.mjs` ne supprime que les lignes en base : les blobs restent et se
+  suppriment avec `vercel blob delete` / le dashboard, sous le quota de 1 Go (Hobby).
 - **Quota** : suivre l'usage dans Vercel (Usage) ; alerter bien avant 1 Go en Hobby et
   surveiller les réponses 503 (token absent) et les refus de quota.
