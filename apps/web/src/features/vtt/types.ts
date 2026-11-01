@@ -88,7 +88,9 @@ export const MIN_ZOOM = 0.15;
 export const MAX_ZOOM = 4;
 export const ZOOM_STEP = 1.1;
 export const DEFAULT_CELLS = 30;
-export const GRID_COLOR = 0x4b3a2a;
+// Repli de la grille : la table reste #0b0907 même sous un thème clair, donc la
+// couleur de bordure du thème (#4b3a2a) y était invisible — d'où ce gris clair.
+export const GRID_COLOR = 0x8a7a68;
 export const TOKEN_COLORS = ["#c03a1b", "#3a6ea5", "#5a9d4f", "#b8860b", "#7b4fa0"];
 
 /** Derniers réglages lus par l'init Pixi (asynchrone) et rejoués si besoin. */

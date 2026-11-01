@@ -60,7 +60,8 @@ export function redrawGrid(gfx: Graphics, g: GridSettings, size: { w: number; h:
     for (let y = oy; y <= h + 1; y += s) gfx.moveTo(0, y).lineTo(w, y);
     gfx.stroke({
       width: 1,
-      color: cssColor("--aetheris-border", GRID_COLOR),
+      // minLum : une bordure de thème sombre disparaît sur le fond #0b0907.
+      color: cssColor("--aetheris-border", GRID_COLOR, 0.3),
       alpha: 0.6,
     });
   } else {
@@ -84,7 +85,8 @@ export function redrawGrid(gfx: Graphics, g: GridSettings, size: { w: number; h:
     }
     gfx.stroke({
       width: 1,
-      color: cssColor("--aetheris-border", GRID_COLOR),
+      // minLum : une bordure de thème sombre disparaît sur le fond #0b0907.
+      color: cssColor("--aetheris-border", GRID_COLOR, 0.3),
       alpha: 0.6,
     });
   }

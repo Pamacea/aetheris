@@ -98,26 +98,44 @@ export function ListField({
     el?.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
   };
 
-  // Drop d'une fiche : filtre la catégorie du modèle, refuse les doublons.
-  const onDrop = (e: React.DragEvent) => {
-    setOver(false);
+  // Ajout d'une fiche (glisser-déposer ou sélection) : filtre la catégorie du
+  // modèle et refuse les doublons.
+  const addRow = (noteId: string) => {
     if (!linkCol) return;
-    const payload = rt.notePayload(e);
-    if (!payload) return;
-    e.preventDefault();
-    const meta = rt.notes.find((n) => n.id === payload.id);
-    if (linkCol.targetCategory && (!meta || rt.categoryOf(meta) !== linkCol.targetCategory)) return;
-    if (rows.some((r) => r[linkCol.id] === payload.id)) return;
-    const row: Record<string, unknown> = { [linkCol.id]: payload.id };
+    const meta = rt.notes.find((n) => n.id === noteId);
+    if (!meta) return;
+    if (linkCol.targetCategory && rt.categoryOf(meta) !== linkCol.targetCategory) return;
+    if (rows.some((r) => r[linkCol.id] === noteId)) return;
+    const row: Record<string, unknown> = { [linkCol.id]: noteId };
     if (field.kind === "inventory") {
       if (numberColumn(field.columns, "quantite")) row.quantite = 1;
-      const { weight } = noteVisuals(payload.id, rt.linked, rt.notes);
+      const { weight } = noteVisuals(noteId, rt.linked, rt.notes);
       if (weight != null && numberColumn(field.columns, "poids")) row.poids = weight;
     }
     rt.setValue(field.id, [...rows, row]);
   };
+  const onDrop = (e: React.DragEvent) => {
+    setOver(false);
+    const payload = rt.notePayload(e);
+    const first = field.columns[0];
+    if (!payload) return;
+    e.preventDefault();
+    if (linkCol) addRow(payload.id);
+    // Liste libre (sans fiche liée) : le glisser reste le seul ajout possible.
+    else if (first) rt.setValue(field.id, [...rows, { [first.id]: payload.title }]);
+  };
+  // Fiches éligibles pas encore liées (menu d'ajout rapide).
+  const candidates = linkCol
+    ? rt.notes
+        .filter(
+          (note) =>
+            (!linkCol.targetCategory || rt.categoryOf(note) === linkCol.targetCategory) &&
+            !rows.some((r) => r[linkCol.id] === note.id),
+        )
+        .sort((a, b) => a.title.localeCompare(b.title))
+    : [];
   const onDragOver = (e: React.DragEvent) => {
-    if (!linkCol) return;
+    if (!linkCol && field.columns.length === 0) return;
     rt.noteOver(e);
     setOver(e.dataTransfer.types.includes(NOTE_MIME));
   };
@@ -457,7 +475,7 @@ export function ListField({
                         className="px-2 py-2 text-xs text-muted"
                         colSpan={field.columns.length + 1}
                       >
-                        {linkCol ? "Glissez une fiche ici pour l’ajouter." : "Aucune ligne."}
+                        Glissez une fiche ici pour l’ajouter.
                       </td>
                     </tr>
                   )}
@@ -467,18 +485,30 @@ export function ListField({
           </div>
         </div>
         {/* Pied toujours rendu : agrégats Σ (y compris sorts/inventaires liés).
-            Champ lié : l'ajout reste le glisser-déposer d'une fiche ; tableau
-            libre : « + Ajouter » manuel. */}
+            Aucun ajout textuel : sélection de fiches ou glisser-déposer. */}
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-2 py-1">
-          {!linkCol && (
-            <button
-              type="button"
-              className="btn px-2 py-1 text-xs"
-              disabled={rows.length >= 100}
-              onClick={() => rt.setValue(field.id, [...rows, {}])}
-            >
-              + Ajouter
-            </button>
+          {linkCol && (
+            <label className="min-w-0 flex-1 sm:max-w-64">
+              <span className="sr-only">Ajouter une fiche à {field.label}</span>
+              <select
+                className="input input-sm w-full"
+                defaultValue=""
+                disabled={rows.length >= 100 || candidates.length === 0}
+                onChange={(e) => {
+                  addRow(e.currentTarget.value);
+                  e.currentTarget.value = "";
+                }}
+              >
+                <option value="">
+                  {candidates.length > 0 ? "+ Lier une fiche…" : "Aucune fiche disponible"}
+                </option>
+                {candidates.map((note) => (
+                  <option key={note.id} value={note.id}>
+                    {note.title}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           <span className="text-xs text-muted">
             {count} ligne{count > 1 ? "s" : ""}

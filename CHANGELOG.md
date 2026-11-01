@@ -6,6 +6,94 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.9.3] — 2026-11-01
+
+### Ajouté
+
+- **Image du jeton (VTT)** : le bloc « Choisir un fichier » + champ d'URL brut
+  de la barre est remplacé par un bouton **IMAGE** compact (miniature de l'image
+  courante s'il y en a une), placé en fin de rangée. Il ouvre une modale d'import
+  — fichier local (PNG, JPEG, WebP, GIF, 8 Mo) ou URL http(s) — dont le bouton
+  « Valider » applique la source au jeton puis referme la modale. Une URL non
+  http(s) est refusée avant écriture.
+
+### Modifié
+
+- **Fiches** : plus aucun bouton « + Ajouter » dans les listes. Les sections
+  Sorts, Compétences et Équipement (et toute liste liée à une fiche) se remplissent
+  uniquement par glisser-déposer ou par le menu de sélection des fiches éligibles.
+  Les listes libres (Dons, Voies, Compétences de WFRP) acceptent désormais le
+  glisser d'une fiche, qui crée la ligne titrée — plus d'ajout textuel manuel.
+- **Dimensions par défaut** : nombres et compteurs en 1×3, listes (`list`,
+  `ability`, `inventory`) en 5×10. Un layout explicite reste prioritaire : les
+  fiches déjà enregistrées ne sont pas remises en page.
+
+### Corrigé
+
+- **Étiquettes de jetons VTT** : nom borné à ~2,4 jetons et passé à la ligne,
+  PV/CA ancrés sur la hauteur réelle du nom (plus de chevauchement quand le nom
+  occupe deux lignes), fond sombre translucide derrière le bloc pour rester
+  lisible sur une carte claire comme sur le fond de table.
+
+- Passe les six paquets en 0.9.3.
+
+## [0.9.1] — 2026-11-01
+
+### Modifié
+
+- **Catalogue officiel** : les presets sont désormais Dungeons & Dragons 5e,
+  L'Appel de Cthulhu (7e édition), Cyberpunk Red, Chroniques Oubliées Fantasy,
+  Pathfinder 2e et Warhammer Fantasy Roleplay (4e éd.). Les anciens presets
+  génériques (Alien, Narratif, Dark Fantasy, Enquête) sont rétrogradés en
+  homebrew en base — jamais supprimés, les campagnes existantes y pointent encore.
+- **Contenus des presets** : livret de règles, lieux/PNJ secrets, handout et
+  fiches de style propres à chaque jeu ; ajout des caractéristiques manquantes
+  (Chance/Idée de Cthulhu, REF/DEX/TECH/Humanité de Cyberpunk Red).
+- **Fiches prêtes à jouer** : chaque preset transporte des prétirés/PNJ
+  entièrement remplis (modèle, valeurs, notes) et une scène d'ouverture à deux
+  jetons. `createCampaign` crée les modèles, y rattache les fiches (type = id du
+  modèle) avec liens wiki `[[Titre]]`, puis seede la `VttScene` ; rollback complet
+  de la campagne en cas d'échec.
+- **Containers de fiche** : Sorts, Compétences et Équipement passent en cartes
+  liées (`ability`/`inventory` + colonne `tag`) au lieu du tableau. Ajout rapide
+  par menu de sélection des fiches éligibles, en plus du glisser-déposer.
+- **Système personnalisé** : le constructeur s'ouvre réellement vide (aucune
+  caractéristique pré-remplie) et l'état vide l'explique.
+
+- Passe les six paquets en 0.9.1.
+
+## [0.9.0] — 2026-11-01
+
+### Ajouté
+
+- **Packs prêts-à-l'emploi** : chaque preset officiel (D&D 5e, L'Appel de Cthulhu,
+  Alien, Narratif, Cyberpunk, Dark Fantasy, Enquête) transporte désormais un livret de
+  règles, des notes de lieux/personnages (liées par `[[Titre]]`, PNJ secrets en `gmOnly`)
+  et un handout de journal. À la création d'une campagne, `createCampaign` seede ces notes
+  wiki et handouts en plus des modèles de fiches. « Système personnalisé » reste vierge.
+- **Presets de systèmes partageables** : section « Presets de systèmes » dans les réglages
+  (MJ) — `saveCampaignAsPreset` capture les modèles, notes wiki et handouts de la campagne
+  en système personnel ; `setSystemPublic` bascule sa visibilité (`isPublic` /
+  `publishedAt`). Un preset public apparaît dans l'assistant de création des autres MJ.
+- **Suppression de campagne** : bouton + modale de confirmation sur le tableau de bord et
+  dans la zone de danger des réglages (`deleteCampaign`, MJ uniquement, cascade complète).
+
+### Corrigé
+
+- **Grille VTT invisible** : la couleur de bordure du thème (`#4b3a2a`, contraste ≈ 1,4:1
+  sur le fond `#0b0907`) rendait les lignes quasi invisibles. Repli clair partagé
+  (`GRID_COLOR = 0x8a7a68`) et niveau de luminance minimal dans `cssColor` ; `fitView`
+  ignore désormais une mesure d'hôte nulle (scale 0) qui masquait grille et jetons.
+- **Bouton de démonstration** : libellé « DEMO » sur le tableau de bord (témoin E2E aligné).
+
+### Base de données
+
+- `GameSystem` : colonnes `defaultHandouts`, `isPublic`, `publishedAt`. Appliquées sur la
+  branche Neon `preview` uniquement — **un `db:push` production est requis avant tout
+  déploiement** (à valider par écrit).
+
+- Passe les six paquets en 0.9.0.
+
 ## [0.8.1] — 2026-11-01
 
 ### Modifié

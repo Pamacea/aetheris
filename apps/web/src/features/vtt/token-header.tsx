@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
-import { ImageUploadField } from "@/components/image-upload";
 import { EyeIcon, EyeOffIcon, TrashIcon } from "@/components/icons";
 import { getCampaignSocket } from "@/lib/ws";
 import { TOKEN_CONDITIONS, type TokenCondition } from "@aetheris/shared";
 import { saveTokenCombat } from "./actions";
 import { entityTokenPatch } from "./entity-link";
 import { canEditToken, clampHp, clampInt } from "./helpers";
+import { TokenImageButton } from "./token-image";
 import type { TokenState, VttEntity, VttMember } from "./types";
 import { VttSelect } from "./vtt-select";
 
@@ -254,19 +254,6 @@ export function VttTokenHeader({
           </>
         )}
 
-        {isGM && (
-          <div className="w-52 shrink-0">
-            <ImageUploadField
-              label="Image"
-              value={token.imageUrl ?? ""}
-              purpose="token"
-              hint="PNG, JPEG, WebP ou GIF · 8 Mo max, ou collez une URL http(s)."
-              compact
-              onChange={(url) => updateToken(token.id, { imageUrl: url || null })}
-            />
-          </div>
-        )}
-
         <span className={GROUP_CLS}>
           <span className={LABEL_CLS}>Fiche</span>
           {isGM ? (
@@ -382,6 +369,16 @@ export function VttTokenHeader({
                 />
               )}
             </span>
+          </>
+        )}
+
+        {isGM && (
+          <>
+            <span aria-hidden className={SEP_CLS} />
+            <TokenImageButton
+              imageUrl={token.imageUrl}
+              onSave={(url) => updateToken(token.id, { imageUrl: url || null })}
+            />
           </>
         )}
       </div>

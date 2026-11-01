@@ -3,15 +3,19 @@ import {
   buildCharacteristicTemplate,
   PRESET_GAME_SYSTEMS,
   systemFieldId,
+  systemPregenSchema,
   type CreateCustomGameSystemInput,
 } from "@aetheris/shared";
 import {
+  handoutSeedsFromDefaults,
+  loreSeedsFromDefaults,
   parseSystemImport,
   presetTemplateSeeds,
   presetsFromTemplates,
   systemExportPayload,
   templateSeedsFromDefaults,
   templatesForImportedSystem,
+  wikifyLoreLinks,
 } from "./system-logic";
 
 const validSystem = {
@@ -172,11 +176,10 @@ describe("presets officiels", () => {
     expect(PRESET_GAME_SYSTEMS.map((preset) => preset.id)).toEqual([
       "dnd5e",
       "cocth",
-      "alien",
-      "narrative",
       "cyberpunk",
-      "dark-fantasy",
-      "enquete",
+      "chroniques-oubliees",
+      "pathfinder2e",
+      "warhammer4",
     ]);
   });
 
@@ -185,6 +188,35 @@ describe("presets officiels", () => {
       expect(preset.templates.length).toBeGreaterThan(0);
       expect(preset.assets.length).toBeGreaterThan(0);
       expect(templateSeedsFromDefaults(preset.templates).success).toBe(true);
+    }
+  });
+
+  it("fournit un livret de règles et un handout seedables pour chaque preset", () => {
+    for (const preset of PRESET_GAME_SYSTEMS) {
+      const lore = loreSeedsFromDefaults(preset.lore);
+      const handouts = handoutSeedsFromDefaults(preset.handouts);
+      expect(lore.success).toBe(true);
+      expect(handouts.success).toBe(true);
+      if (!lore.success || !handouts.success) continue;
+      expect(lore.seeds.some((note) => note.folder === "Règles")).toBe(true);
+      expect(handouts.seeds.length).toBeGreaterThan(0);
+      // `[[Titre]]` ne doit jamais atteindre le wiki tel quel.
+      for (const note of lore.seeds) {
+        expect(wikifyLoreLinks(note.contentHtml)).not.toContain("[[");
+      }
+    }
+  });
+
+  it("fournit des prétirés reliés à un modèle et une scène d'ouverture", () => {
+    for (const preset of PRESET_GAME_SYSTEMS) {
+      const names = new Set(preset.templates.map((template) => template.name));
+      expect(preset.pregens.length).toBeGreaterThan(0);
+      for (const pregen of preset.pregens) {
+        expect(systemPregenSchema.safeParse(pregen).success).toBe(true);
+        expect(names.has(pregen.template)).toBe(true);
+        expect(Object.keys(pregen.data).length).toBeGreaterThan(0);
+      }
+      expect(preset.scene?.tokens.length).toBeGreaterThan(0);
     }
   });
 

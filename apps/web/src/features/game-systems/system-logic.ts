@@ -2,11 +2,15 @@ import {
   buildCharacteristicTemplate,
   gameSystemImportSchema,
   getPresetGameSystem,
+  systemHandoutListSchema,
+  systemLoreNoteListSchema,
   systemTemplateSeedListSchema,
   systemTemplateSeedSchema,
   type CreateCustomGameSystemInput,
   type GameSystemImport,
   type SystemAsset,
+  type SystemHandout,
+  type SystemLoreNote,
   type SystemTemplateSeed,
   type TemplatePreset,
 } from "@aetheris/shared";
@@ -70,6 +74,44 @@ export function templateSeedsFromDefaults(raw: unknown): ParsedTemplateSeeds {
     return { success: false, error: "Modèles du système invalides." };
   }
   return { success: true, seeds: parsed.data };
+}
+
+export type ParsedLoreSeeds =
+  | { success: true; seeds: SystemLoreNote[] }
+  | { success: false; error: string };
+
+/** Valide les `defaultLore` d'un système avant de créer les notes wiki. */
+export function loreSeedsFromDefaults(raw: unknown): ParsedLoreSeeds {
+  const parsed = systemLoreNoteListSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { success: false, error: "Notes de wiki du système invalides." };
+  }
+  return { success: true, seeds: parsed.data };
+}
+
+export type ParsedHandoutSeeds =
+  | { success: true; seeds: SystemHandout[] }
+  | { success: false; error: string };
+
+/** Valide les `defaultHandouts` d'un système avant de créer les handouts. */
+export function handoutSeedsFromDefaults(raw: unknown): ParsedHandoutSeeds {
+  const parsed = systemHandoutListSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { success: false, error: "Handouts du système invalides." };
+  }
+  return { success: true, seeds: parsed.data };
+}
+
+/**
+ * `[[Titre]]` → ancre wiki persistée par l'éditeur. Les entités n'existent pas
+ * encore au seed : la résolution se fait par titre (id absent), cf. lib/wiki.
+ */
+export function wikifyLoreLinks(html: string): string {
+  return html.replace(/\[\[([^[\]\n]{1,120})\]\]/g, (_, raw: string) => {
+    const title = raw.trim();
+    const safe = title.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    return `<a href="#" class="wiki-link" data-wiki-link="${safe}">${safe}</a>`;
+  });
 }
 
 /**

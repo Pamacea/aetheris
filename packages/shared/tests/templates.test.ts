@@ -152,13 +152,15 @@ test("updateTemplateSchema : customCss optionnel, borné, effaçable", () => {
   assert.equal("customCss" in parsed, false);
 });
 
-test("fieldLayout : hauteur par défaut des tableaux", () => {
-  assert.equal(fieldLayout({ kind: "list" }).h, LIST_FIELD_DEFAULT_ROWS);
-  assert.equal(fieldLayout({ kind: "ability" }).h, LIST_FIELD_DEFAULT_ROWS);
-  assert.equal(fieldLayout({ kind: "inventory" }).h, LIST_FIELD_DEFAULT_ROWS);
+test("fieldLayout : taille par défaut selon le type", () => {
+  for (const kind of ["list", "ability", "inventory"] as const) {
+    assert.deepEqual(fieldLayout({ kind }), { x: 0, y: 0, w: 5, h: LIST_FIELD_DEFAULT_ROWS });
+  }
+  for (const kind of ["number", "counter"] as const) {
+    assert.deepEqual(fieldLayout({ kind }), { x: 0, y: 0, w: 1, h: 3 });
+  }
   assert.equal(fieldLayout({ kind: "text" }).h, 2);
   assert.equal(fieldLayout({ kind: "textarea" }).h, TEXTAREA_FIELD_DEFAULT_ROWS);
-  assert.equal(fieldLayout({ kind: "number" }).h, 2);
   // Un layout explicite reste prioritaire : aucun reflow des modèles existants.
   assert.equal(fieldLayout({ kind: "list", layout: { x: 0, y: 0, w: 4, h: 4 } }).h, 4);
 });
@@ -198,9 +200,10 @@ test("packFields : attribue des layouts sans chevauchement", () => {
     packed.map((f) => f.layout),
     [
       { x: 0, y: 0, w: 2, h: 2 },
-      { x: 2, y: 0, w: 2, h: 2 },
+      // Nombre : bandeau étroit 1×3.
+      { x: 2, y: 0, w: 1, h: 3 },
       // Texte long : hauteur par défaut plus grande (libellé + zone).
-      { x: 4, y: 0, w: 2, h: TEXTAREA_FIELD_DEFAULT_ROWS },
+      { x: 3, y: 0, w: 2, h: TEXTAREA_FIELD_DEFAULT_ROWS },
     ],
   );
   for (let i = 0; i < packed.length; i++) {

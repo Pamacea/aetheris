@@ -311,6 +311,9 @@ model GameSystem {
   defaultTemplates Json     @default("[]") // SystemTemplateSeed[] (nom, catégorie, TemplateSchema)
   defaultAssets    Json     @default("[]") // SystemAsset[] (sorts, compétences, traits…)
   defaultLore      Json     @default("[]") // SystemLoreNote[] (notes seedées à la création)
+  defaultHandouts  Json     @default("[]") // SystemHandout[] (handouts de journal seedés)
+  isPublic         Boolean  @default(false) // preset personnel sélectionnable par tous
+  publishedAt      DateTime? // passage en public (null = privé)
   owner            User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   campaigns        Campaign[]
   createdAt        DateTime @default(now())

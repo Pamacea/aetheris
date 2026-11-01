@@ -127,32 +127,47 @@ export function buildToken(t: TokenState, selectedToken: string | null): Contain
 
   const fontSize = Math.max(10, Math.round(t.size * 0.22));
   const label = new Text({
-    text: t.name,
+    text: t.name.trim(),
     style: {
       fontFamily: "Cinzel, serif",
       fontSize,
       fill: cssColor("--aetheris-foreground", 0xe7dcc6, 0.25),
+      // Nom borné : deux jetons voisins ne mélangent pas leurs libellés.
+      wordWrap: true,
+      wordWrapWidth: Math.max(96, t.size * 2.4),
+      breakWords: true,
+      align: "center",
     },
   });
   label.anchor.set(0.5, 0);
   label.y = t.size / 2 + 6;
-  c.addChild(label);
 
   // PV / CA sous le nom : affichés dès qu'ils sont renseignés.
   const stats: string[] = [];
   if (t.hpMax != null) stats.push(`${t.hp ?? 0}/${t.hpMax} PV`);
   if (t.ac != null) stats.push(`CA ${t.ac}`);
-  let stackY = label.y + fontSize + 6;
-  if (stats.length > 0) {
-    const statLine = new Text({
-      text: stats.join(" · "),
-      style: { fontFamily: "Cinzel, serif", fontSize, fill: 0xe7dcc6 },
-    });
+  const statLine = stats.length
+    ? new Text({
+        text: stats.join(" · "),
+        style: { fontFamily: "Cinzel, serif", fontSize, fill: 0xe7dcc6, align: "center" },
+      })
+    : null;
+  if (statLine) {
     statLine.anchor.set(0.5, 0);
-    statLine.y = label.y + fontSize + 2;
-    c.addChild(statLine);
-    stackY = statLine.y + fontSize + 5;
+    // Ancrage sur la hauteur réelle : un nom sur deux lignes ne chevauche pas les PV.
+    statLine.y = label.y + label.height + 2;
   }
+  // Fond sombre derrière le bloc : lisible sur une carte claire comme sur le fond.
+  const blockBottom = statLine ? statLine.y + statLine.height : label.y + label.height;
+  const blockW = Math.max(label.width, statLine?.width ?? 0) + 8;
+  c.addChild(
+    new Graphics()
+      .roundRect(-blockW / 2, label.y - 3, blockW, blockBottom - label.y + 6, 4)
+      .fill({ color: 0x0b0907, alpha: 0.7 }),
+  );
+  c.addChild(label);
+  if (statLine) c.addChild(statLine);
+  const stackY = blockBottom + 6;
 
   // États actifs : pastilles ambre sous PV/CA, repliées dans la largeur du
   // disque. Couleur fixe (indépendante du jeton) pour rester lisible.

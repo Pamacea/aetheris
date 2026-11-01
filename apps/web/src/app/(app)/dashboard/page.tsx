@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { InviteCodeChip } from "@/components/campaigns/invite-code-chip";
+import { DeleteCampaignButton } from "@/features/campaigns/delete-campaign-button";
 import { listGameSystems } from "@/features/game-systems/systems";
 import { StatusBadge } from "../novels/status-badge";
 import { CreateCampaignForm, DemoCampaignButton, JoinCampaignForm } from "./forms";
@@ -104,6 +105,7 @@ export default async function DashboardPage() {
                     {isGM ? "MJ" : "Joueur"}
                   </span>
                   {isGM && <InviteCodeChip code={c.inviteCode} />}
+                  {isGM && <DeleteCampaignButton campaignId={c.id} title={c.title} />}
                 </li>
               );
             })}

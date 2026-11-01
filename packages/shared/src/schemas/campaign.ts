@@ -29,9 +29,28 @@ export const GAME_SYSTEMS = [
     name: "Dungeons & Dragons 5e",
     description: "Classes, sorts, équipement, personnages",
   },
-  { id: "cocth", name: "Call of Cthulhu", description: "Compétences, sanité, enquête" },
-  { id: "cairn", name: "Cairn", description: "OSR léger, inventaire par slot" },
-  { id: "custom", name: "Custom", description: "Système vide à définir dans l'éditeur" },
+  {
+    id: "cocth",
+    name: "L'Appel de Cthulhu (7e édition)",
+    description: "Compétences, santé mentale, enquête",
+  },
+  { id: "cyberpunk", name: "Cyberpunk Red", description: "Dystopie, cyberware, Humanité" },
+  {
+    id: "chroniques-oubliees",
+    name: "Chroniques Oubliées Fantasy",
+    description: "Profils, voies et rangs",
+  },
+  { id: "pathfinder2e", name: "Pathfinder 2e", description: "Dons, états, degrés de réussite" },
+  {
+    id: "warhammer4",
+    name: "Warhammer Fantasy Roleplay (4e éd.)",
+    description: "Carrières, Destin, Corruption",
+  },
+  {
+    id: "custom",
+    name: "Système personnalisé",
+    description: "Vierge : définis tes caractéristiques dans l'éditeur",
+  },
 ] as const;
 export const gameSystemSchema = z.enum(GAME_SYSTEMS.map((s) => s.id) as [string, ...string[]]);
 export type GameSystem = (typeof GAME_SYSTEMS)[number];

@@ -101,6 +101,8 @@ export function createVttScene(host: HTMLDivElement, bridge: VttBridge): () => v
       const sw = instance.screen.width;
       const sh = instance.screen.height;
       const z = Math.min(sw / w, sh / h) * 0.92;
+      // hôte pas encore mesuré : un scale 0 rendrait grille et jetons invisibles.
+      if (!Number.isFinite(z) || z <= 0) return;
       world.scale.set(z);
       world.x = (sw - w * z) / 2;
       world.y = (sh - h * z) / 2;

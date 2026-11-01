@@ -48,9 +48,8 @@ export function SystemBuilder({
   const [name, setName] = useState("");
   const [genre, setGenre] = useState<SystemGenre>("fantasy");
   const [description, setDescription] = useState("");
-  const [rows, setRows] = useState<CharacteristicRow[]>([
-    { name: "Force", type: "number", formula: "" },
-  ]);
+  // Système personnalisé = page blanche : aucune caractéristique imposée.
+  const [rows, setRows] = useState<CharacteristicRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -159,6 +158,11 @@ export function SystemBuilder({
         </div>
 
         <ul className="flex flex-col gap-2">
+          {rows.length === 0 && (
+            <li className="panel px-4 py-6 text-center text-xs text-muted">
+              Page blanche. Ajoute une caractéristique pour commencer — rien n’est imposé.
+            </li>
+          )}
           {rows.map((row, index) => (
             <li key={index} className="grid items-end gap-2 sm:grid-cols-[1fr_9rem_1fr_2rem]">
               <label className="flex flex-col gap-1 text-[0.65rem] text-muted">
@@ -167,7 +171,7 @@ export function SystemBuilder({
                   className="input input-sm"
                   value={row.name}
                   maxLength={80}
-                  placeholder="Force"
+                  placeholder="Nom de la caractéristique"
                   onChange={(e) => updateRow(index, { name: e.target.value })}
                 />
               </label>

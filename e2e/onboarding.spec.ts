@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("campagne de démonstration : seed visible et retour au dashboard", async ({ page }) => {
-  await page.getByRole("button", { name: "Campagne de démonstration" }).click();
+  await page.getByRole("button", { name: "DEMO", exact: true }).click();
 
   // Le seed (wiki + handout + modèle + scène) peut prendre plusieurs secondes.
   await expect(page).toHaveURL(/\/campaign\/[^/]+\/vtt/, { timeout: 30_000 });

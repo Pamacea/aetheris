@@ -5,6 +5,8 @@ import { SettingsInfoForm } from "@/features/campaign-settings/settings-info-for
 import { ThemeEditor } from "@/features/campaign-settings/theme-editor";
 import { PluginToggles } from "@/features/campaign-settings/plugin-toggles";
 import { RegenerateCodeButton } from "@/features/campaign-settings/regenerate-code-button";
+import { SystemPresetPanel } from "@/features/campaign-settings/system-preset-panel";
+import { DeleteCampaignButton } from "@/features/campaigns/delete-campaign-button";
 import { CopyCodeButton } from "../copy-code-button";
 
 /**
@@ -40,6 +42,14 @@ export default async function CampaignSettingsPage({
     },
   });
   if (!campaign) notFound();
+
+  const ownSystems = isGM
+    ? await prisma.gameSystem.findMany({
+        where: { ownerId: member.userId, isPreset: false },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, isPublic: true },
+      })
+    : [];
 
   return (
     <div className="w-full px-6 flex flex-1 flex-col gap-6 py-12">
@@ -110,6 +120,21 @@ export default async function CampaignSettingsPage({
             <CopyCodeButton code={campaign.inviteCode} />
             <RegenerateCodeButton campaignId={id} />
           </div>
+        </section>
+      )}
+
+      {isGM && <SystemPresetPanel campaignId={id} systems={ownSystems} />}
+
+      {isGM && (
+        <section className="panel flex flex-wrap items-center justify-between gap-4 p-4">
+          <div>
+            <h2 className="text-xs tracking-widest text-muted uppercase">Zone de danger</h2>
+            <p className="mt-1 text-[0.7rem] text-muted">
+              Supprimer la campagne efface définitivement son wiki, ses fiches, son journal et sa
+              scène pour tous les membres.
+            </p>
+          </div>
+          <DeleteCampaignButton campaignId={id} title={campaign.title} />
         </section>
       )}
     </div>

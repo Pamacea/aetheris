@@ -292,19 +292,25 @@ export const LIST_FIELD_DEFAULT_ROWS = 10;
 /** Hauteur par défaut d'un champ « texte long » : 6*16 + 5*8 = 136 px. */
 export const TEXTAREA_FIELD_DEFAULT_ROWS = 6;
 
-/** Layout effectif : `layout` fait autorité, sinon `span` (legacy), sinon une carte 2×2. */
+/** Taille par défaut d'un champ : listes 5×10, nombres/compteurs 1×3, reste 2×2. */
+function defaultSize(kind: TemplateFieldKind | undefined): { w: number; h: number } {
+  if (kind === "list" || kind === "ability" || kind === "inventory") {
+    return { w: 5, h: LIST_FIELD_DEFAULT_ROWS };
+  }
+  if (kind === "number" || kind === "counter") return { w: 1, h: 3 };
+  if (kind === "textarea" || kind === "css") return { w: 2, h: TEXTAREA_FIELD_DEFAULT_ROWS };
+  return { w: 2, h: 2 };
+}
+
+/** Layout effectif : `layout` fait autorité, sinon `span` (legacy), sinon la taille du type. */
 export function fieldLayout(field: {
   layout?: FieldLayout | undefined;
   span?: number | undefined;
   kind?: TemplateFieldKind | undefined;
 }): FieldLayout {
-  const w = Math.min(GRID_COLS, Math.max(1, field.layout?.w ?? field.span ?? 2));
-  // Les tableaux ont besoin d'air : titre + en-tête + lignes + pied restent lisibles.
-  const listKind = field.kind === "list" || field.kind === "ability" || field.kind === "inventory";
-  // Un texte long (ou le CSS legacy) ne tient pas dans le défaut 2×2 : libellé + zone.
-  const tallKind = field.kind === "textarea" || field.kind === "css";
-  const defaultH = listKind ? LIST_FIELD_DEFAULT_ROWS : tallKind ? TEXTAREA_FIELD_DEFAULT_ROWS : 2;
-  const h = Math.min(199, Math.max(2, field.layout?.h ?? defaultH));
+  const size = defaultSize(field.kind);
+  const w = Math.min(GRID_COLS, Math.max(1, field.layout?.w ?? field.span ?? size.w));
+  const h = Math.min(199, Math.max(2, field.layout?.h ?? size.h));
   return {
     x: Math.min(GRID_COLS - w, Math.max(0, field.layout?.x ?? 0)),
     y: Math.min(199 - h, Math.max(0, field.layout?.y ?? 0)),
