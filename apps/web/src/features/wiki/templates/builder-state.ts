@@ -37,7 +37,10 @@ export function useBuilderState(initial: WikiTemplateMeta[], campaignId: string)
     if (status !== "dirty" && status !== "saving") setItems(initial);
   }
 
-  const selected = items.find((t) => t.id === selectedId) ?? items[0] ?? null;
+  // Un id sélectionné absent de la liste (modèle tout juste créé) ne doit pas
+  // retomber sur items[0] : l'édition partirait dans le premier modèle.
+  const selected =
+    items.find((t) => t.id === selectedId) ?? (selectedId ? null : (items[0] ?? null));
   const fields = selected ? packFields(parseFields(selected)) : [];
 
   const categories = [

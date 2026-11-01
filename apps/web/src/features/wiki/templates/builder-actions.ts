@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { TemplateField, TemplatePreset, TemplateSchema } from "@aetheris/shared";
 import type * as React from "react";
 import { createTemplate, deleteTemplate, updateTemplate } from "./actions";
+import type { WikiTemplateMeta } from "../types";
 import type { BuilderState } from "./builder-state";
 import { FIELD_ID_RE } from "./builder-field-factory";
 
@@ -153,6 +154,15 @@ export function useTemplateActions(st: BuilderState) {
       ...(newCategory.trim() ? { category: newCategory.trim() } : {}),
     });
     if (res.ok) {
+      // Revalidation serveur asynchrone : sans ajout local, la sélection
+      // retomberait sur le premier modèle et les champs iraient dans celui-ci.
+      const created: WikiTemplateMeta = {
+        id: res.id,
+        name: newName.trim(),
+        category: newCategory.trim() || null,
+        schema: { fields: [] },
+      };
+      setItems((prevItems) => [...prevItems, created]);
       setNewOpen(false);
       setNewName("");
       setNewCategory("");

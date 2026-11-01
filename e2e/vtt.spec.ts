@@ -28,9 +28,8 @@ test("jeton : PV/CA et propriétaire édités par le MJ, persistés", async ({ p
   const hp = page.getByLabel("Points de vie", { exact: true });
   const hpMax = page.getByLabel("Points de vie max", { exact: true });
   const ac = page.getByLabel("Classe d'armure", { exact: true });
-  // Sélecteur : le <select> est dans son <label> (le nom accessible y intègre
-  // les options) — on cible le label puis le contrôle.
-  const owner = page.locator("label").filter({ hasText: "Propriétaire" }).locator("select");
+  // Sélecteur maison : bouton d'ouverture puis option dans le listbox en portail.
+  const owner = page.getByRole("button", { name: "Propriétaire du jeton" });
   await expect(hp).toBeVisible();
 
   // PV plafonné au maximum saisi.
@@ -39,8 +38,9 @@ test("jeton : PV/CA et propriétaire édités par le MJ, persistés", async ({ p
   await expect(hp).toHaveValue("10");
   await hp.fill("7");
   await ac.fill("15");
-  await owner.selectOption({ label: "MJ VTT" });
-  await expect(owner).not.toHaveValue("");
+  await owner.click();
+  await page.getByRole("option", { name: "MJ VTT", exact: true }).click();
+  await expect(owner).toContainText("MJ VTT");
 
   // Commit débouncé (500 ms) → persistance Zod → scène rechargée.
   await page.waitForTimeout(1500);
@@ -52,7 +52,7 @@ test("jeton : PV/CA et propriétaire édités par le MJ, persistés", async ({ p
   await expect(hp).toHaveValue("7");
   await expect(hpMax).toHaveValue("10");
   await expect(ac).toHaveValue("15");
-  await expect(owner).not.toHaveValue("");
+  await expect(owner).toContainText("MJ VTT");
 });
 
 test("joueur : PV éditables sur son jeton, jamais les autres champs", async ({ page, browser }) => {
@@ -80,11 +80,8 @@ test("joueur : PV éditables sur son jeton, jamais les autres champs", async ({ 
   const owned = { x: 240, y: 220 };
   const free = { x: 460, y: 340 };
   await canvas.click({ position: owned });
-  await page
-    .locator("label")
-    .filter({ hasText: "Propriétaire" })
-    .locator("select")
-    .selectOption({ label: "Joueur VTT" });
+  await page.getByRole("button", { name: "Propriétaire du jeton" }).click();
+  await page.getByRole("option", { name: "Joueur VTT", exact: true }).click();
   await page.getByLabel("Points de vie", { exact: true }).fill("7");
   await page.getByLabel("Points de vie max", { exact: true }).fill("10");
   await canvas.click({ position: free }); // jeton sans propriétaire

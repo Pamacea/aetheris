@@ -6,6 +6,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.6.4] — 2026-11-01
+
+### Corrigé
+
+- **Modèles de fiches** : le modèle créé est ajouté localement à la liste puis sélectionné ; si l'id sélectionné n'est pas encore connu, l'éditeur ne retombe plus sur le premier modèle — les champs ajoutés pouvaient être écrits dans un autre modèle.
+
+### Tests
+
+- **E2E** : helper `createCampaign` aligné sur l'assistant en deux étapes ; sélecteur de propriétaire (menu maison) et libellés de sauvegarde mis à jour. Suite complète : 27/27.
+
+### CI
+
+- `.github/workflows/ci.yml` : job `check` (PostgreSQL de service, `pnpm check`) et job `e2e` (Playwright, démarrage et sondage des serveurs de dev, artefacts en cas d'échec).
+
 ## [0.6.3] — 2026-11-01
 
 ### Base de données

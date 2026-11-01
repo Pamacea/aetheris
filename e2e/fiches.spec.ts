@@ -16,9 +16,12 @@ test("fiches : template → entité → édition avec autosave", async ({ page }
   await page.getByRole("button", { name: "+ Nouveau" }).click();
   await page.getByPlaceholder("Nom (ex. PNJ D&D5e)").fill(templateName);
   await page.getByRole("button", { name: "Créer", exact: true }).click();
+  // Le modèle créé doit être sélectionné avant d'ajouter un champ : sinon
+  // l'édition part dans le modèle précédemment ouvert.
+  await expect(page.getByLabel("Nom du modèle")).toHaveValue(templateName);
   await page.getByRole("button", { name: /Texte court/ }).click();
-  await page.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(page.getByText("Enregistré ✓")).toBeVisible();
+  // Le schéma du modèle n'a plus de bouton « Enregistrer » : autosave débouncé 700 ms.
+  await page.waitForTimeout(1200);
 
   // 2. Entrée du wiki basée sur ce modèle → entité type = templateId.
   await page.goto(`${path}/wiki?embed=1`);
@@ -31,7 +34,7 @@ test("fiches : template → entité → édition avec autosave", async ({ page }
   // 3. Page Fiches : la fiche apparaît, s'édite, autosave membre.
   await page.goto(`${path}/fiches?embed=1`);
   await page.getByRole("button", { name: ficheTitle }).click();
-  await expect(page.getByText(/Fiche · 1 champ/)).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Texte court" })).toBeVisible();
   await page.getByLabel(/Texte court/).fill("Valkyrie");
   await expect(page.getByText("Enregistré ✓")).toBeVisible({ timeout: 15_000 });
 
