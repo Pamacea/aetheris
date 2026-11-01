@@ -582,7 +582,8 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     senderId: string,
     state: SceneState,
   ): Promise<void> {
-    this.server.to(gmRoom(campaignId)).emit("scene:state", state);
+    // L'émetteur a déjà l'état local : son écho écraserait une saisie plus récente.
+    this.server.to(gmRoom(campaignId)).except(senderId).emit("scene:state", state);
     const tokenOwners = new Map(state.tokens.map((t) => [t.id, t.ownerId] as const));
     const sockets = await this.server.in(campaignRoom(campaignId)).fetchSockets();
     for (const client of sockets) {

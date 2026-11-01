@@ -2,6 +2,8 @@ import type { IncomingHttpHeaders } from "node:http";
 
 /** Nom du cookie de session Better Auth (défaut du framework). */
 export const SESSION_COOKIE = "better-auth.session_token";
+/** Better Auth préfixe le cookie en `__Secure-` dès que le site est en HTTPS. */
+export const SECURE_SESSION_COOKIE = `__Secure-${SESSION_COOKIE}`;
 
 /**
  * Better Auth stocke un cookie *signé* : `token.signature` (URL-encodé).
@@ -30,7 +32,8 @@ export function parseSessionToken(
     for (const part of cookie.split(";")) {
       const eq = part.indexOf("=");
       if (eq === -1) continue;
-      if (part.slice(0, eq).trim() === SESSION_COOKIE) {
+      const name = part.slice(0, eq).trim();
+      if (name === SESSION_COOKIE || name === SECURE_SESSION_COOKIE) {
         const value = part.slice(eq + 1).trim();
         if (value.length > 0) {
           try {

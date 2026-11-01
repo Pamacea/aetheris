@@ -6,6 +6,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.9] — 2026-11-01
+
+### Corrigé
+
+- **Cookie de session HTTPS ignoré** : `parseSessionToken` lit désormais
+  `better-auth.session_token` **et** `__Secure-better-auth.session_token`. Better Auth
+  préfixe le cookie dès que le site est servi en HTTPS : en production, les routes
+  protégées et le handshake Socket.IO ne voyaient aucune session. Cinq tests unitaires
+  couvrent les deux noms, l'URL-encodage, le jeton Bearer et l'absence de cookie.
+- **Écho de scène qui écrasait une saisie locale** : `scene:state` n'est plus renvoyé à
+  son émetteur (`except(senderId)`). Le MJ ne reçoit plus un état plus ancien que la
+  saisie qu'il vient de faire.
+- **Course entre deux saisies PV/CA** : `token-header.tsx` relit la dernière valeur connue
+  (ref synchronisée après commit) au lieu de la prop capturée par la closure, et sérialise
+  les écritures de fiche — la dernière saisie gagne, quel que soit l'ordre d'arrivée.
+- **Lint React Compiler** : les `useRef` sont déclarés avant le retour anticipé et le ref
+  n'est plus écrit pendant le rendu.
+
+### Ajouté
+
+- **`docs/realtime.md`** : arbitrage d'hébergement Socket.IO — A1 (service Nest en process
+  long-running, instance unique), A2 (Vercel seul, écartée), B (adaptateur Redis), tableau
+  de critères et recommandation A1 pour l'alpha. Référencé depuis `ROADMAP.md`.
+
 ## [0.7.8] — 2026-11-01
 
 ### Modifié

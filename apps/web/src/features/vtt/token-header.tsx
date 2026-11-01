@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ImageUploadField } from "@/components/image-upload";
 import { EyeIcon, EyeOffIcon, TrashIcon } from "@/components/icons";
 import { getCampaignSocket } from "@/lib/ws";
@@ -53,6 +54,14 @@ export function VttTokenHeader({
   setTokenNum,
   deleteToken,
 }: VttTokenHeaderProps) {
+  // Deux saisies peuvent se succéder avant le re-render : les setters relisent
+  // cette valeur plutôt que la prop capturée par leur closure.
+  const latest = useRef(token);
+  // Écritures en série : la dernière saisie gagne, quel que soit l'ordre d'arrivée.
+  const writes = useRef<Promise<unknown>>(Promise.resolve());
+  useEffect(() => {
+    latest.current = token;
+  });
   if (!canEditToken(token, isGM, userId)) return null;
 
   const linked = token.noteId ? (entities.find((e) => e.id === token.noteId) ?? null) : null;
@@ -60,10 +69,12 @@ export function VttTokenHeader({
   // Jeton lié : PV/PV max/CA répercutés dans la fiche (serveur re-vérifie le
   // propriétaire). Le brouillard reste local, la fiche est la source à l'ouverture.
   const persist = (combat: { hp: number | null; hpMax: number | null; ac: number | null }) => {
-    const noteId = token.noteId;
+    const noteId = latest.current.noteId;
     if (!noteId) return;
     // La fiche est écrite par la server action, la socket ne fait que rediffuser.
-    void saveTokenCombat(campaignId, noteId, combat)
+    writes.current = writes.current
+      .catch(() => undefined)
+      .then(() => saveTokenCombat(campaignId, noteId, combat))
       .then((res) => {
         if (res.ok) getCampaignSocket().emit("fiche:sync", { campaignId, entityId: noteId });
       })
@@ -71,15 +82,18 @@ export function VttTokenHeader({
   };
 
   const setHp = (raw: string) => {
+    const { hpMax, ac } = latest.current;
     if (!raw.trim()) {
+      latest.current = { ...latest.current, hp: null };
       updateToken(token.id, { hp: null });
-      persist({ hp: null, hpMax: token.hpMax, ac: token.ac });
+      persist({ hp: null, hpMax, ac });
       return;
     }
-    const n = clampHp(raw, token.hpMax);
+    const n = clampHp(raw, hpMax);
     if (n !== null) {
+      latest.current = { ...latest.current, hp: n };
       updateToken(token.id, { hp: n });
-      persist({ hp: n, hpMax: token.hpMax, ac: token.ac });
+      persist({ hp: n, hpMax, ac });
     }
   };
 
@@ -87,16 +101,18 @@ export function VttTokenHeader({
     const n = clampInt(raw, 0, 999);
     if (n === null) return;
     // On ne laisse jamais un PV au-dessus du nouveau maximum.
-    const hp = token.hp == null ? null : Math.min(token.hp, n);
+    const hp = latest.current.hp == null ? null : Math.min(latest.current.hp, n);
+    latest.current = { ...latest.current, hpMax: n, hp };
     updateToken(token.id, { hpMax: n, hp });
-    persist({ hp, hpMax: n, ac: token.ac });
+    persist({ hp, hpMax: n, ac: latest.current.ac });
   };
 
   const setAc = (raw: string) => {
     const n = clampInt(raw, 0, 99);
     if (n === null) return;
+    latest.current = { ...latest.current, ac: n };
     updateToken(token.id, { ac: n });
-    persist({ hp: token.hp, hpMax: token.hpMax, ac: n });
+    persist({ hp: latest.current.hp, hpMax: latest.current.hpMax, ac: n });
   };
 
   const setSight = (patch: Partial<TokenState["sight"]>) =>

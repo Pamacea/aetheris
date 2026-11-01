@@ -29,7 +29,12 @@ function setup(opts: {
   /** Autres sockets de la room (filtrage par socket). */
   remotes?: { id: string; userId?: string; rooms?: string[] }[];
 }) {
-  const emissions: { room: string; event: string; payload: unknown }[] = [];
+  const emissions: {
+    room: string;
+    event: string;
+    payload: unknown;
+    except?: string;
+  }[] = [];
   let persisted = 0;
   const prisma = {
     campaignMember: { findUnique: async () => opts.member },
@@ -55,11 +60,13 @@ function setup(opts: {
     },
   };
   const gateway = new CampaignGateway(prisma as unknown as PrismaService, new EventEmitter2());
-  const emit = (room: string) => ({
-    emit: (event: string, payload: unknown) => {
-      emissions.push({ room, event, payload });
-    },
-  });
+  const emit = (room: string) => {
+    const send = (except?: string) => (event: string, payload: unknown) => {
+      emissions.push({ room, event, payload, except });
+    };
+    const push = send();
+    return { emit: push, except: (id: string) => ({ emit: send(id) }) };
+  };
   const remoteSockets = (opts.remotes ?? []).map((r) => ({
     id: r.id,
     data: { userId: r.userId },
@@ -76,6 +83,7 @@ function setup(opts: {
   };
   const joined: string[] = [];
   const socket = {
+    id: "socket-1",
     data: {
       userId: "user-1",
       userName: "MJ",
@@ -460,9 +468,12 @@ describe("CampaignGateway.sceneCommit (sécurité joueur)", () => {
       },
       socket,
     );
-    const full = emissions.find(
+    const gmEmission = emissions.find(
       (e) => e.room === `campaign:${CAMPAIGN}:gm` && e.event === "scene:state",
-    )?.payload as SceneState | undefined;
+    );
+    // L'émetteur n'a pas besoin de son propre écho, qui pourrait écraser une saisie locale.
+    expect(gmEmission?.except).toBe("socket-1");
+    const full = gmEmission?.payload as SceneState | undefined;
     const filtered = emissions.find((e) => e.room === "socket:r2" && e.event === "scene:state")
       ?.payload as SceneState | undefined;
     // Le commit joueur (même avec les murs complets) restitue les secrets ;

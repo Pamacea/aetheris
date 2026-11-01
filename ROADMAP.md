@@ -102,8 +102,8 @@ serveurs de dev actifs) le 2026-11-01. `pnpm fmt:check` est vert sur 446 fichier
   `/api/auth`, `/api/uploads`, `/api` et `/socket.io`. WebSocket supporté en mono-instance ;
   aucun adaptateur Redis n'est installé.
 - **Documentation versionnée** : `docs/deployment.md` (migrations, baseline Neon),
-  `docs/storage.md` (Vercel Blob) et `docs/export.md` (périmètre des exports) sont
-  versionnés avec le code.
+  `docs/storage.md` (Vercel Blob), `docs/export.md` (périmètre des exports) et
+  `docs/realtime.md` (arbitrage d'hébergement Socket.IO) sont versionnés avec le code.
 
 ### Abandonné ou non livré
 
