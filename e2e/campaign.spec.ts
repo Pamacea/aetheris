@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createCampaign, inviteCode, register, uniqueEmail } from "./helpers";
+import { E2E_TITLE_PREFIX, createCampaign, inviteCode, register, uniqueEmail } from "./helpers";
 
 test("inscription → création de campagne → table + code d'invitation", async ({ page }) => {
   const email = uniqueEmail("camp");
@@ -14,7 +14,9 @@ test("inscription → création de campagne → table + code d'invitation", asyn
 
   // Le titre et le code d'invitation vivent désormais dans les réglages.
   await page.goto(`${campaignPath}/settings?embed=1`);
-  await expect(page.getByLabel("Titre", { exact: true })).toHaveValue(title);
+  await expect(page.getByLabel("Titre", { exact: true })).toHaveValue(
+    `${E2E_TITLE_PREFIX}${title}`,
+  );
   await expect(inviteCode(page)).not.toBeEmpty();
   expect(campaignPath).toContain("/campaign/");
 });
@@ -42,6 +44,8 @@ test("rejoindre une campagne par code d'invitation", async ({ page, browser }) =
 
   // Le joueur a bien rejoint LA campagne invitée (titre en lecture seule).
   await player.goto(`${campaignPath}/settings?embed=1`);
-  await expect(player.getByLabel("Titre", { exact: true })).toHaveValue(title);
+  await expect(player.getByLabel("Titre", { exact: true })).toHaveValue(
+    `${E2E_TITLE_PREFIX}${title}`,
+  );
   await ctx.close();
 });

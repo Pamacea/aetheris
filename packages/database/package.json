@@ -1,12 +1,15 @@
 {
   "name": "@aetheris/database",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "private": true,
   "scripts": {
     "generate": "prisma generate",
-    "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev",
-    "db:push": "dotenv -e ../../.env -- prisma db push",
-    "studio": "dotenv -e ../../.env -- prisma studio"
+    "migrate:dev": "node scripts/db-guard.mjs migrate-dev --exec",
+    "db:push": "node scripts/db-guard.mjs push --exec",
+    "db:reset": "node scripts/db-guard.mjs reset --exec",
+    "studio": "dotenv -e ../../.env -- prisma studio",
+    "cleanup:e2e": "node scripts/cleanup-e2e.mjs",
+    "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2"

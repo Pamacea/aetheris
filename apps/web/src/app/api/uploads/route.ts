@@ -9,6 +9,10 @@ const BLOB_QUOTA_FILES = 500;
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 
+// Token absent ou refusé par Vercel : dans les deux cas, l'URL manuelle est la sortie.
+const STORAGE_UNAVAILABLE =
+  "Stockage d'images non configuré (BLOB_READ_WRITE_TOKEN). Collez une URL http(s) à la place.";
+
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: NO_STORE });
 }
@@ -72,19 +76,17 @@ export async function POST(request: Request): Promise<Response> {
   const check = validateUpload({ purpose, declaredType: file.type, size: file.size, bytes });
   if (!check.ok) return json({ error: check.error }, 400);
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return json(
-      {
-        error:
-          "Stockage d'images non configuré (BLOB_READ_WRITE_TOKEN). Collez une URL http(s) à la place.",
-      },
-      503,
-    );
-  }
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return json({ error: STORAGE_UNAVAILABLE }, 503);
 
   const prefix = `u/${session.user.id}/`;
-  if (await exceedsQuota(prefix, file.size)) {
-    return json({ error: "Quota de stockage d'images dépassé (200 Mo ou 500 fichiers)." }, 413);
+  try {
+    if (await exceedsQuota(prefix, file.size)) {
+      return json({ error: "Quota de stockage d'images dépassé (200 Mo ou 500 fichiers)." }, 413);
+    }
+  } catch (error) {
+    // Token invalide ou service injoignable : même sortie que « non configuré ».
+    console.error("Échec de l'accès Blob :", error);
+    return json({ error: STORAGE_UNAVAILABLE }, 503);
   }
 
   const pathname = `u/${session.user.id}/${purpose}/${crypto.randomUUID()}.${check.ext}`;

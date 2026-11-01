@@ -6,6 +6,45 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.6] — 2026-11-01
+
+### Ajouté
+
+- **Garde-fous Prisma** : `pnpm db:push`, `db:reset` et `db:migrate` passent par
+  `packages/database/scripts/db-guard.mjs`. Un hôte local est accepté ; un hôte distant
+  est refusé tant que `AETHERIS_DB_CONFIRM=<hostname>` n'est pas posé. `--accept-data-loss`
+  est refusé sauf `AETHERIS_ALLOW_DATA_LOSS=written-approval`, même en local. Seuls le
+  hostname et le nom de base sont affichés, jamais l'URL ni les identifiants.
+- **Contrôle des migrations destructives** : `scripts/check-migrations.mjs` lit les
+  `migration.sql` ajoutés ou modifiés entre une référence et HEAD et échoue sur
+  `DROP TABLE/COLUMN/SCHEMA/TYPE`, `TRUNCATE`, `DELETE FROM`, `RENAME` et
+  `ALTER COLUMN … TYPE`. La CI l'exécute sur chaque push et pull request ; `--all` audite
+  l'historique complet à titre informatif.
+- **Données E2E identifiables** : les comptes de test utilisent `@e2e.aetheris.test` (et
+  l'ancien préfixe `e2e-…@example.com`) et les campagnes le titre `[E2E] …`.
+  `pnpm --filter @aetheris/database cleanup:e2e` liste en lecture seule ; la suppression
+  exige `--confirm` **et** `AETHERIS_CLEANUP_CONFIRM=yes`, et ne touche jamais une
+  campagne comptant un membre non marqué.
+
+### Documenté
+
+- `docs/deployment.md` : règle expand/contract, branche Neon de sauvegarde et instant
+  restore (fenêtres Free / Launch / Scale), garde-fous de la base partagée
+  local/production, et procédure — préparée, non exécutée — de séparation des
+  environnements.
+
+### Corrigé
+
+- **Upload sans stockage exploitable** : un `BLOB_READ_WRITE_TOKEN` présent mais refusé par
+  Vercel faisait échouer `blob.list()` et renvoyait un 500 sans corps. La route répond
+  désormais 503 avec le message « Stockage d'images non configuré… », comme lorsque le
+  token est absent, et l'UI propose de coller une URL `http(s)`.
+
+### Tests
+
+- 10 tests `node:test` des garde-fous DB et 7 tests du détecteur de migrations, désormais
+  exécutés par `pnpm check`. Suites : shared 140, web 376, serveur 59 ; E2E 29/29.
+
 ## [0.7.5] — 2026-11-01
 
 ### Ajouté

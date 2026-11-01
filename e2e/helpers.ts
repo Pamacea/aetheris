@@ -2,9 +2,12 @@ import { expect, type Page } from "@playwright/test";
 
 export const PASSWORD = "E2ePass123!";
 
-/** Email unique par exécution pour ne pas polluer la base de dev. */
+/** Préfixe des campagnes créées par les E2E (repérage dans le dashboard). */
+export const E2E_TITLE_PREFIX = "[E2E] ";
+
+/** Email unique sur un domaine dédié, cible du script de nettoyage. */
 export function uniqueEmail(tag: string): string {
-  return `e2e-${tag}-${Date.now()}-${Math.floor(Math.random() * 10_000)}@example.com`;
+  return `e2e-${tag}-${Date.now()}-${Math.floor(Math.random() * 10_000)}@e2e.aetheris.test`;
 }
 
 /** Inscription → redirige vers /dashboard. */
@@ -34,7 +37,7 @@ export async function login(page: Page, email: string) {
  *  Renvoie le chemin de base `/campaign/<id>`. */
 export async function createCampaign(page: Page, title: string) {
   await page.getByRole("button", { name: "+ Nouvelle campagne" }).click();
-  await page.getByPlaceholder("Titre de la campagne…").fill(title);
+  await page.getByPlaceholder("Titre de la campagne…").fill(`${E2E_TITLE_PREFIX}${title}`);
   // Assistant en deux étapes : identité puis système de jeu (sélection obligatoire).
   await page.getByRole("button", { name: "Suivant", exact: true }).click();
   await page

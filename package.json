@@ -1,6 +1,6 @@
 {
   "name": "aetheris",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "private": true,
   "scripts": {
     "postinstall": "pnpm --filter @aetheris/database generate",
@@ -8,9 +8,9 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "test": "turbo test",
+    "test": "node --test \"scripts/*.test.mjs\" && turbo test",
     "test:e2e": "playwright test",
-    "check": "turbo typecheck lint test",
+    "check": "node --test \"scripts/*.test.mjs\" && turbo typecheck lint test",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "db:generate": "pnpm --filter @aetheris/database generate",
