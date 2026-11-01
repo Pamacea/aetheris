@@ -6,9 +6,34 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
-## [0.6.0] — 2026-10-31 · à venir
+## [0.6.2] — 2026-11-01
 
-> Commit prévu : `UPDATE: aetheris - v0.6.0`
+### Modifié
+
+- **Documentation** : `ROADMAP.md` réécrite sur l'état vérifié du code (vision, modules, décisions retenues ou abandonnées, historique condensé, prochaines étapes) ; `README.md` aligné sur les scripts et périmètres réels ; landing corrigée (licence MIT, exports réellement livrés, 11 modules, notes de théâtre retirées).
+- **CHANGELOG** : entrée 0.6.1 datée, avec ses correctifs de sécurité et ses tests.
+
+## [0.6.1] — 2026-11-01
+
+### Corrigé
+
+- **VTT** : le payload RSC initial est filtré côté serveur par `sceneStateForViewer` (`packages/shared/src/scene-visibility.ts`) ; le joueur ne reçoit plus les murs secrets ni les jetons invisibles.
+- **Fiches** : `visibleEntityWhere` appliqué aux pages VTT, wiki (`?note=`) et graphe.
+- **Romans** : le token de partage n'est réutilisé que si le mode est inchangé (rotation lors d'un passage lecture → relecture).
+- **Bibliothèque** : seuls les romans `published` sont listés.
+- **Navigation** : `/library` anonyme n'affiche plus le chrome connecté (Tableau de bord, Studio, Profil, « Chargement… ») mais Bibliothèque, Se connecter et Créer un compte.
+
+### Sécurité
+
+- **WebSocket** : salon `campaign:<id>:gm` ; `scene:commit` diffuse l'état complet au MJ et un état filtré par socket aux joueurs ; `token:moved` filtré ; `fiche:sync` exige l'assignation (ou la propriété du jeton) et bloque `gmOnly` ; `fiche:combat` ciblé (MJ, assignés et propriétaires de jetons).
+- **Server Actions** : `saveTokenCombat` exige le grant `vtt` ; `saveTemplateData` exige le grant `fiches` (ou `wiki`) ; `saveTemplateAsSystemPreset` est réservé au MJ ; `listWikiVersions` filtre les entités invisibles.
+
+### Tests
+
+- **VTT** : `packages/shared/tests/scene-visibility.test.ts` et `apps/web/src/features/vtt/page-data.test.ts` couvrent le filtrage de scène ; les tests de la gateway sont étendus.
+- **E2E** : `e2e/public.spec.ts` couvre les pages publiques anonymes ; le helper `createCampaign` suit l'assistant en deux étapes.
+
+## [0.6.0] — 2026-10-31
 
 ### Ajouté
 
@@ -38,6 +63,7 @@ Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH`
 - **Graphe** : les entités « note MJ » sont masquées aux joueurs.
 - **VTT** : barre d'outils refondue en icônes, ancrée dans le dock inférieur.
 - **Restrictions joueurs** : déplacement limité à leurs propres jetons, modification limitée aux champs de combat de ces jetons.
+- **Manifest serveur** : `apps/server/package.json` déclare `"license": "MIT"` au lieu de `"UNLICENSED"`, aligné sur la licence du dépôt.
 
 ### Corrigé
 
@@ -53,16 +79,17 @@ Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH`
 - **Choix** : le vote est refusé si le module est désactivé pour le joueur.
 - **Combat** : `plugin:event` n'accepte plus que le MJ ; les macros `gmOnly` ne sont plus résolues pour les joueurs.
 - **Jetons** : nom, taille et bouton de suppression ne sont plus modifiables par le joueur ; la fiche liée reste en lecture seule pour lui.
-- **Romans** : métadonnées, publication et suppression réservées à l'auteur ; un éditeur ne peut modifier que le contenu d'un chapitre existant.
+- **Romans** : métadonnées, publication et suppression réservées à l'auteur ; un éditeur peut créer, renommer, réordonner et éditer le contenu des chapitres, sans pouvoir publier ni supprimer.
 
 ### Supprimé
 
 - Composants morts : `DiceIcon` (`components/icons.tsx`), `resolveLinkTarget` (`lib/wiki.ts`).
+- Création rapide de modèle retirée : `template-quick-create.tsx`, `template-quick-create-logic.ts` et son test (`features/wiki/templates/`).
 
 ### Base de données
 
 - Schéma Prisma étendu : `Campaign.description` / `visibility` / `gameSystemId`, `JsonTemplate.customCss`, `Entity.gmOnly`, `EntityAssignee`, refonte de `GameSystem`, `Novel.genre` / `tags` / `shareToken` / `shareMode`, `NovelCollaborator` et relations utilisateur.
-- La migration `20261031150000_wiki_gm_only` ne couvre que `Entity.gmOnly` : générer la migration des autres changements avant le commit.
+- La migration `20261031150000_wiki_gm_only` ne couvre que `Entity.gmOnly` ; les autres changements de schéma de cette version (`Campaign.description`/`visibility`/`gameSystemId`, `JsonTemplate.customCss`, `EntityAssignee`, refonte `GameSystem`, `Novel.genre`/`tags`/`shareToken`/`shareMode`, `NovelCollaborator`) ne sont pas couverts par une migration versionnée. La base Neon est maintenue par `pnpm db:push` tant qu'aucune migration de baseline n'est générée.
 
 <!--
 Modèle pour les prochaines entrées :

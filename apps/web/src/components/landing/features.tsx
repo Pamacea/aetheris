@@ -5,7 +5,7 @@ const FEATURES = [
   },
   {
     title: "Table virtuelle temps réel",
-    body: "Scènes PixiJS avec jetons, murs, brouillard de guerre et lumière. Vos joueurs voient la carte bouger en direct.",
+    body: "Scènes PixiJS avec jetons, murs, brouillard de guerre et vision par jeton. Vos joueurs voient la carte bouger en direct.",
   },
   {
     title: "Studio d'écriture",
@@ -13,7 +13,7 @@ const FEATURES = [
   },
   {
     title: "Journal & combat",
-    body: "Suivez les événements, l'initiative et l'ambiance au même endroit. Le théâtre de l'esprit a enfin son carnet.",
+    body: "Consignez vos handouts à la main, suivez l'initiative et l'ambiance au même endroit.",
   },
   {
     title: "Fiches & systèmes de jeu",
@@ -21,7 +21,7 @@ const FEATURES = [
   },
   {
     title: "Gratuit, sans carte bancaire",
-    body: "Pas d'abonnement, pas de carte bancaire. Vos données vous appartiennent et restent exportables.",
+    body: "Pas d'abonnement, pas de carte bancaire. Vos modèles, vos thèmes et vos systèmes s'exportent en JSON.",
   },
 ] as const;
 
@@ -35,8 +35,8 @@ export function Features() {
         </p>
         <h2 className="mt-4 text-3xl sm:text-4xl">Tout au même endroit</h2>
         <p className="mt-4 text-muted" style={{ width: "min(100%, 42rem)" }}>
-          Six modules qui se parlent&nbsp;: ce que vous écrivez dans le wiki apparaît sur la table,
-          ce qui se passe à la table se journalise.
+          Onze modules qui se parlent&nbsp;: ce que vous écrivez dans le wiki apparaît sur la table,
+          et le journal rassemble les handouts que vous y consignez.
         </p>
         <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (

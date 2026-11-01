@@ -18,7 +18,8 @@ export function Community() {
         >
           Aetheris est en accès anticipé, construit avec ses utilisateurs. Pas d&apos;actionnaire à
           satisfaire, pas de venture capital&nbsp;: un logiciel de jeu, maintenu par des gens qui
-          jouent. Ce que vous écrivez vous appartient — exportable à tout moment.
+          jouent. Ce que vous écrivez vous appartient. Modèles, thèmes et systèmes s&apos;exportent
+          en JSON.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-sm text-muted">
           <span>
@@ -27,11 +28,11 @@ export function Community() {
           </span>
           <span>
             <span className="mark-tri" aria-hidden />
-            Open source à venir
+            Open source · MIT
           </span>
           <span>
             <span className="mark-tri" aria-hidden />
-            Données exportables
+            Modèles, thèmes et systèmes exportables
           </span>
         </div>
       </div>

@@ -2,14 +2,15 @@
 
 > **Plateforme VTT & Lore Studio tout-en-un** — table virtuelle, base de connaissances façon Obsidian et studio d'écriture de romans, réunis dans une seule app.
 
-[![Version](https://img.shields.io/badge/version-0.6.0-8b5cf6)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.2-8b5cf6)](./CHANGELOG.md)
 [![Licence](https://img.shields.io/badge/licence-MIT-111)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 
 Aetheris sert à mener une campagne de jeu de rôle de bout en bout : préparer le lore,
 jouer autour d'une table virtuelle synchronisée en temps réel, gérer les fiches et le
-combat, puis raconter l'histoire dans un studio d'écriture intégré. Tout est modulaire :
-chaque campagne active ou désactive ses modules.
+combat, puis raconter l'histoire dans un studio d'écriture intégré. Chaque campagne
+active ou désactive ses cinq modules étendus ; le wiki, la table, le graphe, les choix,
+les réglages et les permissions font partie du cœur.
 
 ## Sommaire
 
@@ -37,7 +38,7 @@ chaque campagne active ou désactive ses modules.
 | **Ambiance**    | Playlists et transport audio synchronisé pour toute la table                                                 |
 | **Combat**      | Tracker d'initiative, tours et rounds en temps réel                                                          |
 | **Fiches**      | Feuilles de personnage issues des templates, assignables à un ou plusieurs joueurs                           |
-| **Macros**      | Macros exécutées en sandbox (iframe), sans `eval`, avec chat intégré                                         |
+| **Macros**      | Macros exécutées dans une iframe `sandbox` sans origine (`new Function` confiné), avec chat intégré          |
 | **Réglages**    | Informations de campagne, thème sandboxé, code d'invitation                                                  |
 | **Permissions** | Rôles MJ/PJ, visibilité par module, dernier MJ protégé                                                       |
 
@@ -53,7 +54,7 @@ plugins activables par campagne. Le wiki, la table et le graphe font partie du c
 
 ### Transverse
 
-- **Templates de fiches** : constructeur de champs, modèles prêts à l'emploi (Personnage, Lieu, Objet) et systèmes de jeu préconfigurés (D&D 5e, L'Appel de Cthulhu, Alien, Narratif) ou homebrew.
+- **Templates de fiches** : constructeur de champs, modèles prêts à l'emploi (Personnage, Lieu, Objet) et systèmes de jeu préconfigurés (D&D 5e, L'Appel de Cthulhu, Alien RPG, Narratif, Cyberpunk, Dark Fantasy, Enquête) ou homebrew.
 - **Palette de commandes** (`Ctrl/Cmd + K`), thème sombre natif, mode `?embed=1` pour intégrer un module dans un bureau VTT.
 - **Auth** Better Auth : e-mail/mot de passe et OAuth Discord/GitHub (boutons affichés seulement si les variables sont présentes).
 - Pages partagées publiques (wiki, romans) sans compte.
@@ -147,18 +148,18 @@ pnpm dev
 
 ## Scripts
 
-| Commande         | Effet                                                |
-| ---------------- | ---------------------------------------------------- |
-| `pnpm dev`       | Web + serveur Nest en watch                          |
-| `pnpm build`     | Build production (Turbo)                             |
-| `pnpm check`     | `typecheck` + `lint` + `test` — le gate avant commit |
-| `pnpm lint`      | ESLint par workspace                                 |
-| `pnpm typecheck` | `tsc --noEmit` par workspace                         |
-| `pnpm test`      | Tests unitaires (Vitest, `node:test`)                |
-| `pnpm test:e2e`  | Playwright (serveurs de dev déjà lancés requis)      |
-| `pnpm fmt`       | Formate avec oxfmt                                   |
-| `pnpm fmt:check` | Vérifie le formatage sans écrire                     |
-| `pnpm db:*`      | `generate`, `migrate`, `push`, `studio`              |
+| Commande         | Effet                                                            |
+| ---------------- | ---------------------------------------------------------------- |
+| `pnpm dev`       | Web en dev + serveur Nest (`nest start`, sans watch)             |
+| `pnpm build`     | Build production (Turbo)                                         |
+| `pnpm check`     | `typecheck` + `lint` + `test` — le gate avant commit             |
+| `pnpm lint`      | ESLint (web) + oxlint (serveur)                                  |
+| `pnpm typecheck` | `tsc --noEmit` (web, serveur, shared, plugin-api ; pas database) |
+| `pnpm test`      | Tests unitaires (Vitest, `node:test`)                            |
+| `pnpm test:e2e`  | Playwright (serveurs de dev déjà lancés requis)                  |
+| `pnpm fmt`       | Formate avec oxfmt                                               |
+| `pnpm fmt:check` | Vérifie le formatage sans écrire                                 |
+| `pnpm db:*`      | `generate`, `migrate`, `push`, `studio`                          |
 
 ## Tests
 
