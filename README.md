@@ -2,7 +2,7 @@
 
 > **Plateforme VTT & Lore Studio tout-en-un** — table virtuelle, base de connaissances façon Obsidian et studio d'écriture de romans, réunis dans une seule app.
 
-[![Version](https://img.shields.io/badge/version-0.6.2-8b5cf6)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.3-8b5cf6)](./CHANGELOG.md)
 [![Licence](https://img.shields.io/badge/licence-MIT-111)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 

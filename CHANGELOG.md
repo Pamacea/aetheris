@@ -6,6 +6,14 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.6.3] — 2026-11-01
+
+### Base de données
+
+- Migration additive `20261101090000_schema_0_6_0` : couvre le diff entre les 12 migrations historiques et le schéma 0.6.0 (`Campaign.description`/`visibility`/`gameSystemId`, `JsonTemplate.customCss`, `Entity.shareSlug`, refonte `GameSystem`, `EntityAssignee`, `EntityLink`, `PlayerChoice`, `ChoiceVote`, `Novel.genre`/`tags`/`shareToken`/`shareMode`, `NovelCollaborator`).
+- Validée sur PostgreSQL 17 jetable : les 13 migrations s'appliquent sur une base vierge et `prisma migrate diff` ne produit aucun drift. Les données `GameSystem` legacy sont préservées (`authorId` renommé en `ownerId`, copie dans le schéma `legacy_backup` avant la suppression de `schema`).
+- `docs/deployment.md` : déploiement, rollback et procédure de baseline Neon (`migrate resolve --applied` sur les 13 migrations, sans DDL). Aucune commande n'a été exécutée sur Neon.
+
 ## [0.6.2] — 2026-11-01
 
 ### Modifié
