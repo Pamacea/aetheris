@@ -499,12 +499,14 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
       throw new WsException(`Plugin désactivé : ${pluginId}`);
     }
 
+    const fromName = data.userName ?? "Anonyme";
     socket.to(`campaign:${campaignId}`).emit("plugin:event", {
       pluginId,
       type,
       payload,
-      fromName: data.userName ?? "Anonyme",
+      fromName,
     });
+    this.events.emit("plugin.event", { campaignId, pluginId, type, fromName });
   }
 
   /** Commit d'état complet (fin de geste) : persiste + broadcast. */
@@ -618,6 +620,11 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
     this.server.to(`campaign:${campaignId}`).emit("scene:change", {
       sceneId: scene.id,
       activatedBy: data.userId,
+    });
+    this.events.emit("scene.activated", {
+      campaignId,
+      userId: data.userId,
+      userName: data.userName ?? "Anonyme",
     });
   }
 

@@ -6,6 +6,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.1] — 2026-11-01
+
+### Ajouté
+
+- **Journal automatique** (`JournalAutomationService`, `@nestjs/event-emitter`) : les jets de dés, les arrivées de joueurs, l'activation de scène et les événements de plugins alimentent le journal de campagne, uniquement si le module Journal est actif. Jets, arrivées et scènes sont partagés aux joueurs ; les événements de plugins (combat) restent réservés au MJ et leur payload brut n'est jamais persisté. Anti-flood : une entrée par campagne et par seconde ; toute erreur d'écriture est journalisée côté serveur et n'interrompt pas le gateway.
+
+### Tests
+
+- 5 tests unitaires du service : module désactivé, jet partagé sans payload, événement combat non partagé, anti-flood, erreur avalée. Suite serveur : 59/59.
+
 ## [0.7.0] — 2026-11-01
 
 ### Ajouté

@@ -9,6 +9,7 @@ import { PrismaModule } from "./core/database/prisma.module.js";
 import { SessionGuard } from "./core/auth/session.guard.js";
 import { PluginGuard } from "./core/plugins/plugin.guard.js";
 import { PluginRegistryService } from "./core/plugins/plugin-registry.service.js";
+import { JournalAutomationService } from "./core/journal/journal-automation.service.js";
 import { CampaignGateway } from "./core/websocket/campaign.gateway.js";
 import { PluginsController } from "./plugins/plugins.controller.js";
 
@@ -30,6 +31,7 @@ import { PluginsController } from "./plugins/plugins.controller.js";
     SessionGuard,
     PluginGuard,
     PluginRegistryService,
+    JournalAutomationService,
     CampaignGateway,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
