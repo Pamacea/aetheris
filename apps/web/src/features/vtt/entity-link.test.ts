@@ -29,6 +29,7 @@ const token = (patch: Partial<TokenState> = {}): TokenState => ({
   ac: null,
   ownerId: null,
   noteId: null,
+  imageUrl: null,
   sight: { enabled: true, rangeCells: null, type: "normal" },
   ...patch,
 });

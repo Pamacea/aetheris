@@ -146,6 +146,7 @@ async function seedDemoContent(campaignId: string): Promise<void> {
         ac: 12,
         noteId: null,
         ownerId: null,
+        imageUrl: null,
         sight: { enabled: true, rangeCells: null, type: "normal" },
       },
       {
@@ -161,6 +162,7 @@ async function seedDemoContent(campaignId: string): Promise<void> {
         ac: 13,
         noteId: null,
         ownerId: null,
+        imageUrl: null,
         sight: { enabled: true, rangeCells: null, type: "normal" },
       },
     ],

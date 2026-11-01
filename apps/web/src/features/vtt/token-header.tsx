@@ -1,3 +1,4 @@
+import { ImageUploadField } from "@/components/image-upload";
 import { EyeIcon, EyeOffIcon, TrashIcon } from "@/components/icons";
 import { getCampaignSocket } from "@/lib/ws";
 import { saveTokenCombat } from "./actions";
@@ -210,6 +211,19 @@ export function VttTokenHeader({
               />
             </span>
           </>
+        )}
+
+        {isGM && (
+          <div className="w-52 shrink-0">
+            <ImageUploadField
+              label="Image"
+              value={token.imageUrl ?? ""}
+              purpose="token"
+              hint="PNG, JPEG, WebP ou GIF · 8 Mo max, ou collez une URL http(s)."
+              compact
+              onChange={(url) => updateToken(token.id, { imageUrl: url || null })}
+            />
+          </div>
         )}
 
         <span className={GROUP_CLS}>

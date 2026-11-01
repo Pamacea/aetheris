@@ -1,6 +1,6 @@
 import type { Container } from "pixi.js";
 import { scheduleFog } from "./fog";
-import { buildToken } from "./token";
+import { buildToken, pruneTokenTextures } from "./token";
 import type { TokenState, VttBridge, VttSceneCtx } from "./types";
 
 /** Token sous le point monde (hit circulaire, du dernier au premier). */
@@ -18,6 +18,8 @@ export function hitTokenAt(tokenStates: TokenState[], wx: number, wy: number): T
 function rebuildTokens(ctx: VttSceneCtx) {
   for (const child of [...ctx.tokensLayer.children]) child.destroy({ children: true });
   for (const t of ctx.tokenStates) ctx.tokensLayer.addChild(buildToken(t, ctx.selectedToken));
+  // Après destruction des anciens conteneurs : libère les images orphelines.
+  pruneTokenTextures(ctx.tokenStates);
   scheduleFog(ctx);
 }
 
@@ -37,6 +39,7 @@ export function applyTokens(ctx: VttSceneCtx, list: TokenState[], sel: string | 
         t.id === o.id &&
         t.name === o.name &&
         t.color === o.color &&
+        t.imageUrl === o.imageUrl &&
         t.size === o.size &&
         t.hp === o.hp &&
         t.hpMax === o.hpMax &&

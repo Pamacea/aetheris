@@ -76,6 +76,7 @@ describe("newSceneToken", () => {
       ac: null,
       ownerId: null,
       noteId: null,
+      imageUrl: null,
       sight: { enabled: true, rangeCells: null, type: "normal" },
     });
   });

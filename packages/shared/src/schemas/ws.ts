@@ -68,6 +68,22 @@ export type TokenSight = z.infer<typeof tokenSightSchema>;
 
 const DEFAULT_SIGHT: TokenSight = { enabled: true, rangeCells: null, type: "normal" };
 
+/** Règle commune carte/jeton : http(s) absolu, 2048 caractères max. */
+const httpImageUrlSchema = z
+  .string()
+  .max(2048)
+  .refine((u) => u.startsWith("http://") || u.startsWith("https://"), "URL http(s) attendue");
+
+/** URL de carte : http(s) absolu uniquement. Toute autre valeur (`blob:`
+ *  d'un aperçu local, `javascript:`, relative) est normalisée en null — un
+ *  fichier local ne doit jamais être persisté ni diffusé. */
+export const mapUrlSchema = httpImageUrlSchema.nullable().catch(null);
+export type MapUrl = z.infer<typeof mapUrlSchema>;
+
+/** Image de jeton : même règle ; champ absent → null (scènes antérieures). */
+export const tokenImageUrlSchema = httpImageUrlSchema.nullable().default(null).catch(null);
+export type TokenImageUrl = z.infer<typeof tokenImageUrlSchema>;
+
 export const sceneTokenSchema = z.object({
   id: z.string().min(1).max(64),
   x: z.number(),
@@ -79,6 +95,8 @@ export const sceneTokenSchema = z.object({
   hp: z.number().nullable(),
   hpMax: z.number().nullable(),
   noteId: z.string().min(1).max(64).nullable().default(null),
+  /** Image distante du jeton, recadrée en cercle ; repli couleur + initiale. */
+  imageUrl: tokenImageUrlSchema,
   // .default(null) : les payloads antérieurs (sans les champs) restent valides.
   ac: z.number().int().min(0).max(99).nullable().default(null),
   /** Membre de la campagne propriétaire du jeton (PV/CA) — null = MJ seul. */
@@ -125,17 +143,6 @@ export const wallLineSchema = z.preprocess(
   wallSchema,
 );
 export type WallLine = Wall;
-
-/** URL de carte : http(s) absolu uniquement. Toute autre valeur (`blob:`
- *  d'un aperçu local, `javascript:`, relative) est normalisée en null — un
- *  fichier local ne doit jamais être persisté ni diffusé. */
-export const mapUrlSchema = z
-  .string()
-  .max(2048)
-  .refine((u) => u.startsWith("http://") || u.startsWith("https://"), "URL http(s) attendue")
-  .nullable()
-  .catch(null);
-export type MapUrl = z.infer<typeof mapUrlSchema>;
 
 export const gridSettingsSchema = z.object({
   type: z.enum(["square", "hex", "none"]),

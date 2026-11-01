@@ -1,8 +1,9 @@
-import { Sprite, Texture } from "pixi.js";
+import { Sprite } from "pixi.js";
 import { applyTokens } from "./apply";
 import { area, redrawDraft, redrawGrid, redrawWalls } from "./draw";
 import { scheduleFog } from "./fog";
 import { newId } from "./helpers";
+import { loadImageTexture } from "./token";
 import { type VttApi, type VttBridge, type VttSceneCtx, type WallLine } from "./types";
 
 /**
@@ -37,14 +38,7 @@ export function buildVttApi(
         return;
       }
       try {
-        // Les URLs blob n'ont pas d'extension : on contourne le
-        // résolveur d'Assets en passant par un HTMLImageElement.
-        const texture = await new Promise<Texture>((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => resolve(Texture.from(img));
-          img.onerror = () => reject(new Error("Image invalide"));
-          img.src = url;
-        });
+        const texture = await loadImageTexture(url);
         if (token !== ctx.mapToken || ctx.disposed) {
           texture.destroy(true);
           return;

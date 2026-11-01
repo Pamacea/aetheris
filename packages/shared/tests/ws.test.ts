@@ -114,6 +114,27 @@ test("jeton : vision par défaut (portée globale) et champs bornés", () => {
   );
 });
 
+test("jeton : imageUrl absent → null, http(s) conservé, le reste normalisé", () => {
+  const d = sceneStateSchema.parse(etat());
+  assert.equal(d.tokens[0].imageUrl, null);
+  for (const ok of ["https://exemple.fr/jeton.png", "http://cdn.exemple.fr/jeton.webp"]) {
+    const r = sceneStateSchema.parse(etat({ tokens: [{ ...jeton, imageUrl: ok }] }));
+    assert.equal(r.tokens[0].imageUrl, ok);
+  }
+  for (const bad of [
+    "javascript:alert(1)",
+    "data:image/png;base64,AAAA",
+    "blob:https://exemple.fr/123",
+    "/local/jeton.png",
+    "jeton.png",
+    `https://exemple.fr/${"a".repeat(2_050)}`,
+  ]) {
+    const r = sceneStateSchema.safeParse(etat({ tokens: [{ ...jeton, imageUrl: bad }] }));
+    assert.equal(r.success, true);
+    if (r.success) assert.equal(r.data.tokens[0].imageUrl, null);
+  }
+});
+
 test("theatreNotes absent : défaut [] (payloads antérieurs valides)", () => {
   const r = sceneStateSchema.safeParse(etat({ theatreNotes: undefined }));
   assert.equal(r.success, true);

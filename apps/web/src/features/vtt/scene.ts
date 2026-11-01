@@ -2,6 +2,7 @@ import { Application, Container, Graphics } from "pixi.js";
 import { buildVttApi } from "./api";
 import { area } from "./draw";
 import { attachPointers } from "./pointers";
+import { pruneTokenTextures } from "./token";
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP, type VttBridge, type VttSceneCtx } from "./types";
 
 /**
@@ -143,5 +144,7 @@ export function createVttScene(host: HTMLDivElement, bridge: VttBridge): () => v
     bridge.apiRef.current = null;
     if (onWheel && app) app.canvas.removeEventListener("wheel", onWheel);
     app?.destroy(true, { children: true });
+    // Plus aucun jeton affiché : libère aussi les textures encore en cache.
+    pruneTokenTextures([]);
   };
 }

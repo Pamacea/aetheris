@@ -821,7 +821,8 @@ export class CampaignGateway implements OnGatewayConnection, OnModuleInit, OnMod
         token.color === old.color &&
         token.size === old.size &&
         token.noteId === old.noteId &&
-        token.ownerId === old.ownerId;
+        token.ownerId === old.ownerId &&
+        token.imageUrl === old.imageUrl;
       if (!ownFieldsOnly) throw new WsException("Champs du jeton non modifiables");
     }
   }

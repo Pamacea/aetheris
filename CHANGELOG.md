@@ -6,6 +6,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.2] — 2026-11-01
+
+### Ajouté
+
+- **Jetons illustrés (VTT)** : un jeton peut afficher une image distante recadrée en cercle, avec repli couleur + initiale si l'image est absente, invalide ou bloquée par CORS. Le MJ l'envoie via le champ Image de l'en-tête du jeton (upload Blob ou URL `http(s)`), les joueurs voient le rendu. Textures mises en cache par URL, dédupliquées et purgées avec la scène ; seules les URL `http(s)` sont persistées, toute autre valeur est normalisée en `null`.
+
+### Corrigé
+
+- **Sécurité `scene:commit`** : un joueur ne peut plus forger l'`imageUrl` de son propre jeton par WebSocket ; le champ est verrouillé comme le nom, la couleur et la fiche (test de non-régression ajouté).
+
+### Tests
+
+- Schéma : image absente → `null`, `http(s)` conservée, `javascript:`/`data:`/`blob:`/relative/trop longue → `null`. Suite web : 365 tests, shared : 136, serveur : 59.
+
 ## [0.7.1] — 2026-11-01
 
 ### Ajouté

@@ -370,8 +370,13 @@ describe("CampaignGateway.sceneCommit (sécurité joueur)", () => {
     ).rejects.toBeInstanceOf(WsException);
   });
 
-  it("refuse le changement de propriétaire, d'identité de fiche et de couleur", async () => {
-    const cases = [{ ownerId: "user-2" }, { noteId: "note-1" }, { color: "#ffffff" }];
+  it("refuse le changement de propriétaire, d'identité de fiche, de couleur et d'image", async () => {
+    const cases = [
+      { ownerId: "user-2" },
+      { noteId: "note-1" },
+      { color: "#ffffff" },
+      { imageUrl: "https://exemple.fr/jeton.png" },
+    ];
     for (const over of cases) {
       const { gateway, socket } = player({ entities: ["note-1"] });
       await expect(
