@@ -48,9 +48,17 @@ export function applyTokens(ctx: VttSceneCtx, list: TokenState[], sel: string | 
     });
   if (sameShape) {
     let moved = false;
+    let fogChanged = false;
     for (let i = 0; i < list.length; i++) {
       const t = list[i];
       const o = ctx.tokenStates[i];
+      // Vision/lumière : rendu du jeton inchangé, mais le brouillard doit suivre.
+      if (
+        JSON.stringify(t.sight) !== JSON.stringify(o.sight) ||
+        JSON.stringify(t.light) !== JSON.stringify(o.light)
+      ) {
+        fogChanged = true;
+      }
       if (t.x === o.x && t.y === o.y && t.rot === o.rot) continue;
       const child = ctx.tokensLayer.children[i] as Container | undefined;
       if (!child) continue;
@@ -60,7 +68,7 @@ export function applyTokens(ctx: VttSceneCtx, list: TokenState[], sel: string | 
       if (t.x !== o.x || t.y !== o.y) moved = true;
     }
     ctx.tokenStates = list;
-    if (moved) scheduleFog(ctx);
+    if (moved || fogChanged) scheduleFog(ctx);
     return;
   }
   ctx.tokenStates = list;

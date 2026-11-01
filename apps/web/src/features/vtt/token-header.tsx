@@ -111,6 +111,19 @@ export function VttTokenHeader({
     if (n !== null) setSight({ rangeCells: n });
   };
 
+  const setLight = (patch: Partial<TokenState["light"]>) =>
+    updateToken(token.id, { light: { ...token.light, ...patch } });
+
+  /** Champ vide = portée globale du brouillard (`fog.sightCells`). */
+  const setLightRange = (raw: string) => {
+    if (!raw.trim()) {
+      setLight({ radiusCells: null });
+      return;
+    }
+    const n = clampInt(raw, 1, 60);
+    if (n !== null) setLight({ radiusCells: n });
+  };
+
   /** Liaison : noteId + nom/PV/CA immédiatement repris de la fiche. */
   const linkEntity = (id: string) => {
     const entity = entities.find((e) => e.id === id) ?? null;
@@ -308,6 +321,41 @@ export function VttTokenHeader({
             </>
           )}
         </span>
+
+        {isGM && (
+          <>
+            <span aria-hidden className={SEP_CLS} />
+            <span className={GROUP_CLS}>
+              <button
+                type="button"
+                aria-pressed={token.light.enabled}
+                aria-label="Lumière du jeton"
+                title="Lumière du jeton"
+                onClick={() => setLight({ enabled: !token.light.enabled })}
+                className={`h-6 shrink-0 border px-1.5 text-[0.6rem] uppercase tracking-wider transition ${
+                  token.light.enabled
+                    ? "border-amber-500/40 text-accent"
+                    : "border-border text-muted hover:text-foreground"
+                }`}
+              >
+                Lumière
+              </button>
+              {token.light.enabled && (
+                <input
+                  className="input w-12 shrink-0 py-1 text-right font-mono text-xs"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={token.light.radiusCells ?? ""}
+                  placeholder="—"
+                  aria-label="Portée de lumière (cases)"
+                  title="Portée de lumière — vide : brouillard global"
+                  onChange={(e) => setLightRange(e.target.value)}
+                />
+              )}
+            </span>
+          </>
+        )}
       </div>
 
       {isGM && (

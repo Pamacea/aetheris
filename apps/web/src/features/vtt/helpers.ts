@@ -41,6 +41,7 @@ export function newSceneToken(
     noteId: null,
     imageUrl: null,
     sight: { enabled: true, rangeCells: null, type: "normal" },
+    light: { enabled: false, radiusCells: null },
   };
 }
 

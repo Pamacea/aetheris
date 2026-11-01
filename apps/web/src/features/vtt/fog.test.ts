@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isTokenVisible, rayHit, visionPoly, wallSegs, type WallSeg } from "./fog";
+import { isTokenVisible, lightSources, rayHit, visionPoly, wallSegs, type WallSeg } from "./fog";
 import type { TokenState } from "./types";
 
 // Tracé Pixi (grid/tokens) hors sujet ici : la géométrie du brouillard est pure.
@@ -28,6 +28,7 @@ const jeton = (over: Partial<TokenState> = {}): TokenState => ({
   noteId: null,
   imageUrl: null,
   sight: { enabled: true, rangeCells: null, type: "normal" },
+  light: { enabled: false, radiusCells: null },
   ...over,
 });
 
@@ -206,6 +207,37 @@ describe("visionPoly", () => {
       expect(Math.abs(angle)).toBeLessThanOrEqual(Math.PI / 2 + 1e-6);
       expect(Math.hypot(poly[i] - 50, poly[i + 1] - 50)).toBeCloseTo(30, 4);
     }
+  });
+});
+
+describe("lightSources", () => {
+  const cell = 32;
+
+  it("ne retient que les jetons éclairés visibles ou possédés", () => {
+    const moi = jeton({ id: "moi", ownerId: "u1", light: { enabled: true, radiusCells: null } });
+    const vu = jeton({ id: "vu", x: 100, light: { enabled: true, radiusCells: 5 } });
+    const loin = jeton({ id: "loin", x: 5000, light: { enabled: true, radiusCells: null } });
+    const eteint = jeton({ id: "eteint", x: 10, light: { enabled: false, radiusCells: null } });
+    const sources = lightSources([moi, vu, loin, eteint], [moi], [], cell, 10, "u1");
+    expect(sources.map((t) => t.id)).toEqual(["moi", "vu"]);
+  });
+
+  it("un mur coupe la lumière d'un jeton non possédé", () => {
+    const moi = jeton({ id: "moi", ownerId: "u1" });
+    const cache = jeton({ id: "cache", x: 100, light: { enabled: true, radiusCells: null } });
+    const segs = [mur(50, -50, 50, 50)];
+    expect(lightSources([moi, cache], [moi], segs, cell, 10, "u1")).toEqual([]);
+  });
+
+  it("un jeton possédé reste une source même derrière un mur", () => {
+    const moi = jeton({
+      id: "moi",
+      x: 100,
+      ownerId: "u1",
+      light: { enabled: true, radiusCells: null },
+    });
+    const segs = [mur(50, -50, 50, 50)];
+    expect(lightSources([moi], [moi], segs, cell, 10, "u1").map((t) => t.id)).toEqual(["moi"]);
   });
 });
 

@@ -6,6 +6,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.3] — 2026-11-01
+
+### Ajouté
+
+- **Sources lumineuses par jeton (VTT)** : le MJ active une lumière et fixe sa portée en cases (vide = portée globale du brouillard). Le brouillard joueur découpe un polygone de lumière respectant les murs, pour les jetons possédés ou déjà visibles ; une lumière portée par un jeton hors vision n'éclaire pas, ce qui évite toute fuite de position. La silhouette des jetons reste régie par la vision : la lumière éclaire la carte, pas les personnages hors champ.
+
+### Corrigé
+
+- **Brouillard** : une bascule de vision ou de lumière reçue par WebSocket redessine désormais le voile immédiatement.
+
+### Tests
+
+- Schéma : lumière désactivée par défaut, portée entière 1..60, valeurs invalides refusées. Web : 3 tests du calcul des sources lumineuses (visibilité, mur, jeton possédé). Serveur : `light` verrouillé pour un joueur. Suites : shared 137, web 368, serveur 59 ; E2E 29/29.
+
 ## [0.7.2] — 2026-11-01
 
 ### Ajouté

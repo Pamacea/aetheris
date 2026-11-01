@@ -78,6 +78,7 @@ describe("newSceneToken", () => {
       noteId: null,
       imageUrl: null,
       sight: { enabled: true, rangeCells: null, type: "normal" },
+      light: { enabled: false, radiusCells: null },
     });
   });
 });
@@ -101,6 +102,7 @@ describe("sceneTokenSchema (rétrocompatibilité)", () => {
     expect(parsed.ownerId).toBeNull();
     expect(parsed.noteId).toBeNull();
     expect(parsed.sight).toEqual({ enabled: true, rangeCells: null, type: "normal" });
+    expect(parsed.light).toEqual({ enabled: false, radiusCells: null });
   });
 
   it("ac/ownerId valides passent, ac hors bornes rejeté", () => {

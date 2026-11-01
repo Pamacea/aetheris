@@ -376,6 +376,7 @@ describe("CampaignGateway.sceneCommit (sécurité joueur)", () => {
       { noteId: "note-1" },
       { color: "#ffffff" },
       { imageUrl: "https://exemple.fr/jeton.png" },
+      { light: { enabled: true, radiusCells: 3 } },
     ];
     for (const over of cases) {
       const { gateway, socket } = player({ entities: ["note-1"] });

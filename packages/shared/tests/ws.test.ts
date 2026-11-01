@@ -114,6 +114,27 @@ test("jeton : vision par défaut (portée globale) et champs bornés", () => {
   );
 });
 
+test("jeton : lumière désactivée par défaut, portée bornée 1 → 60", () => {
+  const d = sceneStateSchema.parse(etat());
+  assert.deepEqual(d.tokens[0].light, { enabled: false, radiusCells: null });
+  const on = sceneStateSchema.parse(
+    etat({ tokens: [{ ...jeton, light: { enabled: true, radiusCells: 12 } }] }),
+  );
+  assert.deepEqual(on.tokens[0].light, { enabled: true, radiusCells: 12 });
+  for (const radiusCells of [0, 61, 2.5]) {
+    assert.equal(
+      sceneStateSchema.safeParse(
+        etat({ tokens: [{ ...jeton, light: { enabled: true, radiusCells } }] }),
+      ).success,
+      false,
+    );
+  }
+  assert.equal(
+    sceneStateSchema.safeParse(etat({ tokens: [{ ...jeton, light: { enabled: "oui" } }] })).success,
+    false,
+  );
+});
+
 test("jeton : imageUrl absent → null, http(s) conservé, le reste normalisé", () => {
   const d = sceneStateSchema.parse(etat());
   assert.equal(d.tokens[0].imageUrl, null);

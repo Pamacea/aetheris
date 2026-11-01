@@ -8,7 +8,7 @@ import {
   type WallSeg,
 } from "@aetheris/shared";
 import { area } from "./draw";
-import type { VttSceneCtx } from "./types";
+import type { TokenState, VttSceneCtx } from "./types";
 
 /** Géométrie pure partagée avec le serveur (filtrage des jetons côté WS). */
 export type { WallSeg } from "@aetheris/shared";
@@ -62,6 +62,26 @@ export function visionPoly(
   return pts;
 }
 
+/**
+ * Sources lumineuses exploitables pour ce joueur : uniquement des jetons déjà
+ * diffusés par le serveur, visibles ou possédés. La lumière éclaire la carte,
+ * pas les silhouettes hors vision (la visibilité des jetons reste inchangée).
+ */
+export function lightSources(
+  tokens: TokenState[],
+  viewers: TokenState[],
+  segs: WallSeg[],
+  cellSize: number,
+  defaultCells: number,
+  viewerId: string,
+): TokenState[] {
+  return tokens.filter(
+    (t) =>
+      t.light.enabled &&
+      (t.ownerId === viewerId || isTokenVisible(t, viewers, segs, cellSize, defaultCells)),
+  );
+}
+
 /** Redessine le voile + les trous de vision (un par token dans la zone). */
 function redrawFog(ctx: VttSceneCtx) {
   const gfx = ctx.fogGfx;
@@ -105,6 +125,27 @@ function redrawFog(ctx: VttSceneCtx) {
         ? { center: (t.rot * Math.PI) / 180, width: CONE_RADIANS }
         : undefined;
     const poly = visionPoly(t.x, t.y, segs, range, w, h, cone);
+    if (poly.length < 6) continue;
+    gfx.beginPath();
+    gfx.poly(poly);
+    gfx.cut();
+  }
+
+  // Lumière des jetons (sans cône) : éclaire la carte, pas les silhouettes.
+  const sources = lightSources(
+    ctx.tokenStates,
+    viewers,
+    segs,
+    ctx.gridSettings.size,
+    ctx.sightCells,
+    ctx.viewerId,
+  );
+  for (const t of sources) {
+    // Marge de sécurité : un jeton hors zone ne perce pas le voile.
+    if (t.x < 0 || t.y < 0 || t.x > w || t.y > h) continue;
+    const cells = t.light.radiusCells ?? ctx.sightCells;
+    const range = Math.max(32, cells * ctx.gridSettings.size);
+    const poly = visionPoly(t.x, t.y, segs, range, w, h);
     if (poly.length < 6) continue;
     gfx.beginPath();
     gfx.poly(poly);

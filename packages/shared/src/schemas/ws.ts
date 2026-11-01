@@ -68,6 +68,16 @@ export type TokenSight = z.infer<typeof tokenSightSchema>;
 
 const DEFAULT_SIGHT: TokenSight = { enabled: true, rangeCells: null, type: "normal" };
 
+/** Lumière portée par un jeton : éclaire la carte, pas les silhouettes.
+ *  `radiusCells: null` → portée globale du brouillard (`fog.sightCells`). */
+export const tokenLightSchema = z.object({
+  enabled: z.boolean().default(false),
+  radiusCells: z.number().int().min(1).max(60).nullable().default(null),
+});
+export type TokenLight = z.infer<typeof tokenLightSchema>;
+
+const DEFAULT_LIGHT: TokenLight = { enabled: false, radiusCells: null };
+
 /** Règle commune carte/jeton : http(s) absolu, 2048 caractères max. */
 const httpImageUrlSchema = z
   .string()
@@ -103,6 +113,8 @@ export const sceneTokenSchema = z.object({
   ownerId: z.string().min(1).max(64).nullable().default(null),
   // .default(...) : les scènes antérieures voient avec la portée globale.
   sight: tokenSightSchema.default(DEFAULT_SIGHT),
+  // .default(...) : champ absent des scènes antérieures → aucune lumière.
+  light: tokenLightSchema.default(DEFAULT_LIGHT),
 });
 export type SceneToken = z.infer<typeof sceneTokenSchema>;
 

@@ -31,6 +31,7 @@ const token = (patch: Partial<TokenState> = {}): TokenState => ({
   noteId: null,
   imageUrl: null,
   sight: { enabled: true, rangeCells: null, type: "normal" },
+  light: { enabled: false, radiusCells: null },
   ...patch,
 });
 
