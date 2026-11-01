@@ -119,7 +119,9 @@ export function FichesApp({
           {visible.length === 0 && (
             <p className="px-1 text-xs text-muted">
               {fiches.length === 0
-                ? "Aucune fiche — créez un modèle dans le wiki, puis une entrée qui l’utilise."
+                ? templates.length === 0
+                  ? "Aucun modèle — créez-en un dans le wiki."
+                  : "Aucune fiche — créez une entrée depuis un modèle."
                 : "Aucune fiche dans cette catégorie."}
             </p>
           )}
@@ -153,14 +155,28 @@ export function FichesApp({
 
         <section className="flex min-w-0 flex-1 flex-col" aria-label="Édition de la fiche">
           {!selected ? (
-            <div className="flex flex-1 items-center justify-center p-10 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
               <p className="text-sm text-muted">
                 {fiches.length === 0
-                  ? "Aucune fiche à afficher pour cette campagne."
+                  ? templates.length === 0
+                    ? "Aucun modèle de fiche pour cette campagne."
+                    : "Aucune fiche — créez une entrée à partir d’un modèle."
                   : visible.length === 0
                     ? "Aucune fiche dans cette catégorie."
                     : "Sélectionnez une fiche à gauche pour la remplir."}
               </p>
+              {fiches.length === 0 && (
+                <Link
+                  href={
+                    templates.length === 0
+                      ? `/campaign/${campaignId}/wiki/templates`
+                      : `/campaign/${campaignId}/wiki`
+                  }
+                  className="btn px-3 py-1.5 text-xs"
+                >
+                  {templates.length === 0 ? "Créer un modèle" : "Ouvrir le wiki"}
+                </Link>
+              )}
             </div>
           ) : (
             <>

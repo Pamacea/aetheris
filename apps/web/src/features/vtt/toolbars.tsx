@@ -71,6 +71,7 @@ export function VttToolbars({
 
 interface VttToolPanelsProps {
   st: VttState;
+  mapUploadError: string | null;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   applyMap: (raw: string) => boolean;
   removeMap: () => void;
@@ -85,6 +86,7 @@ interface VttToolPanelsProps {
  */
 export function VttToolPanels({
   st,
+  mapUploadError,
   onFileChange,
   applyMap,
   removeMap,
@@ -105,6 +107,7 @@ export function VttToolPanels({
         mapPreview={st.mapPreview}
         applyMap={applyMap}
         removeMap={removeMap}
+        uploadError={mapUploadError}
         onFileChange={onFileChange}
       />
     );

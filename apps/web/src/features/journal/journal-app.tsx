@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { Handout } from "@aetheris/shared";
+import { ImageUploadField } from "@/components/image-upload";
 import { createHandout, deleteHandout, updateHandout } from "./actions";
 
 type View =
@@ -186,17 +187,13 @@ export function JournalApp({
             placeholder="La créature des marais…"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Image (URL ou data-URI)
-          <input
-            className="input"
-            name="handout-image"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            maxLength={2048}
-            placeholder="https://…"
-          />
-        </label>
+        <ImageUploadField
+          label="Image"
+          value={imageUrl}
+          onChange={setImageUrl}
+          purpose="handout"
+          hint="PNG, JPEG, WebP ou GIF · 8 Mo max, ou collez une URL http(s)."
+        />
         <label className="flex flex-col gap-1 text-xs text-muted">
           Contenu
           <textarea

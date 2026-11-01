@@ -9,10 +9,12 @@ interface VttGridBarProps {
   setGridNum: (key: "size" | "offsetX" | "offsetY", raw: string) => void;
   /** Carte distante : seule valeur persistée et diffusée. */
   mapUrl: string | null;
-  /** Aperçu blob local (fichier choisi), jamais commité. */
+  /** Aperçu blob local (échec d'upload uniquement), jamais commité. */
   mapPreview: string | null;
   applyMap: (raw: string) => boolean;
   removeMap: () => void;
+  /** Erreur d'envoi du fichier (503 sans stockage, réseau…). */
+  uploadError: string | null;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -28,6 +30,7 @@ export function VttGridBar({
   mapPreview,
   applyMap,
   removeMap,
+  uploadError,
   onFileChange,
 }: VttGridBarProps) {
   const urlRef = useRef<HTMLInputElement>(null);
@@ -54,8 +57,8 @@ export function VttGridBar({
         />
         <label
           className="btn cursor-pointer px-2 py-1 text-xs"
-          title="Aperçu local d'un fichier (non partagé)"
-          aria-label="Prévisualiser un fichier local"
+          title="Envoyer une image de carte"
+          aria-label="Envoyer une image de carte"
         >
           <svg
             viewBox="0 0 24 24"
@@ -78,6 +81,11 @@ export function VttGridBar({
           </span>
         )}
       </form>
+      {uploadError && (
+        <span role="alert" className="text-[0.65rem] text-destructive">
+          {uploadError}
+        </span>
+      )}
       {(mapUrl || mapPreview) && (
         <button type="button" className="btn px-2 py-1 text-xs text-muted" onClick={removeMap}>
           Retirer

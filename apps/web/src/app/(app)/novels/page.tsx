@@ -41,7 +41,12 @@ export default async function NovelsPage({
             Studio d&apos;écriture — romans, chapitres, publication.
           </p>
         </div>
-        <CreateNovelButton genres={genres} />
+        <div className="flex flex-wrap items-center gap-2">
+          <a href="/novels/export" download className="btn px-3 py-1.5 text-xs">
+            Exporter mes romans
+          </a>
+          <CreateNovelButton genres={genres} />
+        </div>
       </header>
 
       <form className="flex gap-2" action="/novels" method="get">

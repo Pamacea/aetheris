@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { MAX_UPLOAD_BYTES, UPLOAD_MESSAGES } from "@/lib/upload-validation";
 import { resolveMapUrl } from "./helpers";
 import type {
   GridSettings,
@@ -64,20 +65,58 @@ export function useVttActions({
   setWalls,
   setWallSelection,
 }: VttActionsParams) {
+  const [mapUploadError, setMapUploadError] = useState<string | null>(null);
+
   const revokePreview = () => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     objectUrlRef.current = null;
   };
 
-  /** Fichier local : APERÇU seulement — jamais commité ni diffusé (pas d'upload). */
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  /** Aperçu local de secours : stockage indisponible, rien n'est commité. */
+  const showLocalPreview = (file: File) => {
     revokePreview();
     const url = URL.createObjectURL(file);
     objectUrlRef.current = url;
     setMapPreview(url);
+  };
+
+  /**
+   * Fichier local : envoi vers Blob puis commit de `mapUrl` avec l'URL reçue.
+   * Échec (503 sans token, réseau…) → aperçu local conservé, aucun commit.
+   */
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     e.target.value = "";
+    if (!file) return;
+    setMapUploadError(null);
+
+    if (!file.type.startsWith("image/")) {
+      setMapUploadError(UPLOAD_MESSAGES.notImage);
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setMapUploadError(UPLOAD_MESSAGES.tooLarge);
+      return;
+    }
+
+    const body = new FormData();
+    body.set("purpose", "map");
+    body.set("file", file);
+    try {
+      const res = await fetch("/api/uploads", { method: "POST", body });
+      const data = (await res.json().catch(() => ({}))) as { url?: unknown; error?: unknown };
+      if (!res.ok || typeof data.url !== "string") {
+        showLocalPreview(file);
+        setMapUploadError(
+          typeof data.error === "string" ? data.error : "Envoi de l'image impossible.",
+        );
+        return;
+      }
+      applyMap(data.url);
+    } catch {
+      showLocalPreview(file);
+      setMapUploadError("Connexion perdue — réessayez.");
+    }
   };
 
   /** URL distante : seule valeur persistée et synchronisée. */
@@ -87,6 +126,7 @@ export function useVttActions({
     revokePreview();
     setMapPreview(null);
     setMapUrl(url);
+    setMapUploadError(null);
     return true;
   };
 
@@ -94,6 +134,7 @@ export function useVttActions({
     revokePreview();
     setMapPreview(null);
     setMapUrl(null);
+    setMapUploadError(null);
   };
 
   const setGridNum = (key: "size" | "offsetX" | "offsetY", raw: string) => {
@@ -179,6 +220,7 @@ export function useVttActions({
   }, [objectUrlRef]);
 
   return {
+    mapUploadError,
     onFileChange,
     applyMap,
     removeMap,

@@ -6,6 +6,26 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.7.0] — 2026-11-01
+
+### Ajouté
+
+- **Uploads d'images sécurisés (Vercel Blob)** : `POST /api/uploads` exige une session, sniffle les magic bytes (PNG, JPEG, WebP, GIF ; SVG refusé), plafonne à 8 Mo et applique un quota de 200 Mo / 500 fichiers par utilisateur. Le chemin serveur est reconstruit (`u/<userId>/<usage>/<uuid>.<ext>`) : le nom d'origine n'est jamais utilisé. Composant `ImageUploadField` branché sur la couverture de roman (création et détail), les handouts du journal et la carte VTT ; les URL `http(s)` distantes restent acceptées. Sans `BLOB_READ_WRITE_TOKEN`, la route répond 503 et l'UI propose une URL.
+- **Campagne de démonstration** en un clic depuis le tableau de bord : trois notes wiki liées, handout partagé, scène à deux jetons (PV/CA), modèle de fiche. Tout échec de seed supprime la campagne (rollback en cascade) ; redirection vers la table.
+- **Export auteur** : `GET /novels/export` renvoie un ZIP contenant un JSON par roman (chapitres ordonnés, document TipTap brut et texte extrait), strictement filtré sur `authorId`.
+- **Guide du MJ** `/aide` en huit étapes, lien depuis le dashboard et la navigation ; états vides guidés (dashboard, fiches, table vierge).
+- Documentation : `docs/storage.md` (décision, coûts, sécurité, alternative R2) et `docs/export.md` (périmètre des exports).
+
+### Modifié
+
+- `vercel.json` : `/api/uploads` est routé vers le service web avant la règle `/api` générique.
+- `README.md` : variable `BLOB_READ_WRITE_TOKEN`, badge 0.7.0, rewrites d'upload.
+- `.env.example` : `BLOB_READ_WRITE_TOKEN` documenté.
+
+### Tests
+
+- 9 tests de validation d'upload, 10 tests de sérialisation d'export, 2 E2E d'onboarding (campagne de démonstration réelle, refus 503 sans stockage).
+
 ## [0.6.4] — 2026-11-01
 
 ### Corrigé

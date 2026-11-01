@@ -16,6 +16,7 @@
   },
   "rewrites": [
     { "source": "/api/auth/(.*)", "destination": { "service": "web" } },
+    { "source": "/api/uploads", "destination": { "service": "web" } },
     { "source": "/api", "destination": { "service": "server" } },
     { "source": "/api/(.*)", "destination": { "service": "server" } },
     { "source": "/socket.io/(.*)", "destination": { "service": "server" } },

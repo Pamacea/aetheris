@@ -67,6 +67,7 @@ export function VttApp({
   });
 
   const {
+    mapUploadError,
     onFileChange,
     applyMap,
     removeMap,
@@ -129,9 +130,20 @@ export function VttApp({
       />
       <div className="relative flex min-h-0 flex-1">
         <VttStage tool={st.tool} containerRef={containerRef} />
+        {/* Table vierge : le premier geste (jeton ou carte) est indiqué. */}
+        {st.tokens.length === 0 && !st.mapUrl && !st.mapPreview && (
+          <p className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center">
+            <span className="panel px-4 py-3 text-sm text-muted">
+              {isGM
+                ? "Table vide — posez un jeton avec l’outil Tokens, ou importez une carte via l’outil Grille."
+                : "Le MJ n’a pas encore préparé la scène."}
+            </span>
+          </p>
+        )}
         {/* Options de l'outil actif, flottantes au-dessus de la carte. */}
         <VttToolPanels
           st={st}
+          mapUploadError={mapUploadError}
           onFileChange={onFileChange}
           applyMap={applyMap}
           removeMap={removeMap}

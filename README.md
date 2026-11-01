@@ -2,7 +2,7 @@
 
 > **Plateforme VTT & Lore Studio tout-en-un** — table virtuelle, base de connaissances façon Obsidian et studio d'écriture de romans, réunis dans une seule app.
 
-[![Version](https://img.shields.io/badge/version-0.6.4-8b5cf6)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0-8b5cf6)](./CHANGELOG.md)
 [![Licence](https://img.shields.io/badge/licence-MIT-111)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 
@@ -111,15 +111,16 @@ Le `postinstall` génère le client Prisma.
 
 Copier `.env.example` vers `.env` à la **racine** (source unique lue par Next et Prisma) :
 
-| Variable             | Requis | Usage                                              |
-| -------------------- | ------ | -------------------------------------------------- |
-| `DATABASE_URL`       | oui    | Connexion PostgreSQL (pooler)                      |
-| `BETTER_AUTH_SECRET` | oui    | Signature des sessions                             |
-| `BETTER_AUTH_URL`    | oui    | URL publique de l'app (doit viser le port web)     |
-| `WEB_ORIGIN`         | prod   | Origine autorisée pour CORS et Socket.io           |
-| `NEXT_PUBLIC_WS_URL` | prod   | URL du serveur Nest vue par le navigateur          |
-| `DISCORD_CLIENT_*`   | non    | OAuth Discord (les 2 variables activent le bouton) |
-| `GITHUB_CLIENT_*`    | non    | OAuth GitHub (les 2 variables activent le bouton)  |
+| Variable                | Requis | Usage                                              |
+| ----------------------- | ------ | -------------------------------------------------- |
+| `DATABASE_URL`          | oui    | Connexion PostgreSQL (pooler)                      |
+| `BETTER_AUTH_SECRET`    | oui    | Signature des sessions                             |
+| `BETTER_AUTH_URL`       | oui    | URL publique de l'app (doit viser le port web)     |
+| `WEB_ORIGIN`            | prod   | Origine autorisée pour CORS et Socket.io           |
+| `NEXT_PUBLIC_WS_URL`    | prod   | URL du serveur Nest vue par le navigateur          |
+| `BLOB_READ_WRITE_TOKEN` | prod   | Stockage des images uploadées (Vercel Blob)        |
+| `DISCORD_CLIENT_*`      | non    | OAuth Discord (les 2 variables activent le bouton) |
+| `GITHUB_CLIENT_*`       | non    | OAuth GitHub (les 2 variables activent le bouton)  |
 
 En local, les secrets du projet sont chiffrés dans `.enc.env` et débloqués via
 `shadow-secret unlock` (voir `project.yaml`).
@@ -170,10 +171,11 @@ pnpm dev
 ## Déploiement
 
 Le dépôt est prêt pour **Vercel Services** (`vercel.json`) : un service Nest
-(`apps/server`) et un service Next (`apps/web`), avec des rewrites `/api/auth` vers
-le web, `/api` et `/socket.io` vers le serveur. Renseigner les variables
-d'environnement ci-dessus dans le projet Vercel (`WEB_ORIGIN` et `NEXT_PUBLIC_WS_URL`
-incluses).
+(`apps/server`) et un service Next (`apps/web`), avec des rewrites `/api/auth` et
+`/api/uploads` vers le web, `/api` et `/socket.io` vers le serveur. Renseigner les
+variables d'environnement ci-dessus dans le projet Vercel (`WEB_ORIGIN` et
+`NEXT_PUBLIC_WS_URL` incluses). Les images uploadées passent par Vercel Blob :
+provisionner un store et `BLOB_READ_WRITE_TOKEN` (voir [docs/storage.md](./docs/storage.md)).
 
 ## Versioning
 

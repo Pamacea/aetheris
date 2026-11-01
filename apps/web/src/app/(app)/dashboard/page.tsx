@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { InviteCodeChip } from "@/components/campaigns/invite-code-chip";
 import { listGameSystems } from "@/features/game-systems/systems";
 import { StatusBadge } from "../novels/status-badge";
-import { CreateCampaignForm, JoinCampaignForm } from "./forms";
+import { CreateCampaignForm, DemoCampaignButton, JoinCampaignForm } from "./forms";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -46,11 +46,16 @@ export default async function DashboardPage() {
           <span className="mark-tri" aria-hidden />
           Tableau de bord
         </h1>
-        <p className="text-sm text-muted">
-          Bonjour {session.user.name} — {campaigns.length} campagne
-          {campaigns.length > 1 ? "s" : ""} — {novelCount} roman
-          {novelCount > 1 ? "s" : ""}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted">
+            Bonjour {session.user.name} — {campaigns.length} campagne
+            {campaigns.length > 1 ? "s" : ""} — {novelCount} roman
+            {novelCount > 1 ? "s" : ""}
+          </p>
+          <Link href="/aide" className="text-xs text-muted hover:text-foreground">
+            Guide du MJ →
+          </Link>
+        </div>
       </header>
 
       <section className="flex flex-col gap-4">
@@ -59,15 +64,23 @@ export default async function DashboardPage() {
             <span className="mark-tri" aria-hidden />
             Mes campagnes
           </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <JoinCampaignForm />
-            <CreateCampaignForm systems={systems} />
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <div className="flex flex-wrap items-center gap-2">
+              <JoinCampaignForm />
+              <DemoCampaignButton />
+              <CreateCampaignForm systems={systems} />
+            </div>
+            <p className="text-[0.7rem] text-muted">
+              La démonstration crée en un clic un wiki lié, un handout, une scène et un modèle de
+              fiche.
+            </p>
           </div>
         </div>
 
         {campaigns.length === 0 ? (
           <p className="panel px-4 py-8 text-center text-sm text-muted">
-            Aucune campagne pour l&apos;instant. Créez la première&nbsp;!
+            Aucune campagne pour l&apos;instant. Créez la vôtre avec l&apos;assistant, ou lancez la
+            campagne de démonstration pour visiter la table, le wiki et les handouts en un clic.
           </p>
         ) : (
           <ul className="panel divide-y divide-border">
@@ -113,7 +126,7 @@ export default async function DashboardPage() {
           <p className="panel px-4 py-8 text-center text-sm text-muted">
             Aucun roman pour l’instant.{" "}
             <Link href="/novels" className="text-foreground underline underline-offset-4">
-              Ouvrir le studio →
+              Créer un roman →
             </Link>
           </p>
         ) : (

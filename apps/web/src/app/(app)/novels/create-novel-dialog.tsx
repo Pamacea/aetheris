@@ -1,11 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GameModal } from "@/components/game-modal";
 import { createNovel, updateNovel } from "@/features/novels/actions";
 import { parseTags } from "@/features/novels/logic";
-import { readCoverFile } from "@/features/novels/cover-image";
 import { CreateNovelDialogFields } from "./create-novel-dialog-fields";
 import { IconCross } from "./icons";
 
@@ -15,25 +14,18 @@ export function CreateNovelButton({ genres }: { genres: string[] }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
 
   function close() {
     if (pending) return;
     setOpen(false);
     setError(null);
     setCover(null);
-    if (coverInputRef.current) coverInputRef.current.value = "";
   }
 
-  function handleCover(file: File | undefined) {
-    if (!file) return;
+  /** URL vide → couverture absente : createNovel reçoit toujours `null`. */
+  function handleCoverChange(url: string) {
     setError(null);
-    readCoverFile(file).then(setCover, (e: Error) => setError(e.message));
-  }
-
-  function clearCover() {
-    setCover(null);
-    if (coverInputRef.current) coverInputRef.current.value = "";
+    setCover(url === "" ? null : url);
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -98,9 +90,7 @@ export function CreateNovelButton({ genres }: { genres: string[] }) {
             <CreateNovelDialogFields
               genres={genres}
               cover={cover}
-              coverInputRef={coverInputRef}
-              onCoverPick={handleCover}
-              onCoverClear={clearCover}
+              onCoverChange={handleCoverChange}
             />
 
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}

@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
@@ -30,6 +30,7 @@
     "@tiptap/starter-kit": "^3.31.4",
     "@tiptap/suggestion": "^3.31.4",
     "@types/sanitize-html": "^2.16.2",
+    "@vercel/blob": "^2.8.2",
     "better-auth": "^1.7.7",
     "jszip": "^3.10.2",
     "next": "16.3.8",

@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GameModal } from "@/components/game-modal";
+import { ImageUploadField } from "@/components/image-upload";
 import { updateNovel } from "@/features/novels/actions";
-import { readCoverFile } from "@/features/novels/cover-image";
 import { IconCross } from "../icons";
 
 /**
@@ -37,12 +37,6 @@ export function NovelCover({
   function close() {
     if (pending) return;
     setOpen(false);
-  }
-
-  function pick(file: File | undefined) {
-    if (!file) return;
-    setError(null);
-    readCoverFile(file).then(setDraft, (e: Error) => setError(e.message));
   }
 
   function save() {
@@ -103,49 +97,16 @@ export function NovelCover({
               </button>
             </header>
 
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="panel h-40 w-28 shrink-0 overflow-hidden">
-                {draft ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={draft} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-3xl text-muted">
-                    <span className="mark-tri" style={{ marginRight: 0 }} aria-hidden />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex min-w-0 flex-1 flex-col gap-3">
-                <label
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    pick(e.dataTransfer.files[0]);
-                  }}
-                  className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-1 border border-dashed border-border px-4 py-6 text-center text-sm transition hover:bg-card-hover"
-                >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(e) => pick(e.target.files?.[0])}
-                  />
-                  <span>Glissez une image ici</span>
-                  <span className="text-xs text-muted">
-                    ou cliquez pour parcourir · max ~1,2 Mo
-                  </span>
-                </label>
-                {draft && (
-                  <button
-                    type="button"
-                    onClick={() => setDraft(null)}
-                    className="self-start text-xs text-muted underline-offset-2 hover:text-destructive hover:underline"
-                  >
-                    Retirer l&apos;image
-                  </button>
-                )}
-              </div>
-            </div>
+            <ImageUploadField
+              label="Image de couverture"
+              value={draft ?? ""}
+              onChange={(url) => {
+                setError(null);
+                setDraft(url === "" ? null : url);
+              }}
+              purpose="cover"
+              hint="PNG, JPEG, WebP ou GIF · 8 Mo max, ou collez une URL http(s)."
+            />
 
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 

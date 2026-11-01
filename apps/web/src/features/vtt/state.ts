@@ -15,7 +15,7 @@ export function useVttState(initialScene: SceneState | null | undefined) {
     initialScene?.grid ?? { type: "square", size: 64, offsetX: 0, offsetY: 0 },
   );
   const [mapUrl, setMapUrl] = useState<string | null>(initialScene?.mapUrl ?? null);
-  /** Aperçu local d'un fichier : jamais commité ni diffusé (pas d'upload). */
+  /** Aperçu local de secours (upload indisponible) : jamais commité ni diffusé. */
   const [mapPreview, setMapPreview] = useState<string | null>(null);
   const [tokens, setTokens] = useState<TokenState[]>(initialScene?.tokens ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
