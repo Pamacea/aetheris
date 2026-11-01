@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BugReportLink } from "@/components/bug-report-link";
 
 export function Cta() {
   return (
@@ -37,6 +38,7 @@ export function Cta() {
             <Link href="/register" className="transition-colors hover:text-foreground">
               Inscription
             </Link>
+            <BugReportLink className="transition-colors hover:text-foreground" />
           </nav>
         </div>
       </footer>

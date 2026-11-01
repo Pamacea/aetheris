@@ -6,6 +6,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/) et le
 [SemVer](https://semver.org/lang/fr/). Les entrées sont générées depuis l'historique
 Git (`TYPE: aetheris - vX.Y.Z`) : `RELEASE` = majeur, `UPDATE` = mineur, `PATCH` = correctif.
 
+## [0.8.0] — 2026-11-01
+
+### Ajouté
+
+- **Protocole de playtest** (`docs/playtest.md`) : parcours de 15 minutes pour un MJ et
+  ses joueurs — compte, campagne de démonstration, campagne personnelle, VTT (jetons,
+  PV/CA, carte, brouillard), chat et dés (`/roll 1d20+5`), avec la grille de retours et
+  les limites connues à ne pas signaler.
+- **Signalement de bug** : composant `BugReportLink` vers le formulaire d'issue du dépôt
+  public, présent dans le footer de la landing et sur la page d'erreur (référence
+  `digest` rappelée). Template `.github/ISSUE_TEMPLATE/bug_report.md` (titre `[bug]`,
+  label `bug`, sections reproduction / attendu / contexte).
+- Passe les six paquets en 0.8.0.
+
 ## [0.7.9] — 2026-11-01
 
 ### Corrigé

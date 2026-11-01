@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { BugReportLink } from "@/components/bug-report-link";
 
 export default function ErrorPage({
   error,
@@ -37,6 +38,10 @@ export default function ErrorPage({
         >
           Réessayer
         </button>
+        <p className="mt-3 text-center text-xs text-muted">
+          <BugReportLink className="underline hover:text-foreground" />
+          {error.digest ? " — recopiez la référence ci-dessus." : null}
+        </p>
       </section>
     </div>
   );
